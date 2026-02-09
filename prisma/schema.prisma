@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String     @id @default(uuid())
+  username    String     @unique
+  email       String     @unique
+  password    String     // hashed password
+  fullName    String
+  phone       String?
+  role        UserRole   @default(USER)
+  isActive    Boolean    @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  permissions UserPermission[]
+  activities  ActivityLog[]
+
+  @@index([username])
+  @@index([email])
+  @@index([role])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique      // view_goats, add_goat, edit_goat, delete_goat, etc.
+  nameAr      String                // عرض الماعز، إضافة ماعز، تعديل ماعز، حذف ماعز
+  category    String                // goats, health, breeding, sales, users, reports
+  categoryAr  String                // الماعز، الصحة، التكاثر، المبيعات، المستخدمين، التقارير
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserPermission[]
+
+  @@index([category])
+}
+
+model UserPermission {
+  id           String     @id @default(uuid())
+  userId       String
+  permissionId String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedAt    DateTime   @default(now())
+  grantedBy    String?    // userId who granted this permission
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+}
+
+model ActivityLog {
+  id          String       @id @default(uuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String       // CREATE, UPDATE, DELETE, VIEW, LOGIN, LOGOUT
+  entity      String       // Goat, Health, Breeding, etc.
+  entityId    String?
+  description String       @db.Text
+  ipAddress   String?
+  userAgent   String?      @db.Text
+  createdAt   DateTime     @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model GoatType {
+  id          String   @id @default(uuid())
+  name        String   @unique  // SHEEP, GOAT
+  nameAr      String             // خروف، ماعز
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  breeds      Breed[]
+
+  @@index([name])
+}
+
+model Breed {
+  id          String   @id @default(uuid())
+  typeId      String
+  type        GoatType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  name        String   // Damascus, Nubian, Aradi, etc.
+  nameAr      String   // شامي، نوبي، عارضي، نجدي، إلخ
+  description String?  @db.Text
+  avgWeight   Float?   // متوسط الوزن
+  avgHeight   Float?   // متوسط الطول
+  characteristics String? @db.Text  // الخصائص
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goats       Goat[]
+
+  @@unique([typeId, name])
+  @@index([typeId])
+}
+
+model Goat {
+  id            String   @id @default(uuid())
+  tagId         String   @unique
+  name          String?
+  breedId       String
+  breed         Breed    @relation(fields: [breedId], references: [id])
+  gender        Gender
+  birthDate     DateTime
+  weight        Float?
+  color         String?
+  status        GoatStatus @default(ACTIVE)
+  motherId      String?
+  fatherId      String?
+  motherTagId   String?
+  fatherTagId   String?
+  birthId       String?
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  mother        Goat?     @relation("GoatMother", fields: [motherId], references: [id], onDelete: SetNull)
+  father        Goat?     @relation("GoatFather", fields: [fatherId], references: [id], onDelete: SetNull)
+  kidsAsMother  Goat[]    @relation("GoatMother")
+  kidsAsFather  Goat[]    @relation("GoatFather")
+  // birthId is stored for sibling grouping but without a Prisma relation
+  kidBirths    Birth[]   @relation("KidGoat")
+
+  healthRecords    HealthRecord[]
+  breedingAsMother Breeding[]     @relation("MotherGoat")
+  breedingAsFather Breeding[]     @relation("FatherGoat")
+  feedingRecords   FeedingRecord[]
+  sales            Sale[]
+
+  @@index([tagId])
+  @@index([breedId])
+  @@index([status])
+  @@index([motherId])
+  @@index([fatherId])
+  @@index([birthId])
+}
+
+model HealthRecord {
+  id          String       @id @default(uuid())
+  goatId      String
+  goat        Goat         @relation(fields: [goatId], references: [id], onDelete: Cascade)
+  type        HealthType
+  date        DateTime
+  description String       @db.Text
+  veterinarian String?
+  medication  String?
+  dosage      String?
+  cost        Float?
+  nextDueDate DateTime?
+  notes       String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([goatId])
+  @@index([type])
+  @@index([date])
+}
+
+model Breeding {
+  id              String         @id @default(uuid())
+  motherId        String
+  fatherId        String
+  mother          Goat           @relation("MotherGoat", fields: [motherId], references: [id])
+  father          Goat           @relation("FatherGoat", fields: [fatherId], references: [id])
+  matingDate      DateTime
+  pregnancyStatus PregnancyStatus @default(MATED)
+  dueDate         DateTime?
+  birthDate       DateTime?
+  numberOfKids    Int?
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  births          Birth[]
+
+  @@index([motherId])
+  @@index([fatherId])
+  @@index([matingDate])
+}
+
+model Birth {
+  id          String   @id @default(uuid())
+  breedingId  String
+  breeding    Breeding @relation(fields: [breedingId], references: [id], onDelete: Cascade)
+  kidTagId    String
+  kidGoatId   String?
+  kidGoat     Goat?     @relation("KidGoat", fields: [kidGoatId], references: [id], onDelete: SetNull)
+  gender      Gender
+  weight      Float?
+  status      BirthStatus
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([breedingId])
+  @@index([kidTagId])
+  @@index([kidGoatId])
+}
+
+model FeedingRecord {
+  id          String      @id @default(uuid())
+  goatId      String?
+  goat        Goat?       @relation(fields: [goatId], references: [id], onDelete: SetNull)
+  date        DateTime
+  feedType    String
+  quantity    Float
+  unit        String
+  cost        Float?
+  notes       String?     @db.Text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([goatId])
+  @@index([date])
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  goatId      String?
+  goat        Goat?    @relation(fields: [goatId], references: [id], onDelete: SetNull)
+  date        DateTime
+  buyerName   String
+  buyerPhone  String?
+  salePrice   Float
+  paymentStatus PaymentStatus @default(PENDING)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([goatId])
+  @@index([date])
+}
+
+model Expense {
+  id          String       @id @default(uuid())
+  date        DateTime
+  category    ExpenseCategory
+  description String
+  amount      Float
+  paymentMethod String?
+  notes       String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([date])
+  @@index([category])
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum GoatStatus {
+  ACTIVE
+  SOLD
+  DECEASED
+  QUARANTINE
+}
+
+enum HealthType {
+  VACCINATION
+  DEWORMING
+  TREATMENT
+  CHECKUP
+  SURGERY
+}
+
+enum PregnancyStatus {
+  MATED
+  PREGNANT
+  DELIVERED
+  FAILED
+}
+
+enum BirthStatus {
+  ALIVE
+  STILLBORN
+  DIED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum ExpenseCategory {
+  FEED
+  MEDICINE
+  VETERINARY
+  EQUIPMENT
+  LABOR
+  UTILITIES
+  MAINTENANCE
+  OTHER
+}
+
+enum UserRole {
+  ADMIN        // مدير النظام - كل الصلاحيات
+  MANAGER      // مدير المزرعة - معظم الصلاحيات
+  VETERINARIAN // بيطري - صلاحيات السجلات الصحية
+  USER         // مستخدم عادي - صلاحيات محدودة
+  VIEWER       // عارض فقط - قراءة فقط
+}
