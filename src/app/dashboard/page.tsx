@@ -8,7 +8,10 @@ import {
   Typography, 
   Button,
   Paper,
-  Stack
+  Stack,
+  Alert,
+  AlertTitle,
+  Chip
 } from '@mui/material'
 import { 
   Pets as PetsIcon,
@@ -16,7 +19,9 @@ import {
   FavoriteBorder as BreedingIcon,
   ShoppingCart as SalesIcon,
   Assessment as StatsIcon,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  NotificationsActive as AlertIcon,
+  ChildCare as WeaningIcon
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -34,9 +39,20 @@ interface Stats {
   netProfit: number
 }
 
+interface AlertItem {
+  id: string
+  type: 'BIRTH' | 'HEALTH' | 'WEANING'
+  severity: 'error' | 'warning' | 'info'
+  title: string
+  message: string
+  date: string
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [alerts, setAlerts] = useState<AlertItem[]>([])
+  const [loadingAlerts, setLoadingAlerts] = useState(true)
 
   useEffect(() => {
     fetch('/api/stats')
@@ -46,6 +62,14 @@ export default function DashboardPage() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+      
+    fetch('/api/alerts')
+      .then(res => res.json())
+      .then(data => {
+        setAlerts(Array.isArray(data) ? data : [])
+        setLoadingAlerts(false)
+      })
+      .catch(() => setLoadingAlerts(false))
   }, [])
 
   const dashboardCards = [
@@ -105,7 +129,50 @@ export default function DashboardPage() {
       </Paper>
 
       {!loading && stats && (
-        <Grid container spacing={3} mb={4}>
+        <>
+          {/* قسم التنبيهات */}
+          {alerts.length > 0 && (
+            <Box mb={4}>
+              <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+                <AlertIcon color="warning" />
+                <Typography variant="h6" fontWeight="bold">
+                  تنبيهات هامة ({alerts.length})
+                </Typography>
+              </Stack>
+              <Grid container spacing={2}>
+                {alerts.map((alert) => (
+                  <Grid item xs={12} md={6} lg={4} key={alert.id}>
+                    <Alert 
+                      severity={alert.severity} 
+                      icon={
+                        alert.type === 'BIRTH' ? <BreedingIcon fontSize="inherit" /> :
+                        alert.type === 'WEANING' ? <WeaningIcon fontSize="inherit" /> :
+                        <HealthIcon fontSize="inherit" />
+                      }
+                      sx={{ 
+                        height: '100%', 
+                        alignItems: 'center',
+                        '& .MuiAlert-message': { width: '100%' }
+                      }}
+                    >
+                      <AlertTitle sx={{ fontWeight: 'bold' }}>{alert.title}</AlertTitle>
+                      <Typography variant="body2">{alert.message}</Typography>
+                      {alert.type !== 'WEANING' && (
+                        <Chip 
+                          label={new Date(alert.date).toLocaleDateString('ar-SA')} 
+                          size="small" 
+                          sx={{ mt: 1, height: 20, fontSize: '0.7rem' }} 
+                        />
+                      )}
+                    </Alert>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+
+          {stats && (
+            <Grid container spacing={3} mb={4}>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ height: '100%', bgcolor: '#fff' }}>
               <CardContent>
@@ -145,7 +212,7 @@ export default function DashboardPage() {
                   إجمالي المبيعات
                 </Typography>
                 <Typography variant="h3" fontWeight="bold" color="info.main">
-                  {stats.totalSales.toLocaleString()}
+                  {(stats.totalSales || 0).toLocaleString()}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   ريال سعودي
@@ -171,6 +238,8 @@ export default function DashboardPage() {
             </Card>
           </Grid>
         </Grid>
+      )}
+      </>
       )}
 
       <Grid container spacing={3}>

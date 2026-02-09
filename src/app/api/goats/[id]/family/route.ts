@@ -25,13 +25,21 @@ export async function GET(
       goat.motherId
         ? prisma.goat.findUnique({
             where: { id: goat.motherId },
-            include: { breed: { select: { nameAr: true } } }
+            include: { 
+              breed: { select: { nameAr: true } },
+              mother: { include: { breed: { select: { nameAr: true } } } },
+              father: { include: { breed: { select: { nameAr: true } } } }
+            }
           })
         : null,
       goat.fatherId
         ? prisma.goat.findUnique({
             where: { id: goat.fatherId },
-            include: { breed: { select: { nameAr: true } } }
+            include: { 
+              breed: { select: { nameAr: true } },
+              mother: { include: { breed: { select: { nameAr: true } } } },
+              father: { include: { breed: { select: { nameAr: true } } } }
+            }
           })
         : null
     ])

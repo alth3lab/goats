@@ -18,6 +18,7 @@ export async function GET(
             type: true
           }
         },
+        pen: true,
         healthRecords: { orderBy: { date: 'desc' } },
         breedingAsMother: { include: { father: true, births: true } },
         breedingAsFather: { include: { mother: true, births: true } },

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
             type: true
           }
         },
+        pen: true,
         healthRecords: {
           take: 5,
           orderBy: { date: 'desc' }

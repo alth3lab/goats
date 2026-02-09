@@ -48,6 +48,7 @@ interface Goat {
   status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
   motherTagId?: string | null
   fatherTagId?: string | null
+  pen?: { nameAr: string } | null
   breed: {
     id: string
     nameAr: string
@@ -74,7 +75,46 @@ interface FamilyMember {
   birthDate: string
   status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
   breed: { nameAr: string }
+  mother?: FamilyMember | null
+  father?: FamilyMember | null
 }
+
+const GoatNode = ({ member, label, color = "default" }: { member?: FamilyMember | null | Goat, label: string, color?: "default" | "primary" | "secondary" }) => (
+  <Paper 
+    elevation={member ? 2 : 0} 
+    sx={{ 
+      p: 1.5, 
+      textAlign: 'center', 
+      minWidth: 120, 
+      bgcolor: member ? (color === "primary" ? '#e3f2fd' : color === "secondary" ? '#f3e5f5' : 'background.paper') : '#f5f5f5',
+      border: member ? 1 : 1,
+      borderColor: member ? 'divider' : 'transparent',
+      borderStyle: member ? 'solid' : 'dashed'
+    }}
+  >
+    <Typography variant="caption" display="block" color="text.secondary" gutterBottom>
+      {label}
+    </Typography>
+    {member ? (
+      <>
+        <Typography variant="body2" fontWeight="bold">
+          {member.tagId}
+        </Typography>
+        <Typography variant="caption" display="block" noWrap sx={{ maxWidth: 100, mx: 'auto' }}>
+          {member.name || '-'}
+        </Typography>
+        <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+          {member.breed?.nameAr}
+        </Typography>
+      </>
+    ) : (
+      <Typography variant="caption" color="text.disabled">
+        غير معروف
+      </Typography>
+    )}
+  </Paper>
+)
+
 
 interface FamilyResponse {
   goat: Goat
@@ -99,6 +139,7 @@ export default function GoatsPage() {
   const [editMode, setEditMode] = useState(false)
   const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
+  const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
   const [form, setForm] = useState({
     tagId: '',
     name: '',
@@ -109,7 +150,8 @@ export default function GoatsPage() {
     weight: '',
     status: 'ACTIVE',
     motherTagId: '',
-    fatherTagId: ''
+    fatherTagId: '',
+    penId: ''
   })
 
   useEffect(() => {
@@ -149,10 +191,36 @@ export default function GoatsPage() {
     }
   }
 
+  const loadPens = async () => {
+    try {
+      const res = await fetch('/api/pens')
+      if (res.ok) {
+        const data = await res.json()
+        setPens(data)
+      }
+    } catch {
+      setPens([])
+    }
+  }
+
   const handleOpen = () => {
     setEditMode(false)
-    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '' })
+    setSelectedGoat(null) // Clear any selected goat
+    setForm({ 
+      tagId: '', 
+      name: '', 
+      gender: 'MALE', 
+      birthDate: '', 
+      typeId: '', 
+      breedId: '', 
+      weight: '', 
+      status: 'ACTIVE', 
+      motherTagId: '', 
+      fatherTagId: '',
+      penId: ''
+    })
     setOpen(true)
+    loadPens()
     if (types.length === 0) {
       loadTypes()
     }
@@ -172,7 +240,8 @@ export default function GoatsPage() {
       weight: '', 
       status: 'ACTIVE',
       motherTagId: '',
-      fatherTagId: ''
+      fatherTagId: '',
+      penId: ''
     })
   }
 
@@ -199,12 +268,40 @@ export default function GoatsPage() {
     }
   }
 
+  const handleAddOffspring = async (mother: Goat) => {
+    setViewDialogOpen(false) // Close view dialog if open
+    setEditMode(false)
+    
+    // تحميل الأنواع والتأكد منها
+    if (types.length === 0) await loadTypes()
+    
+    // تحميل السلالات للنوع المحدد
+    await loadBreeds(mother.breed.type.id)
+    loadPens()
+
+    setForm({
+      tagId: '',
+      name: '',
+      gender: 'MALE',
+      birthDate: new Date().toISOString().split('T')[0], // Default to today
+      typeId: mother.breed.type.id,
+      breedId: mother.breed.id,
+      weight: '',
+      status: 'ACTIVE',
+      motherTagId: mother.tagId,
+      fatherTagId: '',
+      penId: (mother as any).penId || ''
+    })
+    setOpen(true)
+  }
+
   const handleEdit = async (goat: Goat) => {
     setEditMode(true)
     setSelectedGoat(goat)
     
     // تحميل الأنواع أولاً
     await loadTypes()
+    loadPens()
     
     // تحميل السلالات للنوع المحدد
     await loadBreeds(goat.breed.type.id)
@@ -219,7 +316,8 @@ export default function GoatsPage() {
       weight: goat.weight?.toString() || '',
       status: goat.status,
       motherTagId: goat.motherTagId || '',
-      fatherTagId: goat.fatherTagId || ''
+      fatherTagId: goat.fatherTagId || '',
+      penId: (goat as any).penId || ''
     })
     setOpen(true)
   }
@@ -252,7 +350,8 @@ export default function GoatsPage() {
       birthDate: new Date(form.birthDate),
       breedId: form.breedId,
       weight: form.weight ? Number(form.weight) : null,
-      status: form.status
+      status: form.status,
+      penId: form.penId || null
     }
 
     const url = editMode && selectedGoat ? `/api/goats/${selectedGoat.id}` : '/api/goats'
@@ -266,8 +365,9 @@ export default function GoatsPage() {
 
     const savedGoat = await res.json()
 
-    if (form.motherTagId || form.fatherTagId) {
-      await fetch(`/api/goats/${savedGoat.id ?? selectedGoat?.id}/parentage`, {
+    // تحديث النسب إذا تم تغييره أو في وضع التعديل (للسماح بالحذف)
+    if (form.motherTagId !== '' || form.fatherTagId !== '' || editMode) {
+      const parentageRes = await fetch(`/api/goats/${savedGoat.id ?? selectedGoat?.id}/parentage`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -275,6 +375,11 @@ export default function GoatsPage() {
           fatherTagId: form.fatherTagId || null
         })
       })
+
+      if (!parentageRes.ok) {
+        const errorData = await parentageRes.json()
+        alert(`تم حفظ الماعز ولكن فشل تحديث النسب: ${errorData.error}`)
+      }
     }
 
     setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '' })
@@ -379,6 +484,7 @@ export default function GoatsPage() {
               <TableCell><strong>الجنس</strong></TableCell>
               <TableCell><strong>العمر</strong></TableCell>
               <TableCell><strong>الوزن</strong></TableCell>
+              <TableCell><strong>الحظيرة</strong></TableCell>
               <TableCell><strong>الحالة</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
@@ -432,6 +538,11 @@ export default function GoatsPage() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>{goat.weight ? `${goat.weight} كجم` : '-'}</TableCell>
+                  <TableCell>
+                    {goat.pen ? (
+                      <Chip label={goat.pen.nameAr} size="small" variant="outlined" />
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>
                     <Chip 
                       label={getStatusLabel(goat.status)} 
@@ -532,24 +643,77 @@ export default function GoatsPage() {
               onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
               required
             />
-            <TextField
-              label="رقم تاج الأم (اختياري)"
-              value={form.motherTagId}
-              onChange={(e) => setForm({ ...form, motherTagId: e.target.value })}
-              helperText="يمكن إدخال رقم تاج الأم لربط النسب تلقائياً"
-            />
-            <TextField
-              label="رقم تاج الأب (اختياري)"
-              value={form.fatherTagId}
-              onChange={(e) => setForm({ ...form, fatherTagId: e.target.value })}
-              helperText="يمكن إدخال رقم تاج الأب لربط النسب تلقائياً"
-            />
+            <FormControl fullWidth>
+              <InputLabel>الأم (اختياري)</InputLabel>
+              <Select
+                value={form.motherTagId}
+                label="الأم (اختياري)"
+                onChange={(e) => setForm({ ...form, motherTagId: e.target.value })}
+                disabled={!editMode && selectedGoat?.gender === 'FEMALE'}
+              >
+                <MenuItem value="">
+                  <em>غير محدد</em>
+                </MenuItem>
+                {/* 
+                  When adding offspring for a specific mother (!editMode && selectedGoat), 
+                  we force that mother to be in the list even if not active (though handleAddOffspring only works for active?)
+                  Actually filter logic below handles it: g.tagId === form.motherTagId ensures the selected one is shown.
+                */}
+                {goats
+                  .filter((g) => 
+                    (g.gender === 'FEMALE' && g.status === 'ACTIVE' && (!selectedGoat || g.id !== selectedGoat.id)) || 
+                    (!editMode && selectedGoat?.gender === 'FEMALE' && g.tagId === form.motherTagId)
+                  )
+                  .map((g) => (
+                    <MenuItem key={g.id} value={g.tagId}>
+                      {g.tagId} {g.name ? `- ${g.name}` : ''} ({g.breed.nameAr})
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>الأب (اختياري)</InputLabel>
+              <Select
+                value={form.fatherTagId}
+                label="الأب (اختياري)"
+                onChange={(e) => setForm({ ...form, fatherTagId: e.target.value })}
+              >
+                <MenuItem value="">
+                  <em>غير محدد</em>
+                </MenuItem>
+                {goats
+                  .filter((g) => g.gender === 'MALE' && g.status === 'ACTIVE' && (!selectedGoat || g.id !== selectedGoat.id))
+                  .map((g) => (
+                    <MenuItem key={g.id} value={g.tagId}>
+                      {g.tagId} {g.name ? `- ${g.name}` : ''} ({g.breed.nameAr})
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
             <TextField
               label="الوزن (كجم)"
               type="number"
               value={form.weight}
               onChange={(e) => setForm({ ...form, weight: e.target.value })}
             />
+            <FormControl>
+              <InputLabel>الحظيرة (الموقع)</InputLabel>
+              <Select
+                value={form.penId}
+                label="الحظيرة (الموقع)"
+                onChange={(e) => setForm({ ...form, penId: e.target.value })}
+              >
+                <MenuItem value="">
+                  <em>غير محدد</em>
+                </MenuItem>
+                {pens.map((pen) => (
+                  <MenuItem key={pen.id} value={pen.id}>
+                    {pen.nameAr}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl>
               <InputLabel>الحالة</InputLabel>
               <Select
@@ -603,6 +767,7 @@ export default function GoatsPage() {
                     </>
                   )}
                   <Typography><strong>الوزن:</strong> {selectedGoat.weight ? `${selectedGoat.weight} كجم` : '-'}</Typography>
+                  <Typography><strong>الحظيرة:</strong> {selectedGoat.pen ? selectedGoat.pen.nameAr : 'غير محدد'}</Typography>
                   <Typography><strong>الحالة:</strong> {getStatusLabel(selectedGoat.status)}</Typography>
                 </Stack>
               </Paper>
@@ -619,30 +784,38 @@ export default function GoatsPage() {
                   <Typography variant="body2" color="error">{familyError}</Typography>
                 ) : familyData ? (
                   <Stack spacing={2}>
-                    <Stack spacing={1}>
-                      <Typography fontWeight="bold">الأم</Typography>
-                      {familyData.mother ? (
-                        <Chip
-                          label={`${familyData.mother.tagId} - ${familyData.mother.breed.nameAr}`}
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Typography variant="body2">غير محدد</Typography>
-                      )}
-                    </Stack>
-                    <Stack spacing={1}>
-                      <Typography fontWeight="bold">الأب</Typography>
-                      {familyData.father ? (
-                        <Chip
-                          label={`${familyData.father.tagId} - ${familyData.father.breed.nameAr}`}
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Typography variant="body2">غير محدد</Typography>
-                      )}
-                    </Stack>
+                    <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fafafa', overflowX: 'auto' }}>
+                      <Stack spacing={3} alignItems="center" minWidth={500}>
+                        {/* الأجداد */}
+                        <Stack direction="row" spacing={4} justifyContent="center">
+                          <Stack spacing={1} alignItems="center">
+                            <Typography variant="caption" color="text.secondary">أهل الأب</Typography>
+                            <Stack direction="row" spacing={1}>
+                              <GoatNode member={familyData.father?.father} label="أب الأب" />
+                              <GoatNode member={familyData.father?.mother} label="أم الأب" />
+                            </Stack>
+                          </Stack>
+                          <Stack spacing={1} alignItems="center">
+                            <Typography variant="caption" color="text.secondary">أهل الأم</Typography>
+                            <Stack direction="row" spacing={1}>
+                              <GoatNode member={familyData.mother?.father} label="أب الأم" />
+                              <GoatNode member={familyData.mother?.mother} label="أم الأم" />
+                            </Stack>
+                          </Stack>
+                        </Stack>
+
+                        {/* الآباء */}
+                        <Stack direction="row" spacing={12} position="relative">
+                          <GoatNode member={familyData.father} label="الأب" color="secondary" />
+                          <GoatNode member={familyData.mother} label="الأم" color="secondary" />
+                        </Stack>
+
+                        {/* الماعز الحالي */}
+                        <GoatNode member={selectedGoat} label="الحيوان المختار" color="primary" />
+                      </Stack>
+                    </Paper>
+                    
+                    <Divider />
 
                     <Stack spacing={1}>
                       <Typography fontWeight="bold">الإخوة (نفس الأم ونفس الولادة)</Typography>
@@ -662,7 +835,17 @@ export default function GoatsPage() {
                     </Stack>
 
                     <Stack spacing={1}>
-                      <Typography fontWeight="bold">الأبناء (من الأم)</Typography>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography fontWeight="bold">الأبناء (من الأم)</Typography>
+                        <Button 
+                          size="small" 
+                          startIcon={<AddIcon />}
+                          onClick={() => selectedGoat && handleAddOffspring(selectedGoat)}
+                          disabled={selectedGoat?.gender !== 'FEMALE'}
+                        >
+                          إضافة ابن
+                        </Button>
+                      </Stack>
                       {familyData.offspring.length > 0 ? (
                         <Stack direction="row" flexWrap="wrap" gap={1}>
                           {familyData.offspring.map((kid) => (

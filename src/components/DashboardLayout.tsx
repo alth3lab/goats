@@ -30,7 +30,8 @@ import {
   Receipt as ExpensesIcon,
   Assessment as ReportsIcon,
   Settings as SettingsIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  HomeWork as PenIcon
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -40,6 +41,7 @@ const drawerWidth = 260
 const menuItems = [
   { text: 'لوحة التحكم', icon: <DashboardIcon />, href: '/dashboard' },
   { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
+  { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
   { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
   { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
   { text: 'المبيعات', icon: <SalesIcon />, href: '/dashboard/sales' },
