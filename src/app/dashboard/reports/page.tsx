@@ -4,7 +4,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   Card,
   CardContent,
   Button
@@ -36,11 +35,10 @@ export default function ReportsPage() {
         </Typography>
       </Paper>
 
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3 }}>
         {reports.map((r, i) => (
-          <Grid item xs={12} sm={6} md={3} key={i}>
-            <Card sx={{ height: '100%', borderRadius: 3 }}>
-              <CardContent>
+          <Card key={i} sx={{ height: '100%', borderRadius: 3 }}>
+            <CardContent>
                 <Box sx={{ mb: 2, color: 'primary.main' }}>{r.icon}</Box>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   {r.title}
@@ -53,9 +51,8 @@ export default function ReportsPage() {
                 </Button>
               </CardContent>
             </Card>
-          </Grid>
         ))}
-      </Grid>
+      </Box>
     </Box>
   )
 }

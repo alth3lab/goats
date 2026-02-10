@@ -6,7 +6,6 @@ import {
   Paper,
   Typography,
   Button,
-  Grid,
   Card,
   CardContent,
   Chip,
@@ -71,15 +70,14 @@ export default function TypesPage() {
         </Stack>
       </Paper>
 
-      <Grid container spacing={3}>
-        {loading ? (
-          <Grid item xs={12}><Typography align="center">جاري التحميل...</Typography></Grid>
-        ) : types.length === 0 ? (
-          <Grid item xs={12}><Typography align="center">لا توجد بيانات</Typography></Grid>
-        ) : (
-          types.map(type => (
-            <Grid item xs={12} md={6} key={type.id}>
-              <Card sx={{ borderRadius: 3, height: '100%' }}>
+      {loading ? (
+        <Typography align="center">جاري التحميل...</Typography>
+      ) : types.length === 0 ? (
+        <Typography align="center">لا توجد بيانات</Typography>
+      ) : (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+          {types.map(type => (
+            <Card key={type.id} sx={{ borderRadius: 3, height: '100%' }}>
                 <CardContent>
                   <Typography variant="h5" fontWeight="bold" gutterBottom>
                     {type.nameAr}
@@ -94,10 +92,9 @@ export default function TypesPage() {
                   </Stack>
                 </CardContent>
               </Card>
-            </Grid>
-          ))
-        )}
-      </Grid>
+          ))}
+        </Box>
+      )}
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>إضافة نوع جديد</DialogTitle>

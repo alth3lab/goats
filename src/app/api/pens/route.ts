@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const runtime = 'nodejs'
+
 export async function GET() {
   try {
     const pens = await prisma.pen.findMany({
       include: {
         _count: {
           select: { goats: true }
+        },
+        goats: {
+          select: {
+            gender: true
+          }
         }
       },
       orderBy: { createdAt: 'asc' }
@@ -20,7 +27,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, nameAr, capacity, type, notes } = body
+    let { name, nameAr, capacity, type, notes } = body
+
+    // Ensure we have a unique name if not provided
+    if (!name || name.trim() === '') {
+      name = `PEN-${Date.now()}`
+    }
 
     const pen = await prisma.pen.create({
       data: {
@@ -33,7 +45,12 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(pen)
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error creating pen:', error)
+    // Check for unique constraint violation (P2002)
+    if (error.code === 'P2002') {
+        return NextResponse.json({ error: 'اسم الحظيرة (الإنجليزي) مستخدم بالفعل' }, { status: 400 })
+    }
     return NextResponse.json({ error: 'Error creating pen' }, { status: 500 })
   }
 }

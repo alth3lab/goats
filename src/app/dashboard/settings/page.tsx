@@ -5,7 +5,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   TextField,
   Button,
   Stack,
@@ -19,7 +18,7 @@ export default function SettingsPage() {
     farmName: 'مزرعة سهيل',
     phone: '',
     address: '',
-    currency: 'ريال سعودي',
+    currency: 'درهم',
     notifications: true
   })
 
@@ -33,40 +32,46 @@ export default function SettingsPage() {
       </Paper>
 
       <Paper sx={{ p: 3, borderRadius: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gap: 3
+          }}
+        >
+          <Box>
             <TextField
               label="اسم المزرعة"
               value={settings.farmName}
               onChange={(e) => setSettings({ ...settings, farmName: e.target.value })}
               fullWidth
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box>
             <TextField
               label="الهاتف"
               value={settings.phone}
               onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
               fullWidth
             />
-          </Grid>
-          <Grid item xs={12}>
+          </Box>
+          <Box sx={{ gridColumn: { xs: '1 / -1', md: '1 / -1' } }}>
             <TextField
               label="العنوان"
               value={settings.address}
               onChange={(e) => setSettings({ ...settings, address: e.target.value })}
               fullWidth
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box>
             <TextField
               label="العملة"
               value={settings.currency}
               onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
               fullWidth
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
+          </Box>
+          <Box>
             <FormControlLabel
               control={
                 <Switch
@@ -76,8 +81,8 @@ export default function SettingsPage() {
               }
               label="تفعيل الإشعارات"
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         <Stack direction="row" justifyContent="flex-end" mt={3}>
           <Button variant="contained" startIcon={<SaveIcon />}>

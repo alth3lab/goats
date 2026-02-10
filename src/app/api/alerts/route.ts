@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { formatDate } from '@/lib/formatters'
 
 export const runtime = 'nodejs'
 
@@ -72,7 +73,7 @@ export async function GET() {
         type: 'BIRTH',
         severity: getSeverity(new Date(record.dueDate!), today),
         title: 'ولادة متوقعة',
-        message: `الأم ${record.mother.tagId} (${record.mother.breed.nameAr}) - متوقع: ${new Date(record.dueDate!).toLocaleDateString('ar-SA')}`,
+        message: `الأم ${record.mother.tagId} (${record.mother.breed.nameAr}) - متوقع: ${formatDate(record.dueDate!)}`,
         date: record.dueDate
       })),
 
@@ -82,7 +83,7 @@ export async function GET() {
         type: 'HEALTH',
         severity: getSeverity(new Date(record.nextDueDate!), today),
         title: 'تطعيم/علاج مستحق',
-        message: `${record.type === 'VACCINATION' ? 'تطعيم' : 'علاج'} للماعز ${record.goat.tagId} - ${new Date(record.nextDueDate!).toLocaleDateString('ar-SA')}`,
+        message: `${record.type === 'VACCINATION' ? 'تطعيم' : 'علاج'} للماعز ${record.goat.tagId} - ${formatDate(record.nextDueDate!)}`,
         date: record.nextDueDate
       })),
 

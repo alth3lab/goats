@@ -26,8 +26,12 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Alert,
+  AlertTitle,
+  Checkbox
 } from '@mui/material'
+import { calculateGoatAge } from '@/lib/ageCalculator'
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -35,8 +39,12 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   Male as MaleIcon,
-  Female as FemaleIcon
+  Female as FemaleIcon,
+  Inventory as ArchiveIcon,
+  ReportProblem as DeathIcon,
+  MoveDown as MoveIcon
 } from '@mui/icons-material'
+import { formatDate } from '@/lib/formatters'
 
 interface Goat {
   id: string
@@ -48,6 +56,7 @@ interface Goat {
   status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
   motherTagId?: string | null
   fatherTagId?: string | null
+  notes?: string | null
   pen?: { nameAr: string } | null
   breed: {
     id: string
@@ -137,6 +146,11 @@ export default function GoatsPage() {
   const [familyLoading, setFamilyLoading] = useState(false)
   const [familyError, setFamilyError] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
+  const [deathDialogOpen, setDeathDialogOpen] = useState(false)
+  const [deathForm, setDeathForm] = useState({ date: new Date().toISOString().split('T')[0], notes: '' })
+  const [selectedGoatIds, setSelectedGoatIds] = useState<string[]>([])
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false)
+  const [batchPenId, setBatchPenId] = useState('')
   const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
   const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
@@ -382,7 +396,7 @@ export default function GoatsPage() {
       }
     }
 
-    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '' })
+    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '', penId: '' })
     setOpen(false)
     setEditMode(false)
     setSelectedGoat(null)
@@ -395,10 +409,110 @@ export default function GoatsPage() {
       goat.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       goat.breed.nameAr.includes(searchTerm)
     
-    const matchesStatus = filterStatus === 'ALL' || goat.status === filterStatus
+    // Weaning Filter Logic
+    if (filterStatus === 'WEANING_READY') {
+      const age = calculateGoatAge(goat.birthDate)
+      return matchesSearch && goat.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
+    }
+    
+    const matchesStatus = 
+      filterStatus === 'ALL' ? ['ACTIVE', 'QUARANTINE'].includes(goat.status) :
+      filterStatus === 'ARCHIVE' ? ['SOLD', 'DECEASED'].includes(goat.status) :
+      goat.status === filterStatus
 
     return matchesSearch && matchesStatus
   })
+
+  // Calculate stats for alerts
+  const weaningCandidates = goats.filter(g => {
+    const age = calculateGoatAge(g.birthDate)
+    return g.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
+  }).length
+
+  const handleOpenDeathDialog = (goat: Goat) => {
+    setSelectedGoat(goat)
+    setDeathForm({ date: new Date().toISOString().split('T')[0], notes: '' })
+    setDeathDialogOpen(true)
+  }
+
+  const handleRecordDeath = async () => {
+    if (!selectedGoat) return
+
+    try {
+      const res = await fetch(`/api/goats/${selectedGoat.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'DECEASED',
+          notes: selectedGoat.notes ? `${selectedGoat.notes}\n[تم تسجيل النفوق بتاريخ ${formatDate(deathForm.date)}]: ${deathForm.notes}` : `[تم تسجيل النفوق بتاريخ ${formatDate(deathForm.date)}]: ${deathForm.notes}`
+        })
+      })
+
+      if (res.ok) {
+        setDeathDialogOpen(false)
+        loadGoats()
+      }
+    } catch (error) {
+      console.error('Failed to record death:', error)
+    }
+  }
+  
+  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      const newSelecteds = filteredGoats.map((n) => n.id)
+      setSelectedGoatIds(newSelecteds)
+    } else {
+      setSelectedGoatIds([])
+    }
+  }
+
+  const handleSelectOne = (event: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    const selectedIndex = selectedGoatIds.indexOf(id)
+    let newSelected: string[] = []
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selectedGoatIds, id)
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selectedGoatIds.slice(1))
+    } else if (selectedIndex === selectedGoatIds.length - 1) {
+      newSelected = newSelected.concat(selectedGoatIds.slice(0, -1))
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selectedGoatIds.slice(0, selectedIndex),
+        selectedGoatIds.slice(selectedIndex + 1),
+      )
+    }
+    setSelectedGoatIds(newSelected)
+  }
+
+  const handleBatchTransfer = async () => {
+    if (selectedGoatIds.length === 0) return
+
+    try {
+      const res = await fetch('/api/goats/batch', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          goatIds: selectedGoatIds,
+          penId: batchPenId || null
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setBatchDialogOpen(false)
+        setBatchPenId('')
+        setSelectedGoatIds([])
+        loadGoats()
+        alert('تم النقل الجماعي بنجاح')
+      } else {
+        alert(data.error || 'فشل في عملية النقل')
+      }
+    } catch (error) {
+       alert('حدث خطأ أثناء النقل')
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -422,6 +536,23 @@ export default function GoatsPage() {
 
   return (
     <Box>
+      {/* Alerts Section */}
+      {weaningCandidates > 0 && (
+         <Alert 
+           severity="info" 
+           sx={{ mb: 2, cursor: 'pointer' }}
+           onClick={() => setFilterStatus('WEANING_READY')}
+           action={
+             <Button color="inherit" size="small" onClick={() => setFilterStatus('WEANING_READY')}>
+               عرض القائمة ({weaningCandidates})
+             </Button>
+           }
+         >
+           <AlertTitle>تنبيه الفطام</AlertTitle>
+           يوجد <strong>{weaningCandidates}</strong> مواليد جاهزون للفطام (عمر 3-5 أشهر).
+         </Alert>
+      )}
+
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Box>
@@ -432,14 +563,29 @@ export default function GoatsPage() {
               إجمالي: {filteredGoats.length} حيوان
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            sx={{ bgcolor: '#2e7d32' }}
-            onClick={handleOpen}
-          >
-            إضافة جديد
-          </Button>
+          <Stack direction="row" spacing={2}>
+              {selectedGoatIds.length > 0 && (
+                <Button 
+                   variant="contained" 
+                   color="warning" 
+                   startIcon={<MoveIcon />}
+                   onClick={() => {
+                     loadPens()
+                     setBatchDialogOpen(true)
+                   }}
+                >
+                   نقل جماعي ({selectedGoatIds.length})
+                </Button>
+              )}
+            <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                sx={{ bgcolor: '#2e7d32' }}
+                onClick={handleOpen}
+            >
+                إضافة جديد
+            </Button>
+          </Stack>
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
@@ -463,7 +609,10 @@ export default function GoatsPage() {
               label="الحالة"
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <MenuItem value="ALL">الكل</MenuItem>
+              <MenuItem value="ALL">القطيع الحالي</MenuItem>
+              <MenuItem value="WEANING_READY">جاهز للفطام</MenuItem>
+              <MenuItem value="ARCHIVE">الأرشيف (مباع/متوفى)</MenuItem>
+              <Divider />
               <MenuItem value="ACTIVE">نشط</MenuItem>
               <MenuItem value="SOLD">مباع</MenuItem>
               <MenuItem value="QUARANTINE">حجر صحي</MenuItem>
@@ -477,6 +626,14 @@ export default function GoatsPage() {
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  color="primary"
+                  indeterminate={selectedGoatIds.length > 0 && selectedGoatIds.length < filteredGoats.length}
+                  checked={filteredGoats.length > 0 && selectedGoatIds.length === filteredGoats.length}
+                  onChange={handleSelectAll}
+                />
+              </TableCell>
               <TableCell><strong>رقم التاج</strong></TableCell>
               <TableCell><strong>الاسم</strong></TableCell>
               <TableCell><strong>النوع</strong></TableCell>
@@ -492,15 +649,22 @@ export default function GoatsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">جاري التحميل...</TableCell>
+                <TableCell colSpan={11} align="center">جاري التحميل...</TableCell>
               </TableRow>
             ) : filteredGoats.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">لا توجد بيانات</TableCell>
+                <TableCell colSpan={11} align="center">لا توجد بيانات</TableCell>
               </TableRow>
             ) : (
               filteredGoats.map((goat) => (
-                <TableRow key={goat.id} hover>
+                <TableRow key={goat.id} hover selected={selectedGoatIds.indexOf(goat.id) !== -1}>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      color="primary"
+                      checked={selectedGoatIds.indexOf(goat.id) !== -1}
+                      onChange={(event) => handleSelectOne(event, goat.id)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Chip label={goat.tagId} color="primary" size="small" />
                   </TableCell>
@@ -552,13 +716,41 @@ export default function GoatsPage() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
-                      <IconButton size="small" color="primary" onClick={() => handleView(goat)}>
+                      <IconButton 
+                        size="small" 
+                        color="primary" 
+                        onClick={() => handleView(goat)}
+                        title="عرض التفاصيل"
+                      >
                         <ViewIcon />
                       </IconButton>
-                      <IconButton size="small" color="success" onClick={() => handleEdit(goat)}>
+                      <IconButton 
+                        size="small" 
+                        color="success" 
+                        onClick={() => handleEdit(goat)}
+                        title="تعديل"
+                      >
                         <EditIcon />
                       </IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleDeleteClick(goat)}>
+                      {goat.status === 'ACTIVE' && (
+                        <IconButton
+                          size="small" 
+                          color="error"
+                          onClick={() => handleOpenDeathDialog(goat)}
+                          title="تسجيل نفوق"
+                        >
+                          <DeathIcon />
+                        </IconButton>
+                      )}
+                      <IconButton 
+                        size="small" 
+                        color="error" 
+                        onClick={() => {
+                          setSelectedGoat(goat)
+                          setDeleteDialogOpen(true)
+                        }}
+                        title="حذف"
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </Stack>
@@ -753,23 +945,33 @@ export default function GoatsPage() {
             <Stack spacing={2} mt={2}>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>المعلومات الأساسية</Typography>
-                <Stack spacing={1}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 1
+                  }}
+                >
                   <Typography><strong>رقم التاج:</strong> {selectedGoat.tagId}</Typography>
                   <Typography><strong>الاسم:</strong> {selectedGoat.name || '-'}</Typography>
                   <Typography><strong>النوع:</strong> {selectedGoat.breed.type.nameAr}</Typography>
                   <Typography><strong>السلالة:</strong> {selectedGoat.breed.nameAr}</Typography>
                   <Typography><strong>الجنس:</strong> {selectedGoat.gender === 'MALE' ? 'ذكر' : 'أنثى'}</Typography>
-                  <Typography><strong>تاريخ الميلاد:</strong> {new Date(selectedGoat.birthDate).toLocaleDateString('ar-SA')}</Typography>
-                  {selectedGoat.age && (
-                    <>
-                      <Typography><strong>العمر:</strong> {selectedGoat.age.formatted}</Typography>
-                      <Typography><strong>الفئة العمرية:</strong> {selectedGoat.age.category}</Typography>
-                    </>
+                  <Typography><strong>تاريخ الميلاد:</strong> {formatDate(selectedGoat.birthDate)}</Typography>
+                  {selectedGoat.age ? (
+                    <Typography><strong>العمر:</strong> {selectedGoat.age.formatted}</Typography>
+                  ) : (
+                    <Typography><strong>العمر:</strong> -</Typography>
+                  )}
+                  {selectedGoat.age ? (
+                    <Typography><strong>الفئة العمرية:</strong> {selectedGoat.age.category}</Typography>
+                  ) : (
+                    <Typography><strong>الفئة العمرية:</strong> -</Typography>
                   )}
                   <Typography><strong>الوزن:</strong> {selectedGoat.weight ? `${selectedGoat.weight} كجم` : '-'}</Typography>
                   <Typography><strong>الحظيرة:</strong> {selectedGoat.pen ? selectedGoat.pen.nameAr : 'غير محدد'}</Typography>
                   <Typography><strong>الحالة:</strong> {getStatusLabel(selectedGoat.status)}</Typography>
-                </Stack>
+                </Box>
               </Paper>
 
               <Paper sx={{ p: 2 }}>
@@ -875,6 +1077,46 @@ export default function GoatsPage() {
         </DialogActions>
       </Dialog>
 
+      {/* Dialog تسجيل النفوق */}
+      <Dialog open={deathDialogOpen} onClose={() => setDeathDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <DeathIcon color="error" />
+            <Typography variant="h6">تسجيل حالة نفوق</Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2} mt={1}>
+            <Alert severity="warning">
+              سيتم تغيير حالة الماعز <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
+            </Alert>
+            <TextField
+              label="تاريخ النفوق"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={deathForm.date}
+              onChange={(e) => setDeathForm({ ...deathForm, date: e.target.value })}
+            />
+            <TextField
+              label="سبب الوفاة / ملاحظات"
+              multiline
+              rows={3}
+              fullWidth
+              value={deathForm.notes}
+              onChange={(e) => setDeathForm({ ...deathForm, notes: e.target.value })}
+              placeholder="اكتب سبب الوفاة أو أي تفاصيل أخرى..."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeathDialogOpen(false)}>إلغاء</Button>
+          <Button variant="contained" color="error" onClick={handleRecordDeath}>
+            تأكيد التسجيل
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Dialog تأكيد الحذف */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>تأكيد الحذف</DialogTitle>
@@ -890,6 +1132,47 @@ export default function GoatsPage() {
           <Button onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
           <Button variant="contained" color="error" onClick={handleDelete}>
             حذف
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog نقل جماعي */}
+      <Dialog
+        open={batchDialogOpen}
+        onClose={() => setBatchDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>نقل مجموعة من الحيوانات</DialogTitle>
+        <DialogContent>
+           <Stack spacing={2} mt={1}>
+             <Alert severity="info">
+               سيتم نقل <strong>{selectedGoatIds.length}</strong> حيوانات إلى الحظيرة المحددة.
+             </Alert>
+             <TextField
+               select
+               label="إلى الحظيرة"
+               fullWidth
+               value={batchPenId}
+               onChange={(e) => setBatchPenId(e.target.value)}
+             >
+               {pens.map((pen) => (
+                 <MenuItem key={pen.id} value={pen.id}>
+                   {pen.nameAr}
+                 </MenuItem>
+               ))}
+             </TextField>
+           </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBatchDialogOpen(false)}>إلغاء</Button>
+          <Button 
+            variant="contained" 
+            color="warning" 
+            onClick={handleBatchTransfer}
+            disabled={!batchPenId}
+          >
+            نقل
           </Button>
         </DialogActions>
       </Dialog>

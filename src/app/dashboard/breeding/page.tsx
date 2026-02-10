@@ -23,7 +23,9 @@ import {
   Select,
   MenuItem,
   TextField,
-  IconButton
+  IconButton,
+  Alert,
+  AlertTitle
 } from '@mui/material'
 import {
   Add as AddIcon,
@@ -32,6 +34,7 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon
 } from '@mui/icons-material'
+import { formatDate } from '@/lib/formatters'
 
 interface BreedingRecord {
   id: string
@@ -61,7 +64,8 @@ export default function BreedingPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<BreedingRecord | null>(null)
   const [editMode, setEditMode] = useState(false)
-  const [goats, setGoats] = useState<Array<{ id: string; tagId: string }>>([])
+  const [goats, setGoats] = useState<any[]>([]) // Using any to access full goat object properties
+  const [inbreedingWarning, setInbreedingWarning] = useState<string | null>(null)
   const [form, setForm] = useState({
     motherId: '',
     fatherId: '',
@@ -116,6 +120,7 @@ export default function BreedingPage() {
     setOpen(false)
     setEditMode(false)
     setSelectedRecord(null)
+    setInbreedingWarning(null)
     setForm({
       motherId: '',
       fatherId: '',
@@ -126,6 +131,42 @@ export default function BreedingPage() {
       numberOfKids: ''
     })
   }
+
+  // Check for inbreeding when parents are selected
+  useEffect(() => {
+    if (form.motherId && form.fatherId && goats.length > 0) {
+      const mother = goats.find(g => g.id === form.motherId)
+      const father = goats.find(g => g.id === form.fatherId)
+
+      if (mother && father) {
+        const warnings = []
+        
+        // 1. Direct Parent-Child Relationship (Impossible gender-wise usually, but data might be wrong)
+        if (mother.fatherId === father.id) warnings.push('تحذير: الأب هو والد الأم!')
+        if (father.motherId === mother.id) warnings.push('تحذير: الأم هي والدة الأب!')
+
+        // 2. Siblings (Full or Half)
+        if (mother.motherId && father.motherId && mother.motherId === father.motherId) {
+          warnings.push('تحذير: الأم والأب إخوة من نفس الأم!')
+        }
+        if (mother.fatherId && father.fatherId && mother.fatherId === father.fatherId) {
+          warnings.push('تحذير: الأم والأب إخوة من نفس الأب!')
+        }
+
+        // 3. Grandparents
+        if (mother.fatherId && mother.fatherId === father.id) warnings.push('تحذير: تزاوج بين أب وابنته!')
+        if (mother.motherId && mother.motherId === father.id) warnings.push('تحذير: تزاوج بين أم وابنها!') // Unlikely gender
+
+        if (warnings.length > 0) {
+          setInbreedingWarning(warnings.join('\n'))
+        } else {
+          setInbreedingWarning(null)
+        }
+      }
+    } else {
+       setInbreedingWarning(null)
+    }
+  }, [form.motherId, form.fatherId, goats])
 
   const handleView = (record: BreedingRecord) => {
     setSelectedRecord(record)
@@ -196,8 +237,21 @@ export default function BreedingPage() {
     setRecords(Array.isArray(data) ? data : [])
   }
 
+  const upcomingBirths = records.filter(r => {
+    if (r.pregnancyStatus !== 'PREGNANT' || !r.dueDate) return false
+    const days = getDaysRemaining(r.dueDate)
+    return days <= 14 // Upcoming in 2 weeks or overdue
+  })
+
   return (
     <Box>
+      {upcomingBirths.length > 0 && (
+         <Alert severity="warning" sx={{ mb: 2 }}>
+           <AlertTitle>ولادات قريبة</AlertTitle>
+           يوجد <strong>{upcomingBirths.length}</strong> حالات ولادة متوقعة خلال أسبوعين أو متأخرة. يرجى تجهيز حظائر الولادة.
+         </Alert>
+      )}
+
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Stack direction="row" spacing={2} alignItems="center">
@@ -236,11 +290,11 @@ export default function BreedingPage() {
                   <TableRow key={r.id} hover>
                     <TableCell>{r.mother.tagId}</TableCell>
                     <TableCell>{r.father.tagId}</TableCell>
-                    <TableCell>{new Date(r.matingDate).toLocaleDateString('ar-SA')}</TableCell>
+                    <TableCell>{formatDate(r.matingDate)}</TableCell>
                     <TableCell>
                       <Chip label={statusLabels[r.pregnancyStatus] || r.pregnancyStatus} color="secondary" size="small" />
                     </TableCell>
-                    <TableCell>{r.dueDate ? new Date(r.dueDate).toLocaleDateString('ar-SA') : '-'}</TableCell>
+                    <TableCell>{r.dueDate ? formatDate(r.dueDate) : '-'}</TableCell>
                     <TableCell>
                       {daysRemaining !== null ? (
                         <Chip 
@@ -263,6 +317,14 @@ export default function BreedingPage() {
                           <DeleteIcon />
                         </IconButton>
                       </Stack>
+
+            {inbreedingWarning && (
+              <Alert severity="warning">
+                <AlertTitle>تنبيه زواج أقارب</AlertTitle>
+                {inbreedingWarning.split('\n').map((w, i) => <div key={i}>{w}</div>)}
+              </Alert>
+            )}
+
                     </TableCell>
                   </TableRow>
                 )
@@ -364,11 +426,11 @@ export default function BreedingPage() {
                 <Stack spacing={1}>
                   <Typography><strong>الأم:</strong> {selectedRecord.mother.tagId}</Typography>
                   <Typography><strong>الأب:</strong> {selectedRecord.father.tagId}</Typography>
-                  <Typography><strong>تاريخ التزاوج:</strong> {new Date(selectedRecord.matingDate).toLocaleDateString('ar-SA')}</Typography>
+                    <Typography><strong>تاريخ التزاوج:</strong> {formatDate(selectedRecord.matingDate)}</Typography>
                   <Typography><strong>الحالة:</strong> {statusLabels[selectedRecord.pregnancyStatus]}</Typography>
                   {selectedRecord.dueDate && (
                     <>
-                      <Typography><strong>تاريخ الولادة المتوقع:</strong> {new Date(selectedRecord.dueDate).toLocaleDateString('ar-SA')}</Typography>
+                      <Typography><strong>تاريخ الولادة المتوقع:</strong> {formatDate(selectedRecord.dueDate)}</Typography>
                       <Typography>
                         <strong>الأيام المتبقية:</strong>{' '}
                         {(() => {
@@ -379,7 +441,7 @@ export default function BreedingPage() {
                     </>
                   )}
                   {selectedRecord.birthDate && (
-                    <Typography><strong>تاريخ الولادة الفعلي:</strong> {new Date(selectedRecord.birthDate).toLocaleDateString('ar-SA')}</Typography>
+                    <Typography><strong>تاريخ الولادة الفعلي:</strong> {formatDate(selectedRecord.birthDate)}</Typography>
                   )}
                   {selectedRecord.numberOfKids && (
                     <Typography><strong>عدد المواليد:</strong> {selectedRecord.numberOfKids}</Typography>

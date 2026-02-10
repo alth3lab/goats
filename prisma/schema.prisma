@@ -155,6 +155,7 @@ model Goat {
   breedingAsMother Breeding[]     @relation("MotherGoat")
   breedingAsFather Breeding[]     @relation("FatherGoat")
   feedingRecords   FeedingRecord[]
+  milkProductions  MilkProduction[]
   sales            Sale[]
 
   @@index([tagId])
@@ -254,11 +255,27 @@ model Sale {
   salePrice   Float
   paymentStatus PaymentStatus @default(PENDING)
   notes       String?  @db.Text
+  payments    Payment[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([goatId])
   @@index([date])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  saleId        String
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentDate   DateTime
+  paymentMethod PaymentMethod @default(CASH)
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([paymentDate])
 }
 
 model Expense {
@@ -315,6 +332,13 @@ enum PaymentStatus {
   PAID
 }
 
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CHECK
+  OTHER
+}
+
 enum ExpenseCategory {
   FEED
   MEDICINE
@@ -332,4 +356,18 @@ enum UserRole {
   VETERINARIAN // بيطري - صلاحيات السجلات الصحية
   USER         // مستخدم عادي - صلاحيات محدودة
   VIEWER       // عارض فقط - قراءة فقط
+}
+
+model MilkProduction {
+  id        String   @id @default(uuid())
+  goatId    String
+  goat      Goat     @relation(fields: [goatId], references: [id], onDelete: Cascade)
+  date      DateTime
+  amount    Float    // In Liters
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([goatId])
+  @@index([date])
 }

@@ -58,6 +58,12 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
+    
+    // إذا تغيرت الحالة إلى مباع أو متوفى، قم بإزالة الماعز من الحظيرة تلقائياً
+    if (body.status === 'SOLD' || body.status === 'DECEASED') {
+      body.penId = null
+    }
+
     const goat = await prisma.goat.update({
       where: { id },
       data: body

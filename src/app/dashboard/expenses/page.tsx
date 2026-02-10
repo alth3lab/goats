@@ -24,6 +24,7 @@ import {
   Select,
   MenuItem
 } from '@mui/material'
+import { formatCurrency, formatDate } from '@/lib/formatters'
 import { Add as AddIcon, Receipt as ExpensesIcon } from '@mui/icons-material'
 
 interface Expense {
@@ -118,12 +119,12 @@ export default function ExpensesPage() {
             ) : (
               expenses.map(e => (
                 <TableRow key={e.id} hover>
-                  <TableCell>{new Date(e.date).toLocaleDateString('ar-SA')}</TableCell>
+                  <TableCell>{formatDate(e.date)}</TableCell>
                   <TableCell>
                     <Chip label={categoryLabels[e.category] || e.category} size="small" color="warning" />
                   </TableCell>
                   <TableCell>{e.description}</TableCell>
-                  <TableCell>{e.amount.toLocaleString()} ريال</TableCell>
+                  <TableCell>{formatCurrency(e.amount)}</TableCell>
                   <TableCell>{e.paymentMethod || '-'}</TableCell>
                 </TableRow>
               ))

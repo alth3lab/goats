@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
 
 interface Stats {
   totalGoats: number
@@ -78,7 +79,7 @@ export default function DashboardPage() {
       icon: <PetsIcon sx={{ fontSize: 40 }} />,
       color: '#2e7d32',
       link: '/dashboard/goats',
-      stats: loading ? '...' : `${stats?.activeGoats || 0} نشط`
+      stats: loading ? '...' : `${formatNumber(stats?.activeGoats || 0)} نشط`
     },
     {
       title: 'السجلات الصحية',
@@ -92,14 +93,14 @@ export default function DashboardPage() {
       icon: <BreedingIcon sx={{ fontSize: 40 }} />,
       color: '#e91e63',
       link: '/dashboard/breeding',
-      stats: loading ? '...' : `${stats?.pregnantGoats || 0} حامل`
+      stats: loading ? '...' : `${formatNumber(stats?.pregnantGoats || 0)} حامل`
     },
     {
       title: 'المبيعات',
       icon: <SalesIcon sx={{ fontSize: 40 }} />,
       color: '#1976d2',
       link: '/dashboard/sales',
-      stats: loading ? '...' : `${(stats?.totalSales || 0).toLocaleString()} ريال`
+      stats: loading ? '...' : formatCurrency(stats?.totalSales || 0)
     },
   ]
 
@@ -141,7 +142,7 @@ export default function DashboardPage() {
               </Stack>
               <Grid container spacing={2}>
                 {alerts.map((alert) => (
-                  <Grid item xs={12} md={6} lg={4} key={alert.id}>
+                  <Grid size={{ xs: 12, md: 6, lg: 4 }} key={alert.id}>
                     <Alert 
                       severity={alert.severity} 
                       icon={
@@ -159,7 +160,7 @@ export default function DashboardPage() {
                       <Typography variant="body2">{alert.message}</Typography>
                       {alert.type !== 'WEANING' && (
                         <Chip 
-                          label={new Date(alert.date).toLocaleDateString('ar-SA')} 
+                          label={formatDate(alert.date)} 
                           size="small" 
                           sx={{ mt: 1, height: 20, fontSize: '0.7rem' }} 
                         />
@@ -173,55 +174,55 @@ export default function DashboardPage() {
 
           {stats && (
             <Grid container spacing={3} mb={4}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card sx={{ height: '100%', bgcolor: '#fff' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   إجمالي القطيع
                 </Typography>
                 <Typography variant="h3" fontWeight="bold" color="primary">
-                  {stats.totalGoats}
+                  {formatNumber(stats.totalGoats)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {stats.totalTypes} أنواع • {stats.totalBreeds} سلالة
+                  {formatNumber(stats.totalTypes)} أنواع • {formatNumber(stats.totalBreeds)} سلالة
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   الذكور / الإناث
                 </Typography>
                 <Typography variant="h3" fontWeight="bold" color="secondary">
-                  {stats.maleGoats} / {stats.femaleGoats}
+                  {formatNumber(stats.maleGoats)} / {formatNumber(stats.femaleGoats)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {stats.pregnantGoats} أنثى حامل
+                  {formatNumber(stats.pregnantGoats)} أنثى حامل
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   إجمالي المبيعات
                 </Typography>
                 <Typography variant="h3" fontWeight="bold" color="info.main">
-                  {(stats.totalSales || 0).toLocaleString()}
+                  {formatCurrency(stats.totalSales || 0)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  ريال سعودي
+                  درهم
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1}>
@@ -229,10 +230,10 @@ export default function DashboardPage() {
                   <Typography variant="h6">صافي الربح</Typography>
                 </Stack>
                 <Typography variant="h3" fontWeight="bold" color="success.main" mt={1}>
-                  {stats.netProfit.toLocaleString()}
+                  {formatCurrency(stats.netProfit)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  ريال سعودي
+                  درهم
                 </Typography>
               </CardContent>
             </Card>
@@ -244,7 +245,7 @@ export default function DashboardPage() {
 
       <Grid container spacing={3}>
         {dashboardCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
             <Card
               component={Link}
               href={card.link}
@@ -289,7 +290,7 @@ export default function DashboardPage() {
           </Grid>
         ))}
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             component={Link}
             href="/dashboard/types"
@@ -321,7 +322,7 @@ export default function DashboardPage() {
                 الأنواع والسلالات
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {loading ? '...' : `${stats?.totalTypes} / ${stats?.totalBreeds}`}
+                {loading ? '...' : `${formatNumber(stats?.totalTypes || 0)} / ${formatNumber(stats?.totalBreeds || 0)}`}
               </Typography>
               <Button
                 variant="contained"

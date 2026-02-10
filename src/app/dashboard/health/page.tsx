@@ -23,13 +23,18 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material'
 import {
   Add as AddIcon,
-  Search as SearchIcon,
-  LocalHospital as HealthIcon
+  Check as CheckIcon,
+  Warning as WarningIcon,
+  LocalHospital as HealthIcon,
+  Search as SearchIcon
 } from '@mui/icons-material'
+import { formatCurrency, formatDate } from '@/lib/formatters'
 
 interface HealthRecord {
   id: string
@@ -38,6 +43,7 @@ interface HealthRecord {
   description: string
   veterinarian?: string
   cost?: number
+  nextDueDate?: string
   goat: { tagId: string }
 }
 
@@ -55,14 +61,41 @@ export default function HealthPage() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [goats, setGoats] = useState<Array<{ id: string; tagId: string }>>([])
+  
+  // Batch State
+  const [batchOpen, setBatchOpen] = useState(false)
+  const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
+  const [isAllGoats, setIsAllGoats] = useState(false)
+
+  // Form State
   const [form, setForm] = useState({
     goatId: '',
     type: 'VACCINATION',
-    date: '',
+    date: new Date().toISOString().split('T')[0],
     description: '',
     veterinarian: '',
-    cost: ''
+    cost: '',
+    nextDueDate: '',
+    moveToIsolation: false,
+    penId: '' // For batch
   })
+
+  // Analytics
+  const upcomingAlerts = records.filter(r => {
+      if (!r.nextDueDate) return false
+      const due = new Date(r.nextDueDate)
+      const today = new Date()
+      const diffTime = due.getTime() - today.getTime()
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) 
+      return diffDays >= 0 && diffDays <= 7 // Due this week
+  })
+
+  const totalCost = records.reduce((sum, r) => sum + (r.cost || 0), 0)
+  const topTreatment = records.length > 0 ? 
+    Object.entries(
+        records.reduce((acc, r) => { acc[r.type] = (acc[r.type] || 0) + 1; return acc }, {} as any)
+    ).sort((a:any, b:any) => b[1] - a[1])[0] 
+    : null
 
   useEffect(() => {
     fetch('/api/health')
@@ -76,10 +109,21 @@ export default function HealthPage() {
     const data = await res.json()
     setGoats(Array.isArray(data) ? data : [])
   }
+  
+  const loadPens = async () => {
+      const res = await fetch('/api/pens')
+      const data = await res.json()
+      setPens(Array.isArray(data) ? data : [])
+  }
 
   const handleOpen = () => {
     setOpen(true)
     if (goats.length === 0) loadGoats()
+  }
+
+  const handleBatchOpen = () => {
+      setBatchOpen(true)
+      if (pens.length === 0) loadPens()
   }
 
   const handleSubmit = async () => {
@@ -89,7 +133,9 @@ export default function HealthPage() {
       date: new Date(form.date),
       description: form.description,
       veterinarian: form.veterinarian || null,
-      cost: form.cost ? Number(form.cost) : null
+      cost: form.cost ? Number(form.cost) : null,
+      nextDueDate: form.nextDueDate ? new Date(form.nextDueDate) : null,
+      moveToIsolation: form.moveToIsolation
     }
 
     await fetch('/api/health', {
@@ -97,13 +143,43 @@ export default function HealthPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-
-    setForm({ goatId: '', type: 'VACCINATION', date: '', description: '', veterinarian: '', cost: '' })
+    
     setOpen(false)
+    // Refresh
     const res = await fetch('/api/health')
-    const data = await res.json()
-    setRecords(Array.isArray(data) ? data : [])
+    setRecords(await res.json())
   }
+
+  const handleBatchSubmit = async () => {
+      const payload = {
+          penId: isAllGoats ? null : form.penId,
+          type: form.type,
+          date: new Date(form.date),
+          description: form.description,
+          veterinarian: form.veterinarian || null,
+          cost: form.cost ? Number(form.cost) : null,
+          nextDueDate: form.nextDueDate ? new Date(form.nextDueDate) : null,
+          moveToIsolation: form.moveToIsolation
+      }
+
+      const res = await fetch('/api/health/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+          setBatchOpen(false)
+          alert('تم تسجيل العلاج الجماعي بنجاح')
+          // Refresh
+          const updated = await fetch('/api/health')
+          setRecords(await updated.json())
+      } else {
+          alert('فشل في المعالجة')
+      }
+  }
+
+
 
   const filtered = records.filter(r =>
     r.goat.tagId.toLowerCase().includes(search.toLowerCase()) ||
@@ -112,15 +188,50 @@ export default function HealthPage() {
 
   return (
     <Box>
+      {/* Alerts */}
+      {upcomingAlerts.length > 0 && (
+          <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', border: '1px solid #ffb74d' }}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                  <WarningIcon color="warning" />
+                  <Box>
+                      <Typography variant="subtitle1" fontWeight="bold">تنبيهات صحية</Typography>
+                      <Typography variant="body2">
+                          يوجد {upcomingAlerts.length} حيوانات تستحق العلاج/التطعيم خلال هذا الأسبوع.
+                      </Typography>
+                  </Box>
+              </Stack>
+          </Paper>
+      )}
+
+      {/* Analytics Cards */}
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
+         <Paper sx={{ p: 2, flex: 1, bgcolor: '#e3f2fd' }}>
+            <Typography variant="subtitle2" color="text.secondary">إجمالي التكاليف الطبية</Typography>
+            <Typography variant="h4" fontWeight="bold" color="primary">{formatCurrency(totalCost)}</Typography>
+         </Paper>
+         <Paper sx={{ p: 2, flex: 1, bgcolor: '#fce4ec' }}>
+            <Typography variant="subtitle2" color="text.secondary">أكثر العلاجات شيوعاً</Typography>
+            <Typography variant="h5" fontWeight="bold" color="#c2185b">
+                {topTreatment ? typeLabels[topTreatment[0]] || topTreatment[0] : '-'}
+            </Typography>
+            <Typography variant="caption">{topTreatment ? `${topTreatment[1]} حالة` : ''}</Typography>
+         </Paper>
+      </Stack>
+
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Stack direction="row" spacing={2} alignItems="center">
             <HealthIcon color="error" />
             <Typography variant="h4" fontWeight="bold">السجلات الصحية</Typography>
           </Stack>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
-            إضافة سجل
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" color="secondary" startIcon={<HealthIcon />} onClick={handleBatchOpen}>
+              علاج جماعي
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+              إضافة سجل
+            </Button>
+          </Stack>
         </Stack>
         <TextField
           placeholder="بحث برقم التاج أو الوصف..."
@@ -143,6 +254,7 @@ export default function HealthPage() {
               <TableCell><strong>رقم التاج</strong></TableCell>
               <TableCell><strong>النوع</strong></TableCell>
               <TableCell><strong>التاريخ</strong></TableCell>
+              <TableCell><strong>المستحق القادم</strong></TableCell>
               <TableCell><strong>الوصف</strong></TableCell>
               <TableCell><strong>الطبيب</strong></TableCell>
               <TableCell><strong>التكلفة</strong></TableCell>
@@ -150,9 +262,9 @@ export default function HealthPage() {
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} align="center">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} align="center">لا توجد بيانات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center">لا توجد بيانات</TableCell></TableRow>
             ) : (
               filtered.map(r => (
                 <TableRow key={r.id} hover>
@@ -160,10 +272,20 @@ export default function HealthPage() {
                   <TableCell>
                     <Chip label={typeLabels[r.type] || r.type} color="error" size="small" />
                   </TableCell>
-                  <TableCell>{new Date(r.date).toLocaleDateString('ar-SA')}</TableCell>
+                  <TableCell>{formatDate(r.date)}</TableCell>
+                    <TableCell>
+                        {r.nextDueDate ? (
+                            <Chip 
+                              label={formatDate(r.nextDueDate)} 
+                              size="small" 
+                              color={new Date(r.nextDueDate) <= new Date() ? 'warning' : 'default'} 
+                              variant="outlined" 
+                            />
+                        ) : '-'}
+                    </TableCell>
                   <TableCell>{r.description}</TableCell>
                   <TableCell>{r.veterinarian || '-'}</TableCell>
-                  <TableCell>{r.cost ? `${r.cost} ريال` : '-'}</TableCell>
+                  <TableCell>{r.cost ? formatCurrency(r.cost) : '-'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -171,6 +293,7 @@ export default function HealthPage() {
         </Table>
       </TableContainer>
 
+      {/* Single Record Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>إضافة سجل صحي</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
@@ -209,6 +332,25 @@ export default function HealthPage() {
               onChange={(e) => setForm({ ...form, date: e.target.value })}
             />
             <TextField
+              label="تاريخ الاستحقاق القادم (اختياري)"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={form.nextDueDate}
+              onChange={(e) => setForm({ ...form, nextDueDate: e.target.value })}
+              helperText="للتذكير بالجرعة القادمة"
+            />
+            
+            <FormControlLabel
+                control={
+                    <Checkbox 
+                        checked={form.moveToIsolation}
+                        onChange={(e) => setForm({...form, moveToIsolation: e.target.checked})}
+                    />
+                }
+                label="نقل الماعز إلى العزل الصحي تلقائياً"
+            />
+
+            <TextField
               label="الوصف"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -229,6 +371,104 @@ export default function HealthPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>إلغاء</Button>
           <Button variant="contained" onClick={handleSubmit}>حفظ</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Batch Record Dialog */}
+      <Dialog open={batchOpen} onClose={() => setBatchOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>تسجيل علاج جماعي</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2} mt={1}>
+             <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+                 <Chip 
+                    label="كل القطيع" 
+                    color={isAllGoats ? "primary" : "default"} 
+                    onClick={() => setIsAllGoats(true)}
+                    clickable
+                 />
+                 <Typography>أو</Typography>
+                 <Chip 
+                    label="حظيرة محددة" 
+                    color={!isAllGoats ? "primary" : "default"}
+                    onClick={() => setIsAllGoats(false)}
+                    clickable
+                 />
+             </Stack>
+
+             {!isAllGoats && (
+                <FormControl fullWidth>
+                    <InputLabel>اختر الحظيرة</InputLabel>
+                    <Select
+                        value={form.penId}
+                        label="اختر الحظيرة"
+                        onChange={(e) => setForm({ ...form, penId: e.target.value })}
+                    >
+                        {pens.map(p => (
+                            <MenuItem key={p.id} value={p.id}>{p.nameAr}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+             )}
+
+             <FormControl>
+              <InputLabel>نوع العلاج</InputLabel>
+              <Select
+                value={form.type}
+                label="نوع العلاج"
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
+                <MenuItem value="VACCINATION">تطعيم</MenuItem>
+                <MenuItem value="DEWORMING">مضاد ديدان</MenuItem>
+                <MenuItem value="TREATMENT">علاج</MenuItem>
+                <MenuItem value="CHECKUP">فحص</MenuItem>
+              </Select>
+            </FormControl>
+
+             <TextField
+              label="التاريخ"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+            />
+            <TextField
+              label="تاريخ الاستحقاق القادم (اختياري)"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={form.nextDueDate}
+              onChange={(e) => setForm({ ...form, nextDueDate: e.target.value })}
+              helperText="سيتم تذكيرك بالجرعة القادمة لجميع الحيوانات المحددة"
+            />
+            
+            <TextField
+              label="الوصف / اسم الدواء"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+            
+             <FormControlLabel
+                control={
+                    <Checkbox 
+                        checked={form.moveToIsolation}
+                        onChange={(e) => setForm({...form, moveToIsolation: e.target.checked})}
+                    />
+                }
+                label="نقل الحيوانات المريضة للعزل (اذا تم اختيار تشخيص معدي)"
+            />
+
+            <TextField
+              label="إجمالي التكلفة (للمجموعة كلها)"
+              type="number"
+              value={form.cost}
+              onChange={(e) => setForm({ ...form, cost: e.target.value })}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setBatchOpen(false)}>إلغاء</Button>
+            <Button variant="contained" color="secondary" onClick={handleBatchSubmit}>
+                تسجيل للمجموعة
+            </Button>
         </DialogActions>
       </Dialog>
     </Box>
