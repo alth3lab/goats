@@ -5,6 +5,7 @@ import {
   Box,
   Typography,
   Button,
+  Grid,
   Card,
   CardContent,
   CardActions,
@@ -36,8 +37,10 @@ import {
   Male as MaleIcon,
   Female as FemaleIcon,
   ExitToApp as LogoutIcon,
-  Description as FileIcon
+  Description as FileIcon,
+  History as HistoryIcon
 } from '@mui/icons-material'
+import { EntityHistory } from '@/components/EntityHistory'
 import Link from 'next/link'
 import GoatFormDialog from '@/components/GoatFormDialog'
 import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
@@ -256,7 +259,7 @@ export default function PensPage() {
               <Chip label={typePens.length} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
             </Typography>
             
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+            <Grid container spacing={3}>
               {typePens.map((pen) => {
                 const capacity = pen.capacity || 0
                 const count = pen._count.goats || 0
@@ -265,7 +268,7 @@ export default function PensPage() {
                 const isOvercrowded = capacity > 0 && count > capacity
                 
                 return (
-                  <Box key={pen.id}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={pen.id}>
                     <Card sx={{ height: '100%', position: 'relative', border: isOvercrowded ? '2px solid #ef5350' : 'none' }}>
                       {isFull && (
                         <Chip 
@@ -350,10 +353,10 @@ export default function PensPage() {
                         </Button>
                       </CardActions>
                     </Card>
-                  </Box>
+                  </Grid>
                 )
               })}
-            </Box>
+            </Grid>
           </Box>
         )
       })}
@@ -373,12 +376,12 @@ export default function PensPage() {
             <Typography align="center" py={4}>جاري تحميل البيانات...</Typography>
           ) : selectedPen ? (
             <Box>
-              <Stack direction="row" spacing={2} mb={3} flexWrap="wrap">
-                <Box sx={{ minWidth: 150 }}>
+              <Grid container spacing={2} mb={3}>
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Typography variant="caption" color="text.secondary">الاسم</Typography>
                   <Typography fontWeight="bold">{selectedPen.nameAr}</Typography>
-                </Box>
-                <Box sx={{ minWidth: 150 }}>
+                </Grid>
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Typography variant="caption" color="text.secondary">النوع</Typography>
                   <Chip 
                     label={
@@ -388,16 +391,16 @@ export default function PensPage() {
                     } 
                     size="small" 
                   />
-                </Box>
-                <Box sx={{ minWidth: 150 }}>
+                </Grid>
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Typography variant="caption" color="text.secondary">العدد الحالي</Typography>
                   <Typography fontWeight="bold" color="primary">{selectedPen.goats?.length || 0} رأس</Typography>
-                </Box>
-                <Box sx={{ minWidth: 150 }}>
+                </Grid>
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Typography variant="caption" color="text.secondary">السعة</Typography>
                   <Typography>{selectedPen.capacity || 'غير محدد'}</Typography>
-                </Box>
-              </Stack>
+                </Grid>
+              </Grid>
 
               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                 قائمة الحيوانات
@@ -496,6 +499,14 @@ export default function PensPage() {
                   هذه الحظيرة خالية حالياً
                 </Typography>
               )}
+
+              <Paper variant="outlined" sx={{ p: 2, mt: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                  <HistoryIcon color="action" />
+                  <Typography variant="h6">سجل التغييرات</Typography>
+                </Stack>
+                <EntityHistory entity="Pen" entityId={selectedPen.id} />
+              </Paper>
             </Box>
           ) : (
             <Typography color="error">تعذر تحميل البيانات</Typography>

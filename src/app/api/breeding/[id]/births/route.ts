@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { recordBirth } from '@/lib/services/birthService'
 import { recordBirthSchema } from '@/lib/validators/birth'
+import { requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +11,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'edit_breeding')
+    if (auth.response) return auth.response
+
     const { id } = await params
     const body = recordBirthSchema.parse(await request.json())
 

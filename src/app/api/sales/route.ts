@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logActivity } from '@/lib/activityLogger'
+import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'view_sales')
+    if (auth.response) return auth.response
+
+    const format = request.nextUrl.searchParams.get('format')
     const sales = await prisma.sale.findMany({
       include: { 
         goat: {
@@ -36,6 +42,46 @@ export async function GET() {
       }
     })
 
+    if (format === 'csv') {
+      const header = [
+        'date',
+        'goatTag',
+        'type',
+        'breed',
+        'buyerName',
+        'buyerPhone',
+        'salePrice',
+        'paymentStatus',
+        'totalPaid',
+        'remaining',
+        'notes'
+      ]
+      const rows = salesWithPayments.map((sale) => [
+        new Date(sale.date).toISOString().slice(0, 10),
+        sale.goat?.tagId || '',
+        sale.goat?.breed?.type?.nameAr || '',
+        sale.goat?.breed?.nameAr || '',
+        sale.buyerName,
+        sale.buyerPhone || '',
+        sale.salePrice.toString(),
+        sale.paymentStatus,
+        sale.totalPaid.toString(),
+        sale.remaining.toString(),
+        sale.notes || ''
+      ])
+
+      const csv = [header, ...rows]
+        .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="sales.csv"'
+        }
+      })
+    }
+
     return NextResponse.json(salesWithPayments)
   } catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المبيعات' }, { status: 500 })
@@ -44,7 +90,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'add_sale')
+    if (auth.response) return auth.response
+
     const body = await request.json()
+    const userId = getUserIdFromRequest(request)
 
     // استخدام transaction لضمان إنشاء البيع وتحديث حالة الماعز معاً
     const sale = await prisma.$transaction(async (tx) => {
@@ -105,6 +155,35 @@ export async function POST(request: NextRequest) {
 
       // إرجاع البيع المحدث مع الحالة النهائية
       return { ...newSale, paymentStatus: finalStatus }
+    })
+
+    // إنشاء حدث في التقويم للبيع
+    const prismaAny = prisma as any
+    try {
+      const goat = body.goatId ? await prisma.goat.findUnique({ where: { id: body.goatId } }) : null
+      await prismaAny.calendarEvent.create({
+        data: {
+          eventType: 'SALE',
+          title: `بيع: ${goat?.tagId || 'دون تحديد'}`,
+          description: `بيع للمشتري: ${body.buyerName} - المبلغ: ${sale.salePrice} درهم`,
+          date: new Date(body.date),
+          goatId: body.goatId || null,
+          isCompleted: true,
+          createdBy: userId
+        }
+      })
+    } catch (calendarError) {
+      console.error('Failed to create calendar event:', calendarError)
+    }
+
+    await logActivity({
+      userId: userId || undefined,
+      action: 'CREATE',
+      entity: 'Sale',
+      entityId: sale.id,
+      description: `تم تسجيل عملية بيع بقيمة ${sale.salePrice}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json(sale, { status: 201 })

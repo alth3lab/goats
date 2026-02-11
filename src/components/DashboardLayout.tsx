@@ -16,7 +16,9 @@ import {
   Toolbar,
   Typography,
   Avatar,
-  Stack
+  Stack,
+  TextField,
+  InputAdornment
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -31,33 +33,59 @@ import {
   Assessment as ReportsIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
-  HomeWork as PenIcon
+  HomeWork as PenIcon,
+  History as HistoryIcon,
+  Search as SearchIcon,
+  Inventory as InventoryIcon,
+  Grass as FeedsIcon,
+  CalendarMonth as CalendarIcon
 } from '@mui/icons-material'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/useAuth'
+import { menuPermissions } from '@/lib/permissionMap'
 
 const drawerWidth = 260
 
 const menuItems = [
   { text: 'لوحة التحكم', icon: <DashboardIcon />, href: '/dashboard' },
+  { text: 'بحث موحّد', icon: <SearchIcon />, href: '/dashboard/search' },
   { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
   { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
   { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
   { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
   { text: 'المبيعات', icon: <SalesIcon />, href: '/dashboard/sales' },
+  { text: 'المخزون', icon: <InventoryIcon />, href: '/dashboard/inventory' },
+  { text: 'الأعلاف', icon: <FeedsIcon />, href: '/dashboard/feeds' },
+  { text: 'التقويم', icon: <CalendarIcon />, href: '/dashboard/calendar' },
   { text: 'الأنواع والسلالات', icon: <TypesIcon />, href: '/dashboard/types' },
   { text: 'المستخدمين والصلاحيات', icon: <UsersIcon />, href: '/dashboard/users' },
   { text: 'المصروفات', icon: <ExpensesIcon />, href: '/dashboard/expenses' },
   { text: 'التقارير', icon: <ReportsIcon />, href: '/dashboard/reports' },
+  { text: 'سجل النشاطات', icon: <HistoryIcon />, href: '/dashboard/activities' },
   { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' }
 ]
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
   const pathname = usePathname()
+  const router = useRouter()
+  const { can, loading: authLoading } = useAuth()
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
+  }
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
+
+  const handleSearch = () => {
+    const value = searchValue.trim()
+    if (!value) return
+    router.push(`/dashboard/search?q=${encodeURIComponent(value)}`)
   }
 
   const drawer = (
@@ -77,7 +105,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
       <List sx={{ px: 1 }}>
-        {menuItems.map((item) => (
+        {menuItems
+          .filter((item) => authLoading || can(menuPermissions[item.href]))
+          .map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
               component={Link}
@@ -102,8 +132,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <Box sx={{ mt: 'auto', p: 2 }}>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }} />
         <ListItemButton
-          component={Link}
-          href="/login"
+          onClick={handleLogout}
           sx={{
             borderRadius: 2,
             color: 'white',
@@ -146,6 +175,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <Typography variant="h6" noWrap component="div">
             نظام إدارة الماعز والخرفان
           </Typography>
+          {(authLoading || can('view_search')) && (
+            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              <TextField
+                placeholder="بحث سريع..."
+                size="small"
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') handleSearch()
+                }}
+                sx={{ width: { xs: '100%', sm: 280 }, ml: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
 

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'manage_permissions')
+    if (auth.response) return auth.response
+
     const permissions = await prisma.permission.findMany({
       orderBy: { category: 'asc' }
     })
@@ -16,6 +20,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'manage_permissions')
+    if (auth.response) return auth.response
+
     const body = await request.json()
     const permission = await prisma.permission.create({
       data: body

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logActivity } from '@/lib/activityLogger'
+import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'add_health')
+    if (auth.response) return auth.response
+
     const body = await request.json()
     const { 
       penId, // If "all" or specific pen
@@ -79,6 +84,16 @@ export async function POST(request: NextRequest) {
                 }
             })
         }
+    })
+
+    const userId = getUserIdFromRequest(request)
+    await logActivity({
+      userId: userId || undefined,
+      action: 'CREATE',
+      entity: 'Health',
+      description: `تم تسجيل علاج جماعي لعدد ${targetGoatIds.length} من الحيوانات`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json({ count: targetGoatIds.length })

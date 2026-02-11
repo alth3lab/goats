@@ -8,7 +8,8 @@ import {
   Button,
   Stack,
   InputAdornment,
-  IconButton
+  IconButton,
+  Alert
 } from '@mui/material'
 import {
   Visibility,
@@ -18,10 +19,39 @@ import {
   Pets as PetsIcon
 } from '@mui/icons-material'
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  const handleLogin = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'تعذر تسجيل الدخول')
+        return
+      }
+
+      router.push('/dashboard')
+    } catch {
+      setError('تعذر تسجيل الدخول')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Box
@@ -73,6 +103,8 @@ export default function LoginPage() {
             fullWidth
             label="اسم المستخدم أو البريد"
             placeholder="admin@example.com"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -86,6 +118,8 @@ export default function LoginPage() {
             fullWidth
             label="كلمة المرور"
             type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -102,12 +136,14 @@ export default function LoginPage() {
             }}
           />
 
+          {error && <Alert severity="error" sx={{ width: '100%' }}>{error}</Alert>}
+
           <Button
-            component={Link}
-            href="/dashboard"
             variant="contained"
             fullWidth
             size="large"
+            onClick={handleLogin}
+            disabled={loading}
             sx={{
               bgcolor: '#2e7d32',
               py: 1.5,
@@ -115,7 +151,7 @@ export default function LoginPage() {
               '&:hover': { bgcolor: '#1b5e20' }
             }}
           >
-            دخول
+            {loading ? 'جاري الدخول...' : 'دخول'}
           </Button>
 
           <Typography variant="caption" color="text.secondary">

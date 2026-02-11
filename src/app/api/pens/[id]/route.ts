@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logActivity } from '@/lib/activityLogger'
+import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'view_pens')
+    if (auth.response) return auth.response
+
     const { id } = await params
     const pen = await prisma.pen.findUnique({
       where: { id },
@@ -41,9 +46,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'edit_pen')
+    if (auth.response) return auth.response
+
     const { id } = await params
     const body = await request.json()
     const { name, nameAr, capacity, type, notes } = body
+    const userId = getUserIdFromRequest(request)
 
     const pen = await prisma.pen.update({
       where: { id },
@@ -54,6 +63,16 @@ export async function PUT(
         type,
         notes
       }
+    })
+
+    await logActivity({
+      userId: userId || undefined,
+      action: 'UPDATE',
+      entity: 'Pen',
+      entityId: pen.id,
+      description: `تم تعديل الحظيرة: ${pen.nameAr}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json(pen)
@@ -67,7 +86,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'delete_pen')
+    if (auth.response) return auth.response
+
     const { id } = await params
+    const userId = getUserIdFromRequest(request)
     
     // Check if pen has goats
     const count = await prisma.goat.count({
@@ -78,8 +101,17 @@ export async function DELETE(
         return NextResponse.json({ error: 'لا يمكن حذف الحظيرة لوجود حيوانات فيها' }, { status: 400 })
     }
 
-    await prisma.pen.delete({
+    const pen = await prisma.pen.delete({
       where: { id }
+    })
+    await logActivity({
+      userId: userId || undefined,
+      action: 'DELETE',
+      entity: 'Pen',
+      entityId: pen.id,
+      description: `تم حذف الحظيرة: ${pen.nameAr}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json({ message: 'تم الحذف بنجاح' })
   } catch (error) {

@@ -22,10 +22,17 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  IconButton
 } from '@mui/material'
 import { formatCurrency, formatDate } from '@/lib/formatters'
-import { Add as AddIcon, Receipt as ExpensesIcon } from '@mui/icons-material'
+import {
+  Add as AddIcon,
+  Receipt as ExpensesIcon,
+  Visibility as ViewIcon,
+  History as HistoryIcon
+} from '@mui/icons-material'
+import { EntityHistory } from '@/components/EntityHistory'
 
 interface Expense {
   id: string
@@ -51,6 +58,8 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
   const [form, setForm] = useState({
     date: '',
     category: 'FEED',
@@ -86,6 +95,11 @@ export default function ExpensesPage() {
     setExpenses(Array.isArray(data) ? data : [])
   }
 
+  const handleView = (expense: Expense) => {
+    setSelectedExpense(expense)
+    setViewOpen(true)
+  }
+
   return (
     <Box>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
@@ -109,13 +123,14 @@ export default function ExpensesPage() {
               <TableCell><strong>الوصف</strong></TableCell>
               <TableCell><strong>المبلغ</strong></TableCell>
               <TableCell><strong>طريقة الدفع</strong></TableCell>
+              <TableCell><strong>التفاصيل</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} align="center">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} align="center">جاري التحميل...</TableCell></TableRow>
             ) : expenses.length === 0 ? (
-              <TableRow><TableCell colSpan={5} align="center">لا توجد بيانات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} align="center">لا توجد بيانات</TableCell></TableRow>
             ) : (
               expenses.map(e => (
                 <TableRow key={e.id} hover>
@@ -126,6 +141,11 @@ export default function ExpensesPage() {
                   <TableCell>{e.description}</TableCell>
                   <TableCell>{formatCurrency(e.amount)}</TableCell>
                   <TableCell>{e.paymentMethod || '-'}</TableCell>
+                  <TableCell>
+                    <IconButton color="primary" onClick={() => handleView(e)}>
+                      <ViewIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -182,6 +202,29 @@ export default function ExpensesPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>إلغاء</Button>
           <Button variant="contained" onClick={handleSubmit}>حفظ</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>تفاصيل المصروف</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {selectedExpense ? (
+            <Stack spacing={2}>
+              <Typography><strong>التاريخ:</strong> {formatDate(selectedExpense.date)}</Typography>
+              <Typography><strong>الفئة:</strong> {categoryLabels[selectedExpense.category] || selectedExpense.category}</Typography>
+              <Typography><strong>الوصف:</strong> {selectedExpense.description}</Typography>
+              <Typography><strong>المبلغ:</strong> {formatCurrency(selectedExpense.amount)}</Typography>
+              <Typography><strong>طريقة الدفع:</strong> {selectedExpense.paymentMethod || '-'}</Typography>
+              <Stack direction="row" spacing={1} alignItems="center" mt={1}>
+                <HistoryIcon color="action" />
+                <Typography variant="h6">سجل التغييرات</Typography>
+              </Stack>
+              <EntityHistory entity="Expense" entityId={selectedExpense.id} />
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewOpen(false)}>إغلاق</Button>
         </DialogActions>
       </Dialog>
     </Box>

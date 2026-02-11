@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { requirePermission } from '@/lib/auth'
+
+export const runtime = 'nodejs'
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'view_feeds')
+    if (auth.response) return auth.response
+
+    const searchParams = request.nextUrl.searchParams
+    const category = searchParams.get('category')
+
+    const where: any = {}
+    if (category && category !== 'ALL') {
+      where.category = category
+    }
+
+    const feedTypes = await prisma.feedType.findMany({
+      where,
+      include: {
+        stock: {
+          orderBy: { purchaseDate: 'desc' }
+        },
+        schedules: {
+          where: { isActive: true },
+          include: { pen: true }
+        }
+      },
+      orderBy: { nameAr: 'asc' }
+    })
+
+    return NextResponse.json(feedTypes)
+  } catch (error) {
+    return NextResponse.json({ error: 'فشل في جلب الأعلاف' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'add_feed')
+    if (auth.response) return auth.response
+
+    const body = await request.json()
+    const feedType = await prisma.feedType.create({
+      data: body
+    })
+
+    return NextResponse.json(feedType, { status: 201 })
+  } catch (error) {
+    return NextResponse.json({ error: 'فشل في إضافة نوع العلف' }, { status: 500 })
+  }
+}

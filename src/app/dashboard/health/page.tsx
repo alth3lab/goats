@@ -25,16 +25,20 @@ import {
   Select,
   MenuItem,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  IconButton
 } from '@mui/material'
 import {
   Add as AddIcon,
   Check as CheckIcon,
   Warning as WarningIcon,
   LocalHospital as HealthIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Visibility as ViewIcon,
+  History as HistoryIcon
 } from '@mui/icons-material'
 import { formatCurrency, formatDate } from '@/lib/formatters'
+import { EntityHistory } from '@/components/EntityHistory'
 
 interface HealthRecord {
   id: string
@@ -60,6 +64,8 @@ export default function HealthPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<HealthRecord | null>(null)
   const [goats, setGoats] = useState<Array<{ id: string; tagId: string }>>([])
   
   // Batch State
@@ -124,6 +130,11 @@ export default function HealthPage() {
   const handleBatchOpen = () => {
       setBatchOpen(true)
       if (pens.length === 0) loadPens()
+  }
+
+  const handleView = (record: HealthRecord) => {
+    setSelectedRecord(record)
+    setViewOpen(true)
   }
 
   const handleSubmit = async () => {
@@ -258,13 +269,14 @@ export default function HealthPage() {
               <TableCell><strong>الوصف</strong></TableCell>
               <TableCell><strong>الطبيب</strong></TableCell>
               <TableCell><strong>التكلفة</strong></TableCell>
+              <TableCell><strong>التفاصيل</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} align="center">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} align="center">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} align="center">لا توجد بيانات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} align="center">لا توجد بيانات</TableCell></TableRow>
             ) : (
               filtered.map(r => (
                 <TableRow key={r.id} hover>
@@ -286,6 +298,11 @@ export default function HealthPage() {
                   <TableCell>{r.description}</TableCell>
                   <TableCell>{r.veterinarian || '-'}</TableCell>
                   <TableCell>{r.cost ? formatCurrency(r.cost) : '-'}</TableCell>
+                  <TableCell>
+                    <IconButton color="primary" onClick={() => handleView(r)}>
+                      <ViewIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -371,6 +388,31 @@ export default function HealthPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>إلغاء</Button>
           <Button variant="contained" onClick={handleSubmit}>حفظ</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>تفاصيل السجل الصحي</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {selectedRecord ? (
+            <Stack spacing={2}>
+              <Typography><strong>رقم التاج:</strong> {selectedRecord.goat.tagId}</Typography>
+              <Typography><strong>النوع:</strong> {typeLabels[selectedRecord.type] || selectedRecord.type}</Typography>
+              <Typography><strong>التاريخ:</strong> {formatDate(selectedRecord.date)}</Typography>
+              <Typography><strong>الوصف:</strong> {selectedRecord.description}</Typography>
+              <Typography><strong>الطبيب:</strong> {selectedRecord.veterinarian || '-'}</Typography>
+              <Typography><strong>التكلفة:</strong> {selectedRecord.cost ? formatCurrency(selectedRecord.cost) : '-'}</Typography>
+              <Typography><strong>المراجعة القادمة:</strong> {selectedRecord.nextDueDate ? formatDate(selectedRecord.nextDueDate) : '-'}</Typography>
+              <Stack direction="row" spacing={1} alignItems="center" mt={1}>
+                <HistoryIcon color="action" />
+                <Typography variant="h6">سجل التغييرات</Typography>
+              </Stack>
+              <EntityHistory entity="Health" entityId={selectedRecord.id} />
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewOpen(false)}>إغلاق</Button>
         </DialogActions>
       </Dialog>
 

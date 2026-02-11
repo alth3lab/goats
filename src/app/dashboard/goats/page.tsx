@@ -12,6 +12,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Chip,
   IconButton,
   TextField,
@@ -42,9 +43,11 @@ import {
   Female as FemaleIcon,
   Inventory as ArchiveIcon,
   ReportProblem as DeathIcon,
-  MoveDown as MoveIcon
+  MoveDown as MoveIcon,
+  History as HistoryIcon
 } from '@mui/icons-material'
 import { formatDate } from '@/lib/formatters'
+import { EntityHistory } from '@/components/EntityHistory'
 
 interface Goat {
   id: string
@@ -138,6 +141,8 @@ export default function GoatsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(25)
   const [open, setOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -171,6 +176,10 @@ export default function GoatsPage() {
   useEffect(() => {
     loadGoats()
   }, [])
+
+  useEffect(() => {
+    setPage(0)
+  }, [searchTerm, filterStatus, goats.length])
 
   const loadGoats = async () => {
     try {
@@ -423,6 +432,11 @@ export default function GoatsPage() {
     return matchesSearch && matchesStatus
   })
 
+  const paginatedGoats = filteredGoats.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  )
+
   // Calculate stats for alerts
   const weaningCandidates = goats.filter(g => {
     const age = calculateGoatAge(g.birthDate)
@@ -656,7 +670,7 @@ export default function GoatsPage() {
                 <TableCell colSpan={11} align="center">لا توجد بيانات</TableCell>
               </TableRow>
             ) : (
-              filteredGoats.map((goat) => (
+              paginatedGoats.map((goat) => (
                 <TableRow key={goat.id} hover selected={selectedGoatIds.indexOf(goat.id) !== -1}>
                   <TableCell padding="checkbox">
                     <Checkbox
@@ -732,7 +746,7 @@ export default function GoatsPage() {
                       >
                         <EditIcon />
                       </IconButton>
-                      {goat.status === 'ACTIVE' && (
+                      {['ACTIVE', 'QUARANTINE'].includes(goat.status) && (
                         <IconButton
                           size="small" 
                           color="error"
@@ -761,6 +775,20 @@ export default function GoatsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <TablePagination
+        component="div"
+        count={filteredGoats.length}
+        page={page}
+        onPageChange={(_event, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(event) => {
+          setRowsPerPage(parseInt(event.target.value, 10))
+          setPage(0)
+        }}
+        rowsPerPageOptions={[10, 25, 50, 100]}
+        labelRowsPerPage="عدد الصفوف"
+      />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editMode ? 'تعديل الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
@@ -1068,6 +1096,14 @@ export default function GoatsPage() {
                 ) : (
                   <Typography variant="body2">تعذر تحميل بيانات العائلة</Typography>
                 )}
+              </Paper>
+
+              <Paper sx={{ p: 2 }}>
+                <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                  <HistoryIcon color="action" />
+                  <Typography variant="h6">سجل التغييرات</Typography>
+                </Stack>
+                <EntityHistory entity="Goat" entityId={selectedGoat.id} />
               </Paper>
             </Stack>
           )}

@@ -44,8 +44,10 @@ import {
   TrendingUp as TrendingUpIcon,
   AttachMoney as MoneyIcon,
   HourglassEmpty as PendingIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  History as HistoryIcon
 } from '@mui/icons-material'
+import { EntityHistory } from '@/components/EntityHistory'
 
 interface Payment {
   id: string
@@ -765,6 +767,18 @@ export default function SalesPage() {
                           </Table>
                         </TableContainer>
                       )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                        <HistoryIcon color="action" />
+                        <Typography variant="h6" color="primary">سجل التغييرات</Typography>
+                      </Stack>
+                      <EntityHistory entity="Sale" entityId={selectedSale.id} />
                     </CardContent>
                   </Card>
                 </Grid>

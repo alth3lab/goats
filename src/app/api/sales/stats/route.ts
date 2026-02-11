@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
 // GET /api/sales/stats - الإحصائيات
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'view_sales')
+    if (auth.response) return auth.response
+
     const [
       totalSales,
       pendingSales,

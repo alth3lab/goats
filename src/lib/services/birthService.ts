@@ -90,6 +90,23 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
       }
     })
 
+    // إنشاء حدث في التقويم للولادة
+    const prismaAny = tx as any
+    try {
+      await prismaAny.calendarEvent.create({
+        data: {
+          eventType: 'BIRTH',
+          title: `ولادة: ${breeding.mother.tagId}`,
+          description: `ولادة ${input.kids.length} ${input.kids.length === 1 ? 'صغير' : 'صغار'} من الأم ${breeding.mother.tagId}`,
+          date: input.birthDate,
+          goatId: breeding.motherId,
+          isCompleted: true
+        }
+      })
+    } catch (calendarError) {
+      console.error('Failed to create calendar event for birth:', calendarError)
+    }
+
     return results
   })
 }

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logActivity } from '@/lib/activityLogger'
+import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'view_health')
+    if (auth.response) return auth.response
+
     const searchParams = request.nextUrl.searchParams
     const goatId = searchParams.get('goatId')
     
@@ -22,8 +27,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'add_health')
+    if (auth.response) return auth.response
+
     const body = await request.json()
     const { goatId, type, date, description, veterinarian, cost, nextDueDate, moveToIsolation } = body
+    const userId = getUserIdFromRequest(request)
 
     // Transaction to handle record creation + potential isolation
     const result = await prisma.$transaction(async (tx) => {
@@ -56,6 +65,52 @@ export async function POST(request: NextRequest) {
             }
         }
         return record
+    })
+
+    // إنشاء حدث في التقويم للتطعيمات والمواعيد القادمة
+    const prismaAny = prisma as any
+    try {
+      if (type === 'VACCINATION' || type === 'CHECKUP') {
+        const eventType = type === 'VACCINATION' ? 'VACCINATION' : 'CHECKUP'
+        await prismaAny.calendarEvent.create({
+          data: {
+            eventType,
+            title: `${type === 'VACCINATION' ? 'تطعيم' : 'فحص'}: ${result.goat.tagId}`,
+            description: description || '',
+            date: new Date(date),
+            goatId,
+            isCompleted: true,
+            createdBy: userId
+          }
+        })
+
+        // إضافة حدث للموعد القادم
+        if (nextDueDate) {
+          await prismaAny.calendarEvent.create({
+            data: {
+              eventType,
+              title: `${type === 'VACCINATION' ? 'تطعيم قادم' : 'فحص قادم'}: ${result.goat.tagId}`,
+              description: `موعد ${type === 'VACCINATION' ? 'التطعيم' : 'الفحص'} التالي`,
+              date: new Date(nextDueDate),
+              goatId,
+              reminder: true,
+              createdBy: userId
+            }
+          })
+        }
+      }
+    } catch (calendarError) {
+      console.error('Failed to create calendar event:', calendarError)
+    }
+
+    await logActivity({
+      userId: userId || undefined,
+      action: 'CREATE',
+      entity: 'Health',
+      entityId: result.id,
+      description: `تم إضافة سجل صحي للماعز: ${result.goat.tagId}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json(result, { status: 201 })

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request)
+    if (auth.response) return auth.response
+
     const searchParams = request.nextUrl.searchParams
     const goatId = searchParams.get('goatId')
     const startDate = searchParams.get('startDate')
@@ -30,6 +34,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request)
+    if (auth.response) return auth.response
+
     const body = await request.json()
     const record = await prisma.milkProduction.create({
       data: body,

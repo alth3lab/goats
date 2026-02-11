@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
+import { logActivity } from '@/lib/activityLogger'
+import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'view_goats')
+    if (auth.response) return auth.response
+
     const { id } = await params
     const goat = await prisma.goat.findUnique({
       where: { id },
@@ -56,8 +61,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'edit_goat')
+    if (auth.response) return auth.response
+
     const { id } = await params
     const body = await request.json()
+    const userId = getUserIdFromRequest(request)
     
     // إذا تغيرت الحالة إلى مباع أو متوفى، قم بإزالة الماعز من الحظيرة تلقائياً
     if (body.status === 'SOLD' || body.status === 'DECEASED') {
@@ -67,6 +76,15 @@ export async function PUT(
     const goat = await prisma.goat.update({
       where: { id },
       data: body
+    })
+    await logActivity({
+      userId: userId || undefined,
+      action: 'UPDATE',
+      entity: 'Goat',
+      entityId: goat.id,
+      description: `تم تعديل الماعز: ${goat.tagId}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(goat)
   } catch (error) {
@@ -79,9 +97,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requirePermission(request, 'delete_goat')
+    if (auth.response) return auth.response
+
     const { id } = await params
-    await prisma.goat.delete({
+    const userId = getUserIdFromRequest(request)
+    const goat = await prisma.goat.delete({
       where: { id }
+    })
+    await logActivity({
+      userId: userId || undefined,
+      action: 'DELETE',
+      entity: 'Goat',
+      entityId: goat.id,
+      description: `تم حذف الماعز: ${goat.tagId}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json({ message: 'تم الحذف بنجاح' })
   } catch (error) {

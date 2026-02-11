@@ -177,6 +177,88 @@ async function main() {
   }
 
   console.log(`تم إضافة ${sheepBreeds.length} سلالة من الخروف`)
+
+  const permissions = [
+    { name: 'view_goats', nameAr: 'عرض الماعز', category: 'goats', categoryAr: 'الماعز' },
+    { name: 'add_goat', nameAr: 'إضافة ماعز', category: 'goats', categoryAr: 'الماعز' },
+    { name: 'edit_goat', nameAr: 'تعديل ماعز', category: 'goats', categoryAr: 'الماعز' },
+    { name: 'delete_goat', nameAr: 'حذف ماعز', category: 'goats', categoryAr: 'الماعز' },
+    { name: 'view_pens', nameAr: 'عرض الحظائر', category: 'pens', categoryAr: 'الحظائر' },
+    { name: 'add_pen', nameAr: 'إضافة حظيرة', category: 'pens', categoryAr: 'الحظائر' },
+    { name: 'edit_pen', nameAr: 'تعديل حظيرة', category: 'pens', categoryAr: 'الحظائر' },
+    { name: 'delete_pen', nameAr: 'حذف حظيرة', category: 'pens', categoryAr: 'الحظائر' },
+    { name: 'view_health', nameAr: 'عرض السجلات الصحية', category: 'health', categoryAr: 'الصحة' },
+    { name: 'add_health', nameAr: 'إضافة سجل صحي', category: 'health', categoryAr: 'الصحة' },
+    { name: 'view_breeding', nameAr: 'عرض سجلات التكاثر', category: 'breeding', categoryAr: 'التكاثر' },
+    { name: 'add_breeding', nameAr: 'إضافة سجل تكاثر', category: 'breeding', categoryAr: 'التكاثر' },
+    { name: 'edit_breeding', nameAr: 'تعديل سجل تكاثر', category: 'breeding', categoryAr: 'التكاثر' },
+    { name: 'delete_breeding', nameAr: 'حذف سجل تكاثر', category: 'breeding', categoryAr: 'التكاثر' },
+    { name: 'view_sales', nameAr: 'عرض المبيعات', category: 'sales', categoryAr: 'المبيعات' },
+    { name: 'add_sale', nameAr: 'إضافة بيع', category: 'sales', categoryAr: 'المبيعات' },
+    { name: 'edit_sale', nameAr: 'تعديل بيع', category: 'sales', categoryAr: 'المبيعات' },
+    { name: 'view_expenses', nameAr: 'عرض المصروفات', category: 'expenses', categoryAr: 'المصروفات' },
+    { name: 'add_expense', nameAr: 'إضافة مصروف', category: 'expenses', categoryAr: 'المصروفات' },
+    { name: 'view_reports', nameAr: 'عرض التقارير', category: 'reports', categoryAr: 'التقارير' },
+    { name: 'view_activities', nameAr: 'عرض سجل النشاطات', category: 'activities', categoryAr: 'النشاطات' },
+    { name: 'view_search', nameAr: 'استخدام البحث', category: 'search', categoryAr: 'البحث' },
+    { name: 'view_types', nameAr: 'عرض الأنواع والسلالات', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'add_type', nameAr: 'إضافة نوع', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'edit_type', nameAr: 'تعديل نوع', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'delete_type', nameAr: 'حذف نوع', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'add_breed', nameAr: 'إضافة سلالة', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'edit_breed', nameAr: 'تعديل سلالة', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'delete_breed', nameAr: 'حذف سلالة', category: 'types', categoryAr: 'الأنواع والسلالات' },
+    { name: 'view_users', nameAr: 'عرض المستخدمين', category: 'users', categoryAr: 'المستخدمين' },
+    { name: 'add_user', nameAr: 'إضافة مستخدم', category: 'users', categoryAr: 'المستخدمين' },
+    { name: 'manage_permissions', nameAr: 'إدارة الصلاحيات', category: 'permissions', categoryAr: 'الصلاحيات' },
+    { name: 'view_settings', nameAr: 'عرض الإعدادات', category: 'settings', categoryAr: 'الإعدادات' },
+    // صلاحيات المخزون
+    { name: 'view_inventory', nameAr: 'عرض المخزون', category: 'inventory', categoryAr: 'المخزون' },
+    { name: 'add_inventory', nameAr: 'إضافة صنف للمخزون', category: 'inventory', categoryAr: 'المخزون' },
+    { name: 'edit_inventory', nameAr: 'تعديل المخزون', category: 'inventory', categoryAr: 'المخزون' },
+    { name: 'delete_inventory', nameAr: 'حذف صنف من المخزون', category: 'inventory', categoryAr: 'المخزون' },
+    { name: 'manage_inventory', nameAr: 'إدارة حركة المخزون', category: 'inventory', categoryAr: 'المخزون' },
+    // صلاحيات الأعلاف
+    { name: 'view_feeds', nameAr: 'عرض الأعلاف', category: 'feeds', categoryAr: 'الأعلاف' },
+    { name: 'add_feed', nameAr: 'إضافة نوع علف', category: 'feeds', categoryAr: 'الأعلاف' },
+    { name: 'manage_feeds', nameAr: 'إدارة مخزون الأعلاف', category: 'feeds', categoryAr: 'الأعلاف' },
+    // صلاحيات التقويم
+    { name: 'view_calendar', nameAr: 'عرض التقويم', category: 'calendar', categoryAr: 'التقويم' },
+    { name: 'add_event', nameAr: 'إضافة حدث', category: 'calendar', categoryAr: 'التقويم' },
+    { name: 'edit_event', nameAr: 'تعديل حدث', category: 'calendar', categoryAr: 'التقويم' }
+  ]
+
+  for (const permission of permissions) {
+    await prisma.permission.upsert({
+      where: { name: permission.name },
+      update: {
+        nameAr: permission.nameAr,
+        category: permission.category,
+        categoryAr: permission.categoryAr
+      },
+      create: permission
+    })
+  }
+
+  const adminUsers = await prisma.user.findMany({
+    where: { role: 'ADMIN', isActive: true },
+    select: { id: true }
+  })
+  const permissionIds = await prisma.permission.findMany({
+    select: { id: true }
+  })
+
+  for (const admin of adminUsers) {
+    await prisma.userPermission.createMany({
+      data: permissionIds.map((permission) => ({
+        userId: admin.id,
+        permissionId: permission.id
+      })),
+      skipDuplicates: true
+    })
+  }
+
+  console.log('تم تجهيز الصلاحيات الافتراضية وربطها بالمديرين')
   console.log('✅ تم إضافة جميع البيانات الأولية بنجاح!')
 }
 

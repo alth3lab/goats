@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   Paper,
@@ -15,12 +15,47 @@ import { Settings as SettingsIcon, Save as SaveIcon } from '@mui/icons-material'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    farmName: 'مزرعة سهيل',
+    farmName: '',
     phone: '',
     address: '',
     currency: 'درهم',
-    notifications: true
+    notifications: true,
+    alertPenCapacityPercent: 90,
+    alertDeathCount: 3,
+    alertDeathWindowDays: 30,
+    alertBreedingOverdueDays: 150
   })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => setSettings({
+        farmName: data.farmName || '',
+        phone: data.phone || '',
+        address: data.address || '',
+        currency: data.currency || 'درهم',
+        notifications: Boolean(data.notifications),
+        alertPenCapacityPercent: data.alertPenCapacityPercent ?? 90,
+        alertDeathCount: data.alertDeathCount ?? 3,
+        alertDeathWindowDays: data.alertDeathWindowDays ?? 30,
+        alertBreedingOverdueDays: data.alertBreedingOverdueDays ?? 150
+      }))
+      .catch(() => undefined)
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Box>
@@ -82,11 +117,47 @@ export default function SettingsPage() {
               label="تفعيل الإشعارات"
             />
           </Box>
+          <Box>
+            <TextField
+              label="سعة الحظيرة (نسبة تنبيه)"
+              type="number"
+              value={settings.alertPenCapacityPercent}
+              onChange={(e) => setSettings({ ...settings, alertPenCapacityPercent: Number(e.target.value) })}
+              fullWidth
+            />
+          </Box>
+          <Box>
+            <TextField
+              label="حد النفوق المتكرر"
+              type="number"
+              value={settings.alertDeathCount}
+              onChange={(e) => setSettings({ ...settings, alertDeathCount: Number(e.target.value) })}
+              fullWidth
+            />
+          </Box>
+          <Box>
+            <TextField
+              label="فترة النفوق (يوم)"
+              type="number"
+              value={settings.alertDeathWindowDays}
+              onChange={(e) => setSettings({ ...settings, alertDeathWindowDays: Number(e.target.value) })}
+              fullWidth
+            />
+          </Box>
+          <Box>
+            <TextField
+              label="تأخر التلقيح (يوم)"
+              type="number"
+              value={settings.alertBreedingOverdueDays}
+              onChange={(e) => setSettings({ ...settings, alertBreedingOverdueDays: Number(e.target.value) })}
+              fullWidth
+            />
+          </Box>
         </Box>
 
         <Stack direction="row" justifyContent="flex-end" mt={3}>
-          <Button variant="contained" startIcon={<SaveIcon />}>
-            حفظ الإعدادات
+          <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving}>
+            {saving ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
           </Button>
         </Stack>
       </Paper>

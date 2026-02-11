@@ -2,7 +2,7 @@
 
 import { 
   Box, 
-  Grid, 
+  Grid,
   Card, 
   CardContent, 
   Typography, 
@@ -21,7 +21,9 @@ import {
   Assessment as StatsIcon,
   TrendingUp as TrendingUpIcon,
   NotificationsActive as AlertIcon,
-  ChildCare as WeaningIcon
+  ChildCare as WeaningIcon,
+  HomeWork as PenIcon,
+  ReportProblem as DeathIcon
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -42,7 +44,7 @@ interface Stats {
 
 interface AlertItem {
   id: string
-  type: 'BIRTH' | 'HEALTH' | 'WEANING'
+  type: 'BIRTH' | 'HEALTH' | 'WEANING' | 'PEN_CAPACITY' | 'DEATHS' | 'BREEDING_OVERDUE'
   severity: 'error' | 'warning' | 'info'
   title: string
   message: string
@@ -148,6 +150,9 @@ export default function DashboardPage() {
                       icon={
                         alert.type === 'BIRTH' ? <BreedingIcon fontSize="inherit" /> :
                         alert.type === 'WEANING' ? <WeaningIcon fontSize="inherit" /> :
+                        alert.type === 'PEN_CAPACITY' ? <PenIcon fontSize="inherit" /> :
+                        alert.type === 'DEATHS' ? <DeathIcon fontSize="inherit" /> :
+                        alert.type === 'BREEDING_OVERDUE' ? <AlertIcon fontSize="inherit" /> :
                         <HealthIcon fontSize="inherit" />
                       }
                       sx={{ 

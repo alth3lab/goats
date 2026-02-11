@@ -1,10 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logActivity } from '@/lib/activityLogger'
+import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'view_pens')
+    if (auth.response) return auth.response
+
     const pens = await prisma.pen.findMany({
       include: {
         _count: {
@@ -24,9 +29,13 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'add_pen')
+    if (auth.response) return auth.response
+
     const body = await request.json()
+    const userId = getUserIdFromRequest(request)
     let { name, nameAr, capacity, type, notes } = body
 
     // Ensure we have a unique name if not provided
@@ -42,6 +51,16 @@ export async function POST(request: Request) {
         type,
         notes
       }
+    })
+
+    await logActivity({
+      userId: userId || undefined,
+      action: 'CREATE',
+      entity: 'Pen',
+      entityId: pen.id,
+      description: `تم إنشاء الحظيرة: ${pen.nameAr}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json(pen)

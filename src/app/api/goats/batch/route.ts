@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requirePermission } from '@/lib/auth'
 
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requirePermission(request, 'edit_goat')
+    if (auth.response) return auth.response
+
     const body = await request.json()
     const { goatIds, penId } = body
 

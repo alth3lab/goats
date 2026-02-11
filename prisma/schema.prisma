@@ -117,7 +117,8 @@ model Pen {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  goats       Goat[]
+  goats             Goat[]
+  feedingSchedules  FeedingSchedule[]
 }
 
 model Goat {
@@ -155,7 +156,6 @@ model Goat {
   breedingAsMother Breeding[]     @relation("MotherGoat")
   breedingAsFather Breeding[]     @relation("FatherGoat")
   feedingRecords   FeedingRecord[]
-  milkProductions  MilkProduction[]
   sales            Sale[]
 
   @@index([tagId])
@@ -358,16 +358,175 @@ enum UserRole {
   VIEWER       // عارض فقط - قراءة فقط
 }
 
-model MilkProduction {
-  id        String   @id @default(uuid())
-  goatId    String
-  goat      Goat     @relation(fields: [goatId], references: [id], onDelete: Cascade)
-  date      DateTime
-  amount    Float    // In Liters
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model InventoryItem {
+  id            String               @id @default(uuid())
+  name          String
+  nameAr        String
+  category      InventoryCategory
+  unit          String               // كجم، لتر، قطعة، إلخ
+  minStock      Float?               // الحد الأدنى للمخزون
+  currentStock  Float                @default(0)
+  unitPrice     Float?
+  supplier      String?
+  notes         String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
-  @@index([goatId])
+  transactions  InventoryTransaction[]
+
+  @@index([category])
+  @@index([currentStock])
+}
+
+model InventoryTransaction {
+  id          String             @id @default(uuid())
+  itemId      String
+  item        InventoryItem      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  quantity    Float
+  unitPrice   Float?
+  totalCost   Float?
+  reference   String?            // رقم الفاتورة أو المرجع
+  notes       String?            @db.Text
+  date        DateTime           @default(now())
+  createdBy   String?
+  createdAt   DateTime           @default(now())
+
+  @@index([itemId])
+  @@index([type])
   @@index([date])
+}
+
+model FeedType {
+  id            String      @id @default(uuid())
+  name          String      @unique
+  nameAr        String
+  category      FeedCategory
+  protein       Float?      // نسبة البروتين %
+  energy        Float?      // الطاقة kcal/kg
+  unitPrice     Float?
+  supplier      String?
+  notes         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  stock         FeedStock[]
+  schedules     FeedingSchedule[]
+
+  @@index([category])
+}
+
+model FeedStock {
+  id          String    @id @default(uuid())
+  feedTypeId  String
+  feedType    FeedType  @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
+  quantity    Float     // بالكيلوجرام
+  unit        String    @default("كجم")
+  purchaseDate DateTime
+  expiryDate  DateTime?
+  cost        Float?
+  supplier    String?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([feedTypeId])
+  @@index([expiryDate])
+}
+
+model FeedingSchedule {
+  id          String    @id @default(uuid())
+  feedTypeId  String
+  feedType    FeedType  @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
+  penId       String?
+  pen         Pen?      @relation(fields: [penId], references: [id], onDelete: SetNull)
+  quantity    Float     // الكمية اليومية
+  frequency   Int       @default(2)  // عدد المرات باليوم
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([feedTypeId])
+  @@index([penId])
+  @@index([isActive])
+}
+
+model CalendarEvent {
+  id          String       @id @default(uuid())
+  title       String
+  description String?      @db.Text
+  eventType   EventType
+  date        DateTime
+  endDate     DateTime?
+  isCompleted Boolean      @default(false)
+  goatId      String?
+  breedingId  String?
+  healthId    String?
+  reminder    Boolean      @default(true)
+  reminderDays Int?        // تذكير قبل كم يوم
+  notes       String?      @db.Text
+  createdBy   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([eventType])
+  @@index([date])
+  @@index([isCompleted])
+}
+
+enum InventoryCategory {
+  MEDICINE
+  VACCINE
+  EQUIPMENT
+  SUPPLIES
+  CLEANING
+  OTHER
+}
+
+enum TransactionType {
+  PURCHASE
+  USAGE
+  ADJUSTMENT
+  EXPIRED
+  RETURN
+}
+
+enum FeedCategory {
+  HAY
+  GRAINS
+  CONCENTRATE
+  SUPPLEMENTS
+  MINERALS
+  OTHER
+}
+
+enum EventType {
+  BIRTH
+  VACCINATION
+  DEWORMING
+  CHECKUP
+  BREEDING
+  WEANING
+  SALE
+  PURCHASE
+  MAINTENANCE
+  OTHER
+}
+
+model AppSetting {
+  id                       String   @id @default("default")
+  farmName                 String?
+  phone                    String?
+  address                  String?
+  currency                 String   @default("AED")
+  notifications            Boolean  @default(true)
+  alertPenCapacityPercent  Int      @default(90)
+  alertDeathCount          Int      @default(3)
+  alertDeathWindowDays     Int      @default(30)
+  alertBreedingOverdueDays Int      @default(150)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }
