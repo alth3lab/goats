@@ -157,7 +157,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         position="fixed"
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mr: { sm: `${drawerWidth}px` },
+          ml: { sm: `${drawerWidth}px` },
           bgcolor: 'white',
           color: 'text.primary',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -205,6 +205,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       >
         <Drawer
           variant="temporary"
+          anchor="left"
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
@@ -217,6 +218,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Drawer>
         <Drawer
           variant="permanent"
+          anchor="left"
           sx={{
             display: { xs: 'none', sm: 'block' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
@@ -232,7 +234,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           flexGrow: 1,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mr: { sm: `${drawerWidth}px` },
+          ml: { sm: `${drawerWidth}px` },
           minHeight: '100vh',
           bgcolor: '#f5f6fa',
           p: 3
