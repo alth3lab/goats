@@ -89,7 +89,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   const drawer = (
-    <Box sx={{ height: '100%', bgcolor: '#1e1e2f', color: 'white' }}>
+    <Box sx={{ 
+      height: '100%', 
+      bgcolor: '#1e1e2f', 
+      color: 'white',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Avatar sx={{ bgcolor: '#2e7d32' }}>G</Avatar>
@@ -104,7 +110,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Stack>
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-      <List sx={{ px: 1 }}>
+      <List sx={{ px: 1, flex: 1, overflow: 'auto' }}>
         {menuItems
           .filter((item) => authLoading || can(menuPermissions[item.href]))
           .map((item) => (
@@ -129,7 +135,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </ListItem>
         ))}
       </List>
-      <Box sx={{ mt: 'auto', p: 2 }}>
+      <Box sx={{ p: 2 }}>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }} />
         <ListItemButton
           onClick={handleLogout}
@@ -157,7 +163,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         position="fixed"
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          mr: { sm: `${drawerWidth}px` },
           bgcolor: 'white',
           color: 'text.primary',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -205,7 +211,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       >
         <Drawer
           variant="temporary"
-          anchor="left"
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
@@ -218,7 +223,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Drawer>
         <Drawer
           variant="permanent"
-          anchor="left"
           sx={{
             display: { xs: 'none', sm: 'block' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
@@ -234,7 +238,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           flexGrow: 1,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          mr: { sm: `${drawerWidth}px` },
           minHeight: '100vh',
           bgcolor: '#f5f6fa',
           p: 3
