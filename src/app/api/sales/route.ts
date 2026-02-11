@@ -96,8 +96,56 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const userId = getUserIdFromRequest(request)
 
+    // التحقق من أن الماعز ليس في تكاثر نشط
+    if (body.goatId) {
+      const activeBreeding = await prisma.breeding.findFirst({
+        where: {
+          OR: [
+            { motherId: body.goatId },
+            { fatherId: body.goatId }
+          ],
+          pregnancyStatus: { in: ['MATED', 'PREGNANT'] }
+        },
+        include: {
+          mother: { select: { tagId: true } },
+          father: { select: { tagId: true } }
+        }
+      })
+
+      if (activeBreeding) {
+        const goat = await prisma.goat.findUnique({ 
+          where: { id: body.goatId },
+          select: { tagId: true, gender: true }
+        })
+        const role = goat?.gender === 'FEMALE' ? 'أم' : 'أب'
+        return NextResponse.json(
+          { error: `لا يمكن بيع الماعز ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
+          { status: 400 }
+        )
+      }
+    }
+
     // استخدام transaction لضمان إنشاء البيع وتحديث حالة الماعز معاً
     const sale = await prisma.$transaction(async (tx) => {
+      // 0. التحقق من أن الماعز ليس مستخدماً في تكاثر نشط
+      if (body.goatId) {
+        const activeBreeding = await tx.breeding.findFirst({
+          where: {
+            OR: [
+              { motherId: body.goatId },
+              { fatherId: body.goatId }
+            ],
+            pregnancyStatus: { in: ['MATED', 'PREGNANT'] }
+          },
+          include: { mother: true, father: true }
+        })
+
+        if (activeBreeding) {
+          const goatRole = activeBreeding.motherId === body.goatId ? 'أم' : 'أب'
+          throw new Error(`لا يمكن بيع هذا الماعز لأنه ${goatRole} في سجل تكاثر نشط`)
+        }
+      }
+
       // 1. إنشاء سجل البيع مبدئياً بحالة معلق
       const newSale = await tx.sale.create({
         data: {
@@ -189,6 +237,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {
     console.error('Error creating sale:', error)
-    return NextResponse.json({ error: 'فشل في إضافة البيع' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'فشل في إضافة البيع'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

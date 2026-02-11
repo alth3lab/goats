@@ -94,12 +94,17 @@ export default function InventoryPage() {
   const fetchItems = async () => {
     try {
       const res = await fetch('/api/inventory')
-      if (res.ok) {
-        const data = await res.json()
-        setItems(data)
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'خطأ في جلب البيانات' }))
+        console.error('Fetch error:', error)
+        alert(error.error || 'فشل في جلب المخزون')
+        return
       }
+      const data = await res.json()
+      setItems(data)
     } catch (error) {
       console.error('Failed to fetch items:', error)
+      alert('خطأ في الاتصال بالخادم')
     } finally {
       setLoading(false)
     }

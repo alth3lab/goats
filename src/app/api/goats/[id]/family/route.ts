@@ -48,11 +48,12 @@ export async function GET(
         : null
     ])
 
-    const siblings = goat.birthId
+    // Fix: Only find siblings if birthId is not null AND motherId matches
+    const siblings = goat.birthId && goat.motherId
       ? await prisma.goat.findMany({
           where: {
             birthId: goat.birthId,
-            motherId: goat.motherId ?? undefined,
+            motherId: goat.motherId,
             id: { not: goat.id }
           },
           include: { breed: { select: { nameAr: true } } }

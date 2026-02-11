@@ -23,7 +23,14 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: 'asc' }
     })
-    return NextResponse.json(pens)
+    
+    // إضافة currentCount المحسوب
+    const pensWithCount = pens.map(pen => ({
+      ...pen,
+      currentCount: pen._count.goats
+    }))
+    
+    return NextResponse.json(pensWithCount)
   } catch (error) {
     return NextResponse.json({ error: 'Error fetching pens' }, { status: 500 })
   }

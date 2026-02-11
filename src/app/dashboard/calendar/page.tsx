@@ -36,10 +36,12 @@ import FavoriteIcon from '@mui/icons-material/Favorite'
 import CakeIcon from '@mui/icons-material/Cake'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import SyncIcon from '@mui/icons-material/Sync'
+import PetsIcon from '@mui/icons-material/Pets'
 
 const EVENT_TYPES = [
   { value: 'BIRTH', label: 'ولادة', icon: BabyIcon, color: '#4caf50' },
   { value: 'VACCINATION', label: 'تطعيم', icon: VaccinesIcon, color: '#ff9800' },
+  { value: 'DEWORMING', label: 'تقليل الديدان', icon: PetsIcon, color: '#00bcd4' },
   { value: 'CHECKUP', label: 'فحص', icon: MedicalIcon, color: '#2196f3' },
   { value: 'BREEDING', label: 'تزاوج', icon: FavoriteIcon, color: '#e91e63' },
   { value: 'WEANING', label: 'فطام', icon: CakeIcon, color: '#9c27b0' },

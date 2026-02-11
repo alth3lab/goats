@@ -19,19 +19,30 @@ const MIN_MOTHER_AGE_MONTHS = 6
 export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput) {
   const breeding = await prisma.breeding.findUnique({
     where: { id: input.breedingId },
-    include: { mother: true, father: true }
+    include: { 
+      mother: { select: { id: true, tagId: true, birthDate: true, status: true, gender: true, breedId: true } }, 
+      father: { select: { id: true, tagId: true, status: true, gender: true } } 
+    }
   })
 
   if (!breeding) {
     throw new Error('سجل التزاوج غير موجود')
   }
 
-  if (breeding.mother.status !== 'ACTIVE' || breeding.mother.gender !== 'FEMALE') {
-    throw new Error('لا يمكن تسجيل ولادة لأم غير نشطة أو ليست أنثى')
+  if (breeding.mother.gender !== 'FEMALE') {
+    throw new Error(`الماعز ${breeding.mother.tagId} ليس أنثى`)
   }
 
-  if (breeding.father && (breeding.father.status !== 'ACTIVE' || breeding.father.gender !== 'MALE')) {
-    throw new Error('الأب يجب أن يكون ذكر وحالته نشطة')
+  if (breeding.mother.status !== 'ACTIVE') {
+    throw new Error(`الأم ${breeding.mother.tagId} غير نشطة (الحالة: ${breeding.mother.status})`)
+  }
+
+  if (breeding.father && breeding.father.gender !== 'MALE') {
+    throw new Error(`الماعز ${breeding.father.tagId} ليس ذكر`)
+  }
+
+  if (breeding.father && breeding.father.status !== 'ACTIVE') {
+    throw new Error(`الأب ${breeding.father.tagId} غير نشط (الحالة: ${breeding.father.status})`)
   }
 
   const minBirth = new Date(breeding.mother.birthDate)
@@ -42,6 +53,27 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
 
   return prisma.$transaction(async (tx) => {
     const results = [] as Array<{ birthId: string; goatId: string }>
+
+    // التحقق من عدم تكرار tagIds داخل نفس الطلب
+    const allTagIds = input.kids
+      .map(k => k.tagId?.trim())
+      .filter(t => t && t.length > 0) as string[]
+    
+    const uniqueTagIds = new Set(allTagIds)
+    if (uniqueTagIds.size !== allTagIds.length) {
+      throw new Error('لا يمكن استخدام نفس رقم الشريحة أكثر من مرة')
+    }
+
+    // التحقق من عدم وجود tagIds موجودة بالفعل
+    if (allTagIds.length > 0) {
+      const existingGoats = await tx.goat.findMany({
+        where: { tagId: { in: allTagIds } },
+        select: { tagId: true }
+      })
+      if (existingGoats.length > 0) {
+        throw new Error(`رقم الشريحة موجود بالفعل: ${existingGoats.map(g => g.tagId).join(', ')}`)
+      }
+    }
 
     for (let i = 0; i < input.kids.length; i += 1) {
       const kid = input.kids[i]
@@ -70,6 +102,8 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
           breedId: breeding.mother.breedId,
           motherId: breeding.motherId,
           fatherId: breeding.fatherId,
+          motherTagId: breeding.mother.tagId,
+          fatherTagId: breeding.father?.tagId ?? null,
           birthId: birth.id
         }
       })
@@ -86,14 +120,14 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
       where: { id: input.breedingId },
       data: {
         birthDate: input.birthDate,
+        numberOfKids: input.kids.length,
         pregnancyStatus: 'DELIVERED'
       }
     })
 
-    // إنشاء حدث في التقويم للولادة
-    const prismaAny = tx as any
+    // إنشاء حدث في التقويم للولادة + حدث الفطام
     try {
-      await prismaAny.calendarEvent.create({
+      await tx.calendarEvent.create({
         data: {
           eventType: 'BIRTH',
           title: `ولادة: ${breeding.mother.tagId}`,
@@ -103,8 +137,24 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
           isCompleted: true
         }
       })
+      
+      // إضافة حدث الفطام بعد 3 أشهر
+      const weaningDate = new Date(input.birthDate)
+      weaningDate.setMonth(weaningDate.getMonth() + 3)
+      
+      await tx.calendarEvent.create({
+        data: {
+          eventType: 'WEANING',
+          title: `فطام: ${breeding.mother.tagId}`,
+          description: `موعد فطام ${input.kids.length} ${input.kids.length === 1 ? 'صغير' : 'صغار'}`,
+          date: weaningDate,
+          goatId: breeding.motherId,
+          reminder: true,
+          reminderDays: 7
+        }
+      })
     } catch (calendarError) {
-      console.error('Failed to create calendar event for birth:', calendarError)
+      console.error('Failed to create calendar events:', calendarError)
     }
 
     return results

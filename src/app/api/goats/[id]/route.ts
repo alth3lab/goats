@@ -102,6 +102,26 @@ export async function DELETE(
 
     const { id } = await params
     const userId = getUserIdFromRequest(request)
+    
+    // التحقق من عدم وجود breeding نشط
+    const activeBreeding = await prisma.breeding.findFirst({
+      where: {
+        OR: [
+          { motherId: id },
+          { fatherId: id }
+        ],
+        pregnancyStatus: { in: ['MATED', 'PREGNANT'] }
+      }
+    })
+    
+    if (activeBreeding) {
+      const goat = await prisma.goat.findUnique({ where: { id }, select: { tagId: true } })
+      return NextResponse.json(
+        { error: `لا يمكن حذف الماعز ${goat?.tagId || ''} لأنه في سجل تكاثر نشط` },
+        { status: 400 }
+      )
+    }
+    
     const goat = await prisma.goat.delete({
       where: { id }
     })

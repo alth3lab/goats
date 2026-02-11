@@ -137,9 +137,18 @@ export default function SalesPage() {
   const loadSales = async () => {
     try {
       const res = await fetch('/api/sales')
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'خطأ في جلب البيانات' }))
+        console.error('Sales fetch error:', error)
+        alert(error.error || 'فشل في جلب المبيعات')
+        setSales([])
+        return
+      }
       const data = await res.json()
       setSales(Array.isArray(data) ? data : [])
-    } catch {
+    } catch (error) {
+      console.error('Failed to load sales:', error)
+      alert('خطأ في الاتصال بالخادم')
       setSales([])
     } finally {
       setLoading(false)

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { recordBirth } from '@/lib/services/birthService'
 import { recordBirthSchema } from '@/lib/validators/birth'
 import { requirePermission } from '@/lib/auth'
+import { ZodError } from 'zod'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +16,8 @@ export async function POST(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const body = recordBirthSchema.parse(await request.json())
+    const bodyData = await request.json()
+    const body = recordBirthSchema.parse(bodyData)
 
     const results = await recordBirth(prisma, {
       breedingId: id,
@@ -31,6 +33,14 @@ export async function POST(
 
     return NextResponse.json({ created: results }, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: 'فشل في تسجيل الولادة' }, { status: 500 })
+    console.error('Birth recording error:', error)
+    
+    if (error instanceof ZodError) {
+      const messages = error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+      return NextResponse.json({ error: `بيانات غير صحيحة: ${messages}` }, { status: 400 })
+    }
+    
+    const message = error instanceof Error ? error.message : 'فشل في تسجيل الولادة'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

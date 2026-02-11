@@ -113,6 +113,13 @@ export default function FeedsPage() {
         fetch('/api/pens')
       ])
 
+      if (!typesRes.ok) {
+        const error = await typesRes.json().catch(() => ({ error: 'خطأ في جلب البيانات' }))
+        console.error('Feeds fetch error:', error)
+        alert(error.error || 'فشل في جلب الأعلاف')
+        return
+      }
+
       if (typesRes.ok) setFeedTypes(await typesRes.json())
       if (stocksRes.ok) setStocks(await stocksRes.json())
       if (schedulesRes.ok) setSchedules(await schedulesRes.json())

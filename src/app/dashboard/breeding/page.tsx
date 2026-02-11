@@ -389,7 +389,8 @@ export default function BreedingPage() {
       })
       
       if (!response.ok) {
-        throw new Error('فشل في تسجيل الولادة')
+        const errorData = await response.json().catch(() => ({ error: 'فشل في تسجيل الولادة' }))
+        throw new Error(errorData.error || 'فشل في تسجيل الولادة')
       }
       
       setQuickBirthDialogOpen(false)
@@ -398,7 +399,8 @@ export default function BreedingPage() {
       setRecords(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('خطأ في تسجيل الولادة:', error)
-      alert('حدث خطأ أثناء تسجيل الولادة. يرجى المحاولة مرة أخرى.')
+      const message = error instanceof Error ? error.message : 'حدث خطأ أثناء تسجيل الولادة. يرجى المحاولة مرة أخرى.'
+      alert(message)
     }
   }
 
