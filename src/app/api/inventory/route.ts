@@ -17,11 +17,8 @@ export async function GET(request: NextRequest) {
     if (category && category !== 'ALL') {
       where.category = category
     }
-    if (lowStock) {
-      where.currentStock = { lte: prisma.raw('minStock') }
-    }
 
-    const items = await prisma.inventoryItem.findMany({
+    let items = await prisma.inventoryItem.findMany({
       where,
       include: {
         transactions: {
@@ -31,6 +28,11 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { nameAr: 'asc' }
     })
+
+    // Filter for low stock items if requested
+    if (lowStock) {
+      items = items.filter(item => item.currentStock <= item.minStock)
+    }
 
     return NextResponse.json(items)
   } catch (error) {
