@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     // Filter for low stock items if requested
     if (lowStock) {
-      items = items.filter(item => item.currentStock <= item.minStock)
+      items = items.filter(item => item.minStock !== null && item.currentStock <= item.minStock)
     }
 
     return NextResponse.json(items)
