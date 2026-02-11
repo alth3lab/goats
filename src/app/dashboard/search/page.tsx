@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import {
   Box,
   Paper,
@@ -12,7 +12,8 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material'
 import { Search as SearchIcon } from '@mui/icons-material'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -25,7 +26,7 @@ interface SearchResult {
   href: string
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { can, loading: authLoading } = useAuth()
@@ -128,5 +129,20 @@ export default function SearchPage() {
         )}
       </Paper>
     </Box>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Stack spacing={2} alignItems="center">
+          <CircularProgress />
+          <Typography color="text.secondary">جاري التحميل...</Typography>
+        </Stack>
+      </Box>
+    }>
+      <SearchPageContent />
+    </Suspense>
   )
 }
