@@ -695,8 +695,8 @@ export default function GoatsPage() {
   return (
     <Box>
       {/* Statistics Cards */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={6} sm={4} md={2}>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid xs={6} sm={4} md={2}>
           <Card sx={{ height: '100%', bgcolor: '#e3f2fd' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
@@ -711,7 +711,7 @@ export default function GoatsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid xs={6} sm={4} md={2}>
           <Card sx={{ height: '100%', bgcolor: '#e3f2fd' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
@@ -726,7 +726,7 @@ export default function GoatsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid xs={6} sm={4} md={2}>
           <Card sx={{ height: '100%', bgcolor: '#fce4ec' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
@@ -741,7 +741,7 @@ export default function GoatsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid xs={6} sm={4} md={2}>
           <Card sx={{ height: '100%', bgcolor: stats.weaningReady > 0 ? '#fff3e0' : '#f5f5f5' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
@@ -756,7 +756,7 @@ export default function GoatsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid xs={6} sm={4} md={2}>
           <Card sx={{ height: '100%', bgcolor: '#f3e5f5' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
@@ -771,7 +771,7 @@ export default function GoatsPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={4} md={2}>
+        <Grid xs={6} sm={4} md={2}>
           <Card sx={{ height: '100%', bgcolor: '#e8f5e9' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
@@ -961,8 +961,8 @@ export default function GoatsPage() {
           </Button>
           
           {showAdvancedFilters && (
-            <Grid container spacing={2} mt={1}>
-              <Grid item xs={12} sm={6} md={2.4}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid xs={12} sm={6} md={2.4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>الجنس</InputLabel>
                   <Select
@@ -976,7 +976,7 @@ export default function GoatsPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid xs={12} sm={6} md={2.4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>الفئة العمرية</InputLabel>
                   <Select
@@ -992,7 +992,7 @@ export default function GoatsPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid xs={12} sm={6} md={2.4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>النوع</InputLabel>
                   <Select
@@ -1013,7 +1013,7 @@ export default function GoatsPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid xs={12} sm={6} md={2.4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>السلالة</InputLabel>
                   <Select
@@ -1029,7 +1029,7 @@ export default function GoatsPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid xs={12} sm={6} md={2.4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>الحظيرة</InputLabel>
                   <Select
@@ -1051,12 +1051,12 @@ export default function GoatsPage() {
 
       {/* Grid or Table View */}
       {viewMode === 'grid' ? (
-        <Grid container spacing={3} mt={1}>
+        <Grid container spacing={3} sx={{ mt: 1 }}>
           {paginatedGoats.map((goat) => {
             const age = calculateGoatAge(goat.birthDate)
             const isSelected = selectedGoatIds.indexOf(goat.id) !== -1
             return (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={goat.id}>
+              <Grid xs={12} sm={6} md={4} lg={3} key={goat.id}>
                 <Card 
                   sx={{ 
                     height: '100%', 
