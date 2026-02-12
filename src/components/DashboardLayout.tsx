@@ -18,7 +18,8 @@ import {
   Avatar,
   Stack,
   TextField,
-  InputAdornment
+  InputAdornment,
+  useMediaQuery
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -44,6 +45,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import { menuPermissions } from '@/lib/permissionMap'
+import { useTheme } from '@mui/material/styles'
 
 const drawerWidth = 260
 
@@ -93,6 +95,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { can, loading: authLoading } = useAuth()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -218,7 +222,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}
       >
-        <Toolbar>
+        <Toolbar
+          sx={{
+            gap: 1,
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+            py: { xs: 1, sm: 0 },
+            minHeight: { xs: 88, sm: 64 }
+          }}
+        >
           <IconButton
             color="inherit"
             edge="start"
@@ -232,11 +244,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 0 }}>
-            نظام إدارة الماعز والخرفان
+          <Typography
+            variant={isMobile ? 'subtitle1' : 'h6'}
+            noWrap={!isMobile}
+            component="div"
+            sx={{
+              flexGrow: { xs: 1, sm: 0 },
+              maxWidth: { xs: 'calc(100% - 56px)', sm: 'none' }
+            }}
+          >
+            {isMobile ? 'نظام الإدارة' : 'نظام إدارة الماعز والخرفان'}
           </Typography>
           {(authLoading || can('view_search')) && (
-            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <Box
+              sx={{
+                flexGrow: 1,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                width: { xs: '100%', sm: 'auto' },
+                mt: { xs: 0.5, sm: 0 }
+              }}
+            >
               <TextField
                 placeholder="بحث سريع..."
                 size="small"
@@ -245,7 +273,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') handleSearch()
                 }}
-                sx={{ width: { xs: '100%', sm: 280 }, ml: 2 }}
+                sx={{ width: { xs: '100%', sm: 280 }, ml: { xs: 0, sm: 2 } }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -270,7 +298,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: { xs: '88vw', sm: drawerWidth },
+              maxWidth: 340
+            }
           }}
         >
           {drawer}
@@ -294,7 +326,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
           bgcolor: '#f5f6fa',
-          p: 3
+          p: { xs: 1.5, sm: 3 }
         }}
       >
         <Toolbar />

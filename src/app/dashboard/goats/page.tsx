@@ -34,8 +34,10 @@ import {
   Card,
   CardContent,
   CardActions,
-  Grid
+  Grid,
+  useMediaQuery
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { calculateGoatAge } from '@/lib/ageCalculator'
 import {
   Add as AddIcon,
@@ -152,6 +154,8 @@ interface FamilyResponse {
 }
 
 export default function GoatsPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [goats, setGoats] = useState<Goat[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -847,23 +851,24 @@ export default function GoatsPage() {
          </Alert>
       )}
 
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+      <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={2} spacing={1.5}>
           <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
+            <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold" gutterBottom>
               إدارة الماعز والخرفان
             </Typography>
             <Typography variant="body2" color="text.secondary">
               إجمالي: {filteredGoats.length} حيوان
             </Typography>
           </Box>
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
               <Button
                 variant="outlined"
                 size="small"
                 onClick={exportToPDF}
                 sx={{ color: 'error.main', borderColor: 'error.main' }}
                 startIcon={<ExportIcon />}
+                fullWidth={isMobile}
               >
                 PDF
               </Button>
@@ -873,6 +878,7 @@ export default function GoatsPage() {
                 onClick={exportToExcel}
                 sx={{ color: 'success.main', borderColor: 'success.main' }}
                 startIcon={<ExportIcon />}
+                fullWidth={isMobile}
               >
                 Excel
               </Button>
@@ -881,6 +887,7 @@ export default function GoatsPage() {
                 size="small"
                 startIcon={<ListViewIcon />}
                 onClick={() => setViewMode('table')}
+                fullWidth={isMobile}
               >
                 جدول
               </Button>
@@ -889,6 +896,7 @@ export default function GoatsPage() {
                 size="small"
                 startIcon={<GridViewIcon />}
                 onClick={() => setViewMode('grid')}
+                fullWidth={isMobile}
               >
                 شبكة
               </Button>
@@ -901,6 +909,7 @@ export default function GoatsPage() {
                      loadPens()
                      setBatchDialogOpen(true)
                    }}
+                   fullWidth={isMobile}
                 >
                    نقل جماعي ({selectedGoatIds.length})
                 </Button>
@@ -910,6 +919,7 @@ export default function GoatsPage() {
                 startIcon={<AddIcon />}
                 sx={{ bgcolor: '#2e7d32' }}
                 onClick={handleOpen}
+                 fullWidth={isMobile}
             >
                 إضافة جديد
             </Button>
@@ -1314,7 +1324,7 @@ export default function GoatsPage() {
         labelRowsPerPage="عدد الصفوف"
       />
 
-      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>{editMode ? 'تعديل الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
@@ -1489,6 +1499,7 @@ export default function GoatsPage() {
         }}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         scroll="paper"
       >
         <DialogTitle>تفاصيل الماعز</DialogTitle>
@@ -1638,7 +1649,7 @@ export default function GoatsPage() {
       </Dialog>
 
       {/* Dialog تسجيل النفوق */}
-      <Dialog open={deathDialogOpen} onClose={() => setDeathDialogOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={deathDialogOpen} onClose={() => setDeathDialogOpen(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>
           <Stack direction="row" alignItems="center" spacing={1}>
             <DeathIcon color="error" />
@@ -1678,7 +1689,7 @@ export default function GoatsPage() {
       </Dialog>
 
       {/* Dialog تأكيد الحذف */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="xs" fullScreen={isMobile}>
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
@@ -1702,6 +1713,7 @@ export default function GoatsPage() {
         onClose={() => setBatchDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>نقل مجموعة من الحيوانات</DialogTitle>
         <DialogContent>

@@ -26,8 +26,10 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  IconButton
+  IconButton,
+  useMediaQuery
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   Add as AddIcon,
   Check as CheckIcon,
@@ -60,6 +62,8 @@ const typeLabels: Record<string, string> = {
 }
 
 export default function HealthPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [records, setRecords] = useState<HealthRecord[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -229,17 +233,17 @@ export default function HealthPage() {
          </Paper>
       </Stack>
 
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+      <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={2} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <HealthIcon color="error" />
-            <Typography variant="h4" fontWeight="bold">السجلات الصحية</Typography>
+            <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">السجلات الصحية</Typography>
           </Stack>
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" color="secondary" startIcon={<HealthIcon />} onClick={handleBatchOpen}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <Button variant="outlined" color="secondary" startIcon={<HealthIcon />} onClick={handleBatchOpen} fullWidth={isMobile}>
               علاج جماعي
             </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen} fullWidth={isMobile}>
               إضافة سجل
             </Button>
           </Stack>
@@ -311,7 +315,7 @@ export default function HealthPage() {
       </TableContainer>
 
       {/* Single Record Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>إضافة سجل صحي</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
@@ -391,7 +395,7 @@ export default function HealthPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>تفاصيل السجل الصحي</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {selectedRecord ? (
@@ -417,7 +421,7 @@ export default function HealthPage() {
       </Dialog>
 
       {/* Batch Record Dialog */}
-      <Dialog open={batchOpen} onClose={() => setBatchOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={batchOpen} onClose={() => setBatchOpen(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>تسجيل علاج جماعي</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>

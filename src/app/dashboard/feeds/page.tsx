@@ -32,9 +32,11 @@ import {
   InputAdornment,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  useMediaQuery
 } from '@mui/material'
 import MuiGrid from '@mui/material/Grid'
+import { useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -76,6 +78,37 @@ const SMART_FEED_GUIDE = [
   { key: 'adult_24_plus', label: 'بالغة (+24 شهر)', minMonths: 24, maxMonths: 999, kgPerHeadPerDay: 1.6 }
 ]
 
+const FEEDING_TEMPLATES = [
+  {
+    key: 'kids',
+    label: 'مواليد',
+    dailyAmount: 0.45,
+    feedingTimes: '3',
+    notes: 'قالب مواليد: كمية منخفضة موزعة على 3 وجبات.'
+  },
+  {
+    key: 'pregnant',
+    label: 'حوامل',
+    dailyAmount: 1.5,
+    feedingTimes: '2',
+    notes: 'قالب حوامل: رفع الطاقة تدريجيًا في آخر الثلث الأخير.'
+  },
+  {
+    key: 'lactating',
+    label: 'مرضعات',
+    dailyAmount: 2.1,
+    feedingTimes: '3',
+    notes: 'قالب مرضعات: تركيز أعلى للطاقة مع تقسيم 3 وجبات.'
+  },
+  {
+    key: 'fattening',
+    label: 'تسمين',
+    dailyAmount: 1.8,
+    feedingTimes: '3',
+    notes: 'قالب تسمين: توازن مركزات + علف خشن لتحقيق نمو ثابت.'
+  }
+]
+
 interface TabPanelProps {
   children?: React.ReactNode
   index: number
@@ -86,12 +119,14 @@ function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props
   return (
     <div hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: { xs: 1.5, sm: 3 } }}>{children}</Box>}
     </div>
   )
 }
 
 export default function FeedsPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [tabValue, setTabValue] = useState(0)
   const [feedTypes, setFeedTypes] = useState<any[]>([])
   const [stocks, setStocks] = useState<any[]>([])
@@ -111,6 +146,10 @@ export default function FeedsPage() {
   const [filterCategory, setFilterCategory] = useState('ALL')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [generatingMonthly, setGeneratingMonthly] = useState(false)
+  const [deletingAllSchedules, setDeletingAllSchedules] = useState(false)
+  const [feedingRecords, setFeedingRecords] = useState<any[]>([])
+  const [savingIntake, setSavingIntake] = useState(false)
 
   const [typeData, setTypeData] = useState({
     nameAr: '',
@@ -144,17 +183,27 @@ export default function FeedsPage() {
     notes: ''
   })
 
+  const [intakeData, setIntakeData] = useState({
+    penId: '',
+    feedTypeId: '',
+    date: new Date().toISOString().split('T')[0],
+    offeredQty: 0,
+    leftoverQty: 0,
+    notes: ''
+  })
+
   useEffect(() => {
     fetchData()
   }, [])
 
   const fetchData = async () => {
     try {
-      const [typesRes, stocksRes, schedulesRes, pensRes] = await Promise.all([
+      const [typesRes, stocksRes, schedulesRes, pensRes, recordsRes] = await Promise.all([
         fetch('/api/feeds'),
         fetch('/api/feeds/stock'),
         fetch('/api/feeds/schedule'),
-        fetch('/api/pens')
+        fetch('/api/pens'),
+        fetch('/api/feeding-records')
       ])
 
       if (!typesRes.ok) {
@@ -168,6 +217,7 @@ export default function FeedsPage() {
       if (stocksRes.ok) setStocks(await stocksRes.json())
       if (schedulesRes.ok) setSchedules(await schedulesRes.json())
       if (pensRes.ok) setPens(await pensRes.json())
+      if (recordsRes.ok) setFeedingRecords(await recordsRes.json())
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
@@ -181,6 +231,31 @@ export default function FeedsPage() {
 
   const getScheduleFeedingTimes = (schedule: any) => {
     return Number(schedule.feedingTimes ?? schedule.frequency ?? 0)
+  }
+
+  const parseIntakeMeta = (notes?: string | null) => {
+    if (!notes || !notes.startsWith('INTAKE|')) return null
+    const parts = notes.split('|').slice(1)
+    const data: Record<string, string> = {}
+    parts.forEach(part => {
+      const [key, value] = part.split('=')
+      if (key && value !== undefined) data[key] = value
+    })
+    return {
+      offered: Number(data.offered || 0),
+      leftover: Number(data.leftover || 0),
+      waste: Number(data.waste || 0),
+      penId: data.penId || '',
+      feedTypeId: data.feedTypeId || ''
+    }
+  }
+
+  const getIntakeUnitCost = (feedTypeId: string) => {
+    const relatedStocks = stocks.filter(stock => stock.feedTypeId === feedTypeId)
+    if (!relatedStocks.length) return 0
+    const totalQty = relatedStocks.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+    const totalValue = relatedStocks.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.cost || 0)), 0)
+    return totalQty > 0 ? (totalValue / totalQty) : 0
   }
 
   const getGoatAgeInMonths = (birthDate?: string | Date | null) => {
@@ -218,6 +293,18 @@ export default function FeedsPage() {
 
   const recommendedPerHead = smartTotals.heads > 0 ? (smartTotals.dailyAmount / smartTotals.heads) : 0
   const scheduleVsSmartDiff = Number(scheduleData.dailyAmount) - recommendedPerHead
+
+  const handleApplyFeedingTemplate = (templateKey: string) => {
+    const template = FEEDING_TEMPLATES.find(item => item.key === templateKey)
+    if (!template) return
+
+    setScheduleData(prev => ({
+      ...prev,
+      dailyAmount: template.dailyAmount,
+      feedingTimes: template.feedingTimes,
+      notes: prev.notes?.trim() ? prev.notes : template.notes
+    }))
+  }
 
   const getSmartPerHeadForGoats = (goats: any[]) => {
     if (!goats || goats.length === 0) return 0
@@ -278,7 +365,12 @@ export default function FeedsPage() {
     .filter(schedule => schedule.isActive)
     .map(schedule => {
       const pen = schedule.pen || pens.find(p => p.id === schedule.penId)
-      const headsCount = Number(schedule?.pen?._count?.goats ?? pen?._count?.goats ?? pen?.currentCount ?? 0)
+      // Use active goats count: prefer _count.goats (from API with ACTIVE filter), fallback to currentCount, then manual count
+      let headsCount = Number(schedule?.pen?._count?.goats ?? pen?._count?.goats ?? pen?.currentCount ?? 0)
+      // If pen data is available with goats array, count ACTIVE goats only
+      if (headsCount === 0 && pen?.goats) {
+        headsCount = pen.goats.filter((g: any) => !g.status || g.status === 'ACTIVE').length
+      }
       const calibrated = adjustedPerHeadByScheduleId[schedule.id]
       const perHeadDailyAmount = calibrated?.perHead ?? getScheduleDailyAmount(schedule)
       const dailyNeed = headsCount > 0 ? (perHeadDailyAmount * headsCount) : perHeadDailyAmount
@@ -343,11 +435,15 @@ export default function FeedsPage() {
     })
     .sort((a: any, b: any) => b.recommendedPurchase - a.recommendedPurchase)
 
-  const uniqueActivePenIds = Array.from(new Set(activeSchedulesWithContext.map(schedule => schedule.penId).filter(Boolean)))
-  const totalHeadsInActivePens = uniqueActivePenIds.reduce((sum, penId) => {
-    const firstScheduleForPen = activeSchedulesWithContext.find(schedule => schedule.penId === penId)
-    return sum + Number(firstScheduleForPen?.headsCount || 0)
-  }, 0)
+  // Calculate unique pens and their heads (avoid duplication)
+  const penHeadsMap = new Map<string, number>()
+  activeSchedulesWithContext.forEach(schedule => {
+    if (schedule.penId && !penHeadsMap.has(schedule.penId)) {
+      penHeadsMap.set(schedule.penId, schedule.headsCount)
+    }
+  })
+  const uniqueActivePenIds = Array.from(penHeadsMap.keys())
+  const totalHeadsInActivePens = Array.from(penHeadsMap.values()).reduce((sum, count) => sum + count, 0)
 
   const monthlyPlanSummary = {
     activePens: uniqueActivePenIds.length,
@@ -357,6 +453,36 @@ export default function FeedsPage() {
     totalRecommendedPurchase: monthlyPlanning.reduce((sum: number, item: any) => sum + item.recommendedPurchase, 0),
     criticalItems: monthlyPlanning.filter((item: any) => item.stockCoverageDays < 14 || item.recommendedPurchase > 0).length
   }
+
+  const groupedSchedulesByPen = Object.values(
+    schedules.reduce((acc: Record<string, any>, schedule: any) => {
+      const penId = schedule.penId || schedule.pen?.id || 'unknown'
+
+      if (!acc[penId]) {
+        acc[penId] = {
+          penId,
+          penName: schedule.pen?.nameAr || 'غير محدد',
+          startDate: schedule.startDate,
+          isActive: schedule.isActive,
+          foods: [] as any[]
+        }
+      }
+
+      const current = acc[penId]
+      if (new Date(schedule.startDate) > new Date(current.startDate)) {
+        current.startDate = schedule.startDate
+      }
+      current.isActive = current.isActive || schedule.isActive
+      current.foods.push({
+        id: schedule.id,
+        name: schedule.feedType?.nameAr || 'نوع غير معروف',
+        dailyAmount: getScheduleDailyAmount(schedule),
+        feedingTimes: getScheduleFeedingTimes(schedule)
+      })
+
+      return acc
+    }, {})
+  )
 
   // Calculate statistics
   const stats = {
@@ -374,14 +500,12 @@ export default function FeedsPage() {
       return new Date(stock.expiryDate) < new Date()
     }).length,
     activeSchedules: schedules.filter(s => s.isActive).length,
-    dailyCost: schedules
-      .filter(s => s.isActive)
-      .reduce((sum, schedule) => {
-        const feedType = feedTypes.find(f => f.id === schedule.feedTypeId)
-        const stock = stocks.find(s => s.feedTypeId === schedule.feedTypeId)
-        const unitPrice = stock?.cost || 0
-        return sum + (schedule.dailyAmount * unitPrice)
-      }, 0),
+    dailyCost: activeSchedulesWithContext.reduce((sum, schedule) => {
+      const stock = stocks.find(s => s.feedTypeId === schedule.feedTypeId)
+      const unitPrice = stock?.cost || 0
+      // dailyNeed already includes headsCount calculation
+      return sum + (schedule.dailyNeed * unitPrice)
+    }, 0),
     monthlyCost: 0
   }
   stats.monthlyCost = stats.dailyCost * 30
@@ -685,6 +809,144 @@ export default function FeedsPage() {
     }
   }
 
+  const handleGenerateMonthlySchedules = async () => {
+    try {
+      setGeneratingMonthly(true)
+      const res = await fetch('/api/feeds/schedule/monthly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replaceExisting: true })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.error || 'فشل في إنشاء الجداول الشهرية الذكية')
+        return
+      }
+
+      fetchData()
+      alert(`تم حذف ${data?.deletedCount || 0} جدول سابق وإنشاء ${data?.createdSchedules || 0} جدول ذكي (${data?.processedPens || 0} حظيرة)`)
+    } catch (error) {
+      console.error('Failed to generate monthly schedules:', error)
+      alert('فشل في إنشاء الجداول الشهرية الذكية')
+    } finally {
+      setGeneratingMonthly(false)
+    }
+  }
+
+  const handleDeleteAllSchedules = async () => {
+    const confirmed = window.confirm('سيتم حذف جميع جداول التغذية الحالية نهائيًا. هل تريد المتابعة؟')
+    if (!confirmed) return
+
+    try {
+      setDeletingAllSchedules(true)
+      const res = await fetch('/api/feeds/schedule', {
+        method: 'DELETE'
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.error || 'فشل في حذف جميع الجداول')
+        return
+      }
+
+      fetchData()
+      alert(`تم حذف ${data?.deletedCount || 0} جدول تغذية`) 
+    } catch (error) {
+      console.error('Failed to delete all schedules:', error)
+      alert('فشل في حذف جميع الجداول')
+    } finally {
+      setDeletingAllSchedules(false)
+    }
+  }
+
+  const handleSaveIntakeRecord = async () => {
+    if (!intakeData.penId || !intakeData.feedTypeId) {
+      alert('يرجى اختيار الحظيرة ونوع العلف')
+      return
+    }
+
+    const offered = Number(intakeData.offeredQty || 0)
+    const leftover = Number(intakeData.leftoverQty || 0)
+    if (offered <= 0) {
+      alert('الكمية المقدمة يجب أن تكون أكبر من صفر')
+      return
+    }
+    if (leftover < 0 || leftover > offered) {
+      alert('الكمية المتبقية غير صحيحة')
+      return
+    }
+
+    const netConsumed = offered - leftover
+    const wastePct = offered > 0 ? (leftover / offered) * 100 : 0
+    const selectedFeedType = feedTypes.find(type => type.id === intakeData.feedTypeId)
+    const unitCost = getIntakeUnitCost(intakeData.feedTypeId)
+    const totalCost = unitCost * netConsumed
+    const encodedNotes = `INTAKE|offered=${offered}|leftover=${leftover}|waste=${wastePct.toFixed(2)}|penId=${intakeData.penId}|feedTypeId=${intakeData.feedTypeId}|userNotes=${intakeData.notes || ''}`
+
+    try {
+      setSavingIntake(true)
+      const res = await fetch('/api/feeding-records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          goatId: null,
+          date: intakeData.date,
+          feedType: selectedFeedType?.nameAr || 'غير محدد',
+          quantity: Number(netConsumed.toFixed(3)),
+          unit: 'كجم',
+          cost: Number(totalCost.toFixed(2)),
+          notes: encodedNotes
+        })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.error || 'فشل في حفظ سجل الاستهلاك')
+        return
+      }
+
+      fetchData()
+      setIntakeData({
+        penId: '',
+        feedTypeId: '',
+        date: new Date().toISOString().split('T')[0],
+        offeredQty: 0,
+        leftoverQty: 0,
+        notes: ''
+      })
+      alert('تم حفظ الاستهلاك الفعلي بنجاح')
+    } catch (error) {
+      console.error('Failed to save intake record:', error)
+      alert('فشل في حفظ سجل الاستهلاك')
+    } finally {
+      setSavingIntake(false)
+    }
+  }
+
+  const intakeRecords = feedingRecords
+    .map(record => ({ ...record, meta: parseIntakeMeta(record.notes) }))
+    .filter(record => record.meta)
+
+  const intakeSummary = {
+    offered: intakeRecords.reduce((sum, record) => sum + Number(record.meta?.offered || 0), 0),
+    consumed: intakeRecords.reduce((sum, record) => sum + Number(record.quantity || 0), 0),
+    leftover: intakeRecords.reduce((sum, record) => sum + Number(record.meta?.leftover || 0), 0),
+    totalCost: intakeRecords.reduce((sum, record) => sum + Number(record.cost || 0), 0)
+  }
+
+  // Calculate active heads total (avoid counting inactive goats)
+  const activeHeadsTotal = pens.reduce((sum, pen) => {
+    let count = Number(pen._count?.goats || pen.currentCount || 0)
+    // If pen has goats array, count ACTIVE only
+    if (count === 0 && pen.goats) {
+      count = pen.goats.filter((g: any) => !g.status || g.status === 'ACTIVE').length
+    }
+    return sum + count
+  }, 0)
+  const costPerHead = activeHeadsTotal > 0 ? (intakeSummary.totalCost / activeHeadsTotal) : 0
+  const wastePercent = intakeSummary.offered > 0 ? (intakeSummary.leftover / intakeSummary.offered) * 100 : 0
+
   const expiringStocks = stocks.filter(stock => {
     if (!stock.expiryDate) return false
     const daysUntilExpiry = Math.ceil((new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
@@ -694,15 +956,16 @@ export default function FeedsPage() {
   return (
     <Box>
       {/* Header with Export Buttons */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4">إدارة الأعلاف</Typography>
-        <Stack direction="row" spacing={2}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={3} gap={1.5}>
+        <Typography variant={isMobile ? 'h5' : 'h4'}>إدارة الأعلاف</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <Button
             variant="outlined"
             color="error"
             startIcon={<PictureAsPdfIcon />}
             onClick={exportToPDF}
             size="small"
+            fullWidth={isMobile}
           >
             تصدير PDF
           </Button>
@@ -712,14 +975,27 @@ export default function FeedsPage() {
             startIcon={<DescriptionIcon />}
             onClick={exportToExcel}
             size="small"
+            fullWidth={isMobile}
           >
             تصدير Excel
           </Button>
         </Stack>
       </Stack>
 
-      {/* Statistics Dashboard */}
-      <Grid container spacing={2} mb={3}>
+      <Paper>
+        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
+          <Tab label="نظرة عامة" icon={<TrendingUpIcon />} iconPosition="start" />
+          <Tab label="أنواع الأعلاف" icon={<GrassIcon />} iconPosition="start" />
+          <Tab label="المخزون" icon={<InventoryIcon />} iconPosition="start" />
+          <Tab label="الجداول" icon={<ScheduleIcon />} iconPosition="start" />
+          <Tab label="التخطيط الذكي" icon={<InfoIcon />} iconPosition="start" />
+          <Tab label="الاستهلاك الفعلي" icon={<AttachMoneyIcon />} iconPosition="start" />
+        </Tabs>
+
+        {/* Tab 0: نظرة عامة */}
+        <TabPanel value={tabValue} index={0}>
+          <Typography variant="h5" mb={3}>📊 الإحصائيات العامة</Typography>
+          <Grid container spacing={2} mb={3}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -863,15 +1139,10 @@ export default function FeedsPage() {
           </Stack>
         </Paper>
       )}
+        </TabPanel>
 
-      <Paper>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
-          <Tab label="أنواع الأعلاف" icon={<GrassIcon />} iconPosition="start" />
-          <Tab label="المخزون" icon={<InventoryIcon />} iconPosition="start" />
-          <Tab label="جداول التغذية" icon={<ScheduleIcon />} iconPosition="start" />
-        </Tabs>
-
-        <TabPanel value={tabValue} index={0}>
+        {/* Tab 1: أنواع الأعلاف */}
+        <TabPanel value={tabValue} index={1}>
           <Box sx={{ mb: 2 }}>
             <Button
               variant="contained"
@@ -946,7 +1217,8 @@ export default function FeedsPage() {
           </Grid>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
+        {/* Tab 2: المخزون */}
+        <TabPanel value={tabValue} index={2}>
           {/* Filters and Actions */}
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3} justifyContent="space-between">
             <Stack direction="row" spacing={2} flex={1}>
@@ -1247,7 +1519,77 @@ export default function FeedsPage() {
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        {/* Tab 3: الجداول */}
+        <TabPanel value={tabValue} index={3}>
+          <Typography variant="h5" mb={2}>📋 جداول التغذية</Typography>
+          <Box sx={{ mb: 2 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setScheduleDialogOpen(true)}
+              >
+                إضافة جدول تغذية
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleGenerateMonthlySchedules}
+                disabled={generatingMonthly || deletingAllSchedules}
+              >
+                {generatingMonthly ? 'جاري الإنشاء...' : 'إنشاء جداول شهرية ذكية'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleDeleteAllSchedules}
+                disabled={deletingAllSchedules || generatingMonthly}
+              >
+                {deletingAllSchedules ? 'جاري الحذف...' : 'حذف كل الجداول'}
+              </Button>
+            </Stack>
+          </Box>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>الحظيرة</TableCell>
+                  <TableCell>الأطعمة المقترحة</TableCell>
+                  <TableCell>تاريخ البدء</TableCell>
+                  <TableCell>الحالة</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {groupedSchedulesByPen.map((group: any) => (
+                  <TableRow key={group.penId}>
+                    <TableCell>{group.penName}</TableCell>
+                    <TableCell>
+                      <Stack spacing={0.5}>
+                        {group.foods.map((food: any) => (
+                          <Typography key={food.id} variant="body2">
+                            {food.name}: {food.dailyAmount} كجم / {food.feedingTimes} وجبات
+                          </Typography>
+                        ))}
+                      </Stack>
+                    </TableCell>
+                    <TableCell>{new Date(group.startDate).toLocaleDateString('ar-AE')}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={group.isActive ? 'نشط' : 'متوقف'}
+                        color={group.isActive ? 'success' : 'default'}
+                        size="small"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        {/* Tab 4: التخطيط الذكي */}
+        <TabPanel value={tabValue} index={4}>
+          <Typography variant="h5" mb={3}>🤖 المساعد الذكي</Typography>
           <Grid container spacing={2} mb={3}>
             <Grid item xs={12} sm={6} md={3}>
               <Card>
@@ -1345,48 +1687,104 @@ export default function FeedsPage() {
               </Table>
             </TableContainer>
           </Paper>
+        </TabPanel>
 
-          <Box sx={{ mb: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setScheduleDialogOpen(true)}
-            >
-              إضافة جدول تغذية
-            </Button>
-          </Box>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>الحظيرة</TableCell>
-                  <TableCell>نوع العلف</TableCell>
-                  <TableCell>الكمية اليومية</TableCell>
-                  <TableCell>عدد الوجبات</TableCell>
-                  <TableCell>تاريخ البدء</TableCell>
-                  <TableCell>الحالة</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {schedules.map((schedule) => (
-                  <TableRow key={schedule.id}>
-                    <TableCell>{schedule.pen?.nameAr}</TableCell>
-                    <TableCell>{schedule.feedType?.nameAr}</TableCell>
-                    <TableCell>{getScheduleDailyAmount(schedule)} كجم</TableCell>
-                    <TableCell>{getScheduleFeedingTimes(schedule)} مرة</TableCell>
-                    <TableCell>{new Date(schedule.startDate).toLocaleDateString('ar-AE')}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={schedule.isActive ? 'نشط' : 'متوقف'}
-                        color={schedule.isActive ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+        {/* Tab 5: الاستهلاك الفعلي */}
+        <TabPanel value={tabValue} index={5}>
+          <Typography variant="h5" mb={3}>📊 تسجيل الاستهلاك الفعلي</Typography>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="الحظيرة"
+                  value={intakeData.penId}
+                  onChange={(e) => setIntakeData({ ...intakeData, penId: e.target.value })}
+                >
+                  {pens.map(pen => (
+                    <MenuItem key={pen.id} value={pen.id}>{pen.nameAr}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="نوع العلف"
+                  value={intakeData.feedTypeId}
+                  onChange={(e) => setIntakeData({ ...intakeData, feedTypeId: e.target.value })}
+                >
+                  {feedTypes.map(type => (
+                    <MenuItem key={type.id} value={type.id}>{type.nameAr}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="التاريخ"
+                  InputLabelProps={{ shrink: true }}
+                  value={intakeData.date}
+                  onChange={(e) => setIntakeData({ ...intakeData, date: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="الكمية المقدمة"
+                  value={intakeData.offeredQty}
+                  onChange={(e) => setIntakeData({ ...intakeData, offeredQty: Number(e.target.value) })}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="المتبقي/الهدر"
+                  value={intakeData.leftoverQty}
+                  onChange={(e) => setIntakeData({ ...intakeData, leftoverQty: Number(e.target.value) })}
+                />
+              </Grid>
+              <Grid item xs={12} md={9}>
+                <TextField
+                  fullWidth
+                  label="ملاحظات"
+                  value={intakeData.notes}
+                  onChange={(e) => setIntakeData({ ...intakeData, notes: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleSaveIntakeRecord}
+                  disabled={savingIntake}
+                  sx={{ height: '56px' }}
+                >
+                  {savingIntake ? 'جاري الحفظ...' : 'حفظ الاستهلاك الفعلي'}
+                </Button>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <Typography variant="h6" mb={2}>📈 ملخص الاستهلاك</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent><Typography variant="body2" color="text.secondary">المقدم</Typography><Typography variant="h6">{intakeSummary.offered.toFixed(2)} كجم</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent><Typography variant="body2" color="text.secondary">المستهلك فعليًا</Typography><Typography variant="h6">{intakeSummary.consumed.toFixed(2)} كجم</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent><Typography variant="body2" color="text.secondary">نسبة الهدر</Typography><Typography variant="h6" color={wastePercent > 10 ? 'warning.main' : 'success.main'}>{wastePercent.toFixed(1)}%</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card><CardContent><Typography variant="body2" color="text.secondary">تكلفة الرأس</Typography><Typography variant="h6">{costPerHead.toFixed(2)} درهم</Typography></CardContent></Card>
+            </Grid>
+          </Grid>
         </TabPanel>
       </Paper>
 
@@ -1394,7 +1792,7 @@ export default function FeedsPage() {
       <Dialog open={typeDialogOpen} onClose={() => {
         setTypeDialogOpen(false)
         setSelectedType(null)
-      }} maxWidth="md" fullWidth>
+      }} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>{selectedType ? 'تعديل نوع العلف' : 'إضافة نوع علف جديد'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -1479,7 +1877,7 @@ export default function FeedsPage() {
       <Dialog open={stockDialogOpen} onClose={() => {
         setStockDialogOpen(false)
         setSelectedStock(null)
-      }} maxWidth="md" fullWidth>
+      }} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>{selectedStock ? 'تعديل المخزون' : 'إضافة مخزون علف'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -1572,7 +1970,7 @@ export default function FeedsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm">
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
@@ -1598,7 +1996,7 @@ export default function FeedsPage() {
       </Dialog>
 
       {/* Schedule Dialog */}
-      <Dialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>إضافة جدول تغذية</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -1627,6 +2025,23 @@ export default function FeedsPage() {
                   <MenuItem key={type.id} value={type.id}>{type.nameAr}</MenuItem>
                 ))}
               </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle2" mb={1}>قوالب تغذية جاهزة</Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
+                  {FEEDING_TEMPLATES.map(template => (
+                    <Button
+                      key={template.key}
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleApplyFeedingTemplate(template.key)}
+                    >
+                      {template.label} ({template.dailyAmount} كجم / {template.feedingTimes} وجبات)
+                    </Button>
+                  ))}
+                </Stack>
+              </Paper>
             </Grid>
             {scheduleData.penId && (
               <Grid item xs={12}>

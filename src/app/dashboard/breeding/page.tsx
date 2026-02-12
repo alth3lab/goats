@@ -31,8 +31,10 @@ import {
   CardContent,
   Menu,
   Checkbox,
-  Tooltip
+  Tooltip,
+  useMediaQuery
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   Add as AddIcon,
   FavoriteBorder as BreedingIcon,
@@ -82,6 +84,8 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function BreedingPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [records, setRecords] = useState<BreedingRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -569,22 +573,23 @@ export default function BreedingPage() {
       </Grid>
 
       {/* Header with title and actions */}
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <BreedingIcon sx={{ color: '#e91e63', fontSize: 32 }} />
-            <Typography variant="h4" fontWeight="bold">سجلات التكاثر</Typography>
+            <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">سجلات التكاثر</Typography>
           </Stack>
-          <Stack direction="row" spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <Button 
               variant="outlined" 
               startIcon={<ExportIcon />} 
               onClick={handleExport}
               disabled={filteredRecords.length === 0}
+              fullWidth={isMobile}
             >
               تصدير
             </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen} fullWidth={isMobile}>
               إضافة سجل
             </Button>
           </Stack>
@@ -814,7 +819,7 @@ export default function BreedingPage() {
         </Table>
       </TableContainer>
 
-      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>{editMode ? 'تعديل سجل التكاثر' : 'إضافة سجل تكاثر'}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
@@ -902,7 +907,7 @@ export default function BreedingPage() {
       </Dialog>
 
       {/* Dialog عرض التفاصيل */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>تفاصيل سجل التكاثر</DialogTitle>
         <DialogContent>
           {selectedRecord && (
@@ -951,7 +956,7 @@ export default function BreedingPage() {
       </Dialog>
 
       {/* Dialog تأكيد الحذف */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="xs" fullScreen={isMobile}>
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
@@ -970,7 +975,7 @@ export default function BreedingPage() {
       </Dialog>
 
       {/* Quick Birth Dialog */}
-      <Dialog open={quickBirthDialogOpen} onClose={() => setQuickBirthDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={quickBirthDialogOpen} onClose={() => setQuickBirthDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle sx={{ bgcolor: '#ff9800', color: 'white' }}>
           <Stack direction="row" spacing={1} alignItems="center">
             <BirthIcon />

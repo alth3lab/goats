@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requirePermission } from '@/lib/auth'
+import { requirePermission, getUserIdFromRequest } from '@/lib/auth'
+import { logActivity } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
 
@@ -66,5 +67,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(schedule, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة الجدول' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'add_feed')
+    if (auth.response) return auth.response
+
+    const userId = getUserIdFromRequest(request)
+    const deleted = await prisma.feedingSchedule.deleteMany({})
+
+    await logActivity({
+      userId: userId || undefined,
+      action: 'DELETE',
+      entity: 'FeedingSchedule',
+      entityId: 'all-schedules',
+      description: `حذف جميع جداول التغذية (${deleted.count})`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
+    })
+
+    return NextResponse.json({
+      message: 'تم حذف جميع جداول التغذية بنجاح',
+      deletedCount: deleted.count
+    })
+  } catch (error) {
+    return NextResponse.json({ error: 'فشل في حذف جميع الجداول' }, { status: 500 })
   }
 }
