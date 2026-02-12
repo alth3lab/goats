@@ -47,23 +47,44 @@ import { menuPermissions } from '@/lib/permissionMap'
 
 const drawerWidth = 260
 
-const menuItems = [
-  { text: 'لوحة التحكم', icon: <DashboardIcon />, href: '/dashboard' },
-  { text: 'بحث موحّد', icon: <SearchIcon />, href: '/dashboard/search' },
-  { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
-  { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
-  { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
-  { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
-  { text: 'المبيعات', icon: <SalesIcon />, href: '/dashboard/sales' },
-  { text: 'المخزون', icon: <InventoryIcon />, href: '/dashboard/inventory' },
-  { text: 'الأعلاف', icon: <FeedsIcon />, href: '/dashboard/feeds' },
-  { text: 'التقويم', icon: <CalendarIcon />, href: '/dashboard/calendar' },
-  { text: 'الأنواع والسلالات', icon: <TypesIcon />, href: '/dashboard/types' },
-  { text: 'المستخدمين والصلاحيات', icon: <UsersIcon />, href: '/dashboard/users' },
-  { text: 'المصروفات', icon: <ExpensesIcon />, href: '/dashboard/expenses' },
-  { text: 'التقارير', icon: <ReportsIcon />, href: '/dashboard/reports' },
-  { text: 'سجل النشاطات', icon: <HistoryIcon />, href: '/dashboard/activities' },
-  { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' }
+// تعريف المجموعات
+const menuGroups = [
+  {
+    title: 'عام',
+    items: [
+      { text: 'لوحة التحكم', icon: <DashboardIcon />, href: '/dashboard' },
+      { text: 'بحث موحّد', icon: <SearchIcon />, href: '/dashboard/search' },
+      { text: 'التقويم', icon: <CalendarIcon />, href: '/dashboard/calendar' },
+    ]
+  },
+  {
+    title: 'القطيع والإنتاج',
+    items: [
+      { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
+      { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
+      { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
+      { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
+    ]
+  },
+  {
+    title: 'الموارد والمالية',
+    items: [
+      { text: 'المخزون', icon: <InventoryIcon />, href: '/dashboard/inventory' },
+      { text: 'الأعلاف', icon: <FeedsIcon />, href: '/dashboard/feeds' },
+      { text: 'المبيعات', icon: <SalesIcon />, href: '/dashboard/sales' },
+      { text: 'المصروفات', icon: <ExpensesIcon />, href: '/dashboard/expenses' },
+    ]
+  },
+  {
+    title: 'النظام والتقارير',
+    items: [
+      { text: 'التقارير', icon: <ReportsIcon />, href: '/dashboard/reports' },
+      { text: 'سجل النشاطات', icon: <HistoryIcon />, href: '/dashboard/activities' },
+      { text: 'المستخدمين', icon: <UsersIcon />, href: '/dashboard/users' },
+      { text: 'الأنواع والسلالات', icon: <TypesIcon />, href: '/dashboard/types' },
+      { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' }
+    ]
+  }
 ]
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -94,7 +115,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       bgcolor: '#1e1e2f', 
       color: 'white',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      overflowY: 'auto',
+      overflowX: 'hidden'
     }}>
       <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -110,30 +133,56 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Stack>
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-      <List sx={{ px: 1, flex: 1, overflow: 'auto' }}>
-        {menuItems
-          .filter((item) => authLoading || can(menuPermissions[item.href]))
-          .map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-            <ListItemButton
-              component={Link}
-              href={item.href}
-              sx={{
-                borderRadius: 2,
-                color: 'white',
-                bgcolor: pathname === item.href ? 'rgba(255,255,255,0.15)' : 'transparent',
-                '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.1)'
-                }
-              }}
-            >
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+      <List sx={{ px: 1, flexGrow: 1 }}>
+        {menuGroups.map((group, index) => {
+          const filteredItems = group.items.filter(
+            (item) => authLoading || can(menuPermissions[item.href])
+          )
+
+          if (filteredItems.length === 0) return null
+
+          return (
+            <Box key={group.title} sx={{ mb: 2 }}>
+              {index > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 1 }} />}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255,255,255,0.5)',
+                  px: 2,
+                  py: 1,
+                  display: 'block',
+                  fontWeight: 'bold',
+                  fontSize: '0.75rem'
+                }}
+              >
+                {group.title}
+              </Typography>
+              {filteredItems.map((item) => (
+                <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    component={Link}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    sx={{
+                      borderRadius: 2,
+                      color: 'white',
+                      bgcolor: pathname === item.href ? 'rgba(255,255,255,0.15)' : 'transparent',
+                      borderRight: pathname === item.href ? '4px solid #4caf50' : '4px solid transparent',
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.1)'
+                      }
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={item.text} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </Box>
+          )
+        })}
       </List>
       <Box sx={{ p: 2 }}>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }} />
@@ -163,7 +212,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         position="fixed"
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mr: { sm: `${drawerWidth}px` },
+          ml: { sm: `${drawerWidth}px` },
           bgcolor: 'white',
           color: 'text.primary',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -238,7 +287,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           flexGrow: 1,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mr: { sm: `${drawerWidth}px` },
           minHeight: '100vh',
           bgcolor: '#f5f6fa',
           p: 3
