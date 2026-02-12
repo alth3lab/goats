@@ -223,11 +223,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             color="inherit"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ 
+              mr: 2, 
+              display: { sm: 'none' },
+              bgcolor: 'rgba(0,0,0,0.04)',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.08)' }
+            }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 0 }}>
             نظام إدارة الماعز والخرفان
           </Typography>
           {(authLoading || can('view_search')) && (
