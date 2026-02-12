@@ -49,7 +49,6 @@ import {
   TrendingUp as TrendingUpIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import * as XLSX from 'xlsx'
@@ -108,7 +107,6 @@ export default function PensPage() {
   const [selectedGoatsForBulk, setSelectedGoatsForBulk] = useState<Set<string>>(new Set())
   const [bulkTransferDialogOpen, setBulkTransferDialogOpen] = useState(false)
   const [bulkTargetPenId, setBulkTargetPenId] = useState('')
-  const [showCharts, setShowCharts] = useState(true)
   
   const [form, setForm] = useState({
     name: '',
@@ -634,93 +632,6 @@ export default function PensPage() {
           </Stack>
         </Paper>
       )}
-
-      {/* Charts Section */}
-      <Box mb={4}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" fontWeight="bold">
-            التحليل البياني
-          </Typography>
-          <Button
-            size="small"
-            onClick={() => setShowCharts(!showCharts)}
-          >
-            {showCharts ? 'إخفاء' : 'عرض'}
-          </Button>
-        </Stack>
-        
-        {showCharts && (
-          <Grid container spacing={3}>
-            {/* Pie Chart - Distribution by Type */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card>
-                <CardContent>
-                  <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
-                    توزيع الحيوانات حسب نوع الحظيرة
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: '#2196f3' },
-                          { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: '#f44336' },
-                          { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: '#4caf50' },
-                          { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: '#ff9800' }
-                        ].filter(item => item.value > 0)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {[
-                          { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: '#2196f3' },
-                          { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: '#f44336' },
-                          { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: '#4caf50' },
-                          { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: '#ff9800' }
-                        ].filter(item => item.value > 0).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Bar Chart - Capacity vs Actual */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card>
-                <CardContent>
-                  <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
-                    السعة مقابل العدد الفعلي
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={filteredPens.slice(0, 10).map(pen => ({
-                        name: pen.nameAr,
-                        السعة: pen.capacity || 0,
-                        'العدد الفعلي': pen._count.goats
-                      }))}
-                    >
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="السعة" fill="#8884d8" />
-                      <Bar dataKey="العدد الفعلي" fill="#82ca9d" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
-      </Box>
 
       {/* Search and Filter */}
       <Paper sx={{ p: 2, mb: 3 }}>

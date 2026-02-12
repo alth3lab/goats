@@ -25,14 +25,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'manage_feeds')
+    const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
 
     const body = await request.json()
     const userId = getUserIdFromRequest(request)
 
+    // Convert field names from frontend to database schema
+    const createData: any = {
+      feedTypeId: body.feedTypeId,
+      quantity: parseFloat(body.quantity),
+      unit: body.unit,
+      cost: body.unitPrice ? parseFloat(body.unitPrice) : null,
+      purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : new Date(),
+      expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
+      supplier: body.supplier || null,
+      notes: body.notes || null
+    }
+
     const stock = await prisma.feedStock.create({
-      data: body,
+      data: createData,
       include: { feedType: true }
     })
 

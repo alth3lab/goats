@@ -43,8 +43,21 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
+    
+    // Convert field names from frontend to database schema
+    const createData: any = {
+      name: body.nameEn || body.nameAr, // Use nameEn as name field
+      nameAr: body.nameAr,
+      category: body.category,
+      protein: body.protein ? parseFloat(body.protein) : null,
+      energy: body.energy ? parseFloat(body.energy) : null,
+      unitPrice: body.unitPrice ? parseFloat(body.unitPrice) : null,
+      supplier: body.supplier || null,
+      notes: body.description || body.notes || null
+    }
+
     const feedType = await prisma.feedType.create({
-      data: body
+      data: createData
     })
 
     return NextResponse.json(feedType, { status: 201 })

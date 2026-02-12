@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         feedType: true,
-        pen: true
+        pen: {
+          include: {
+            _count: {
+              select: { goats: true }
+            }
+          }
+        }
       },
       orderBy: { startDate: 'desc' }
     })
@@ -34,12 +40,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'manage_feeds')
+    const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
 
     const body = await request.json()
+    const createData = {
+      feedTypeId: body.feedTypeId,
+      penId: body.penId || null,
+      quantity: Number(body.dailyAmount ?? body.quantity ?? 0),
+      frequency: Number(body.feedingTimes ?? body.frequency ?? 2),
+      startDate: body.startDate ? new Date(body.startDate) : new Date(),
+      endDate: body.endDate ? new Date(body.endDate) : null,
+      isActive: body.isActive !== false,
+      notes: body.notes || null
+    }
+
     const schedule = await prisma.feedingSchedule.create({
-      data: body,
+      data: createData,
       include: {
         feedType: true,
         pen: true

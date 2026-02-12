@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
         },
         goats: {
           select: {
-            gender: true
+            gender: true,
+            birthDate: true,
+            status: true,
+            weight: true
           }
         }
       },
