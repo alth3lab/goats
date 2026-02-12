@@ -25,6 +25,7 @@ import {
   HomeWork as PenIcon,
   ReportProblem as DeathIcon
 } from '@mui/icons-material'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
@@ -51,11 +52,25 @@ interface AlertItem {
   date: string
 }
 
+interface Pen {
+  id: string
+  name: string
+  nameAr: string
+  type: string
+  capacity: number | null
+  notes: string | null
+  _count: {
+    goats: number
+  }
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState(true)
+  const [pens, setPens] = useState<Pen[]>([])
+  const [showCharts, setShowCharts] = useState(true)
 
   useEffect(() => {
     fetch('/api/stats')
@@ -73,6 +88,13 @@ export default function DashboardPage() {
         setLoadingAlerts(false)
       })
       .catch(() => setLoadingAlerts(false))
+
+    fetch('/api/pens')
+      .then(res => res.json())
+      .then(data => {
+        setPens(Array.isArray(data) ? data : [])
+      })
+      .catch(() => setPens([]))
   }, [])
 
   const dashboardCards = [
@@ -245,6 +267,136 @@ export default function DashboardPage() {
           </Grid>
         </Grid>
       )}
+
+          {/* Charts Section */}
+          {pens.length > 0 && (
+            <Box mb={4}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6" fontWeight="bold">
+                  التحليل البياني
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setShowCharts(!showCharts)}
+                >
+                  {showCharts ? 'إخفاء' : 'عرض'}
+                </Button>
+              </Stack>
+              
+              {showCharts && (
+                <Grid container spacing={3}>
+                  {/* Pie Chart - Distribution by Type */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
+                          توزيع الحيوانات حسب نوع الحظيرة
+                        </Typography>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: '#2196f3' },
+                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: '#f44336' },
+                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: '#4caf50' },
+                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: '#ff9800' }
+                              ].filter(item => item.value > 0)}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {[
+                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: '#2196f3' },
+                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: '#f44336' },
+                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: '#4caf50' },
+                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: '#ff9800' }
+                              ].filter(item => item.value > 0).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Bar Chart - Gender Distribution */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
+                          توزيع الذكور والإناث
+                        </Typography>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: 'ذكور', value: stats?.maleGoats || 0, color: '#2196f3' },
+                                { name: 'إناث', value: stats?.femaleGoats || 0, color: '#e91e63' }
+                              ].filter(item => item.value > 0)}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, value, percent }) => `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {[
+                                { name: 'ذكور', value: stats?.maleGoats || 0, color: '#2196f3' },
+                                { name: 'إناث', value: stats?.femaleGoats || 0, color: '#e91e63' }
+                              ].filter(item => item.value > 0).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Bar Chart - Top 10 Pens */}
+                  <Grid size={{ xs: 12 }}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
+                          أكثر 10 حظائر من حيث عدد الحيوانات
+                        </Typography>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart
+                            data={[...pens]
+                              .sort((a, b) => b._count.goats - a._count.goats)
+                              .slice(0, 10)
+                              .map(pen => ({
+                                name: pen.nameAr,
+                                'عدد الحيوانات': pen._count.goats,
+                                'السعة': pen.capacity || 0
+                              }))}
+                          >
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                            <YAxis />
+                            <RechartsTooltip />
+                            <Legend />
+                            <Bar dataKey="عدد الحيوانات" fill="#82ca9d" />
+                            <Bar dataKey="السعة" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+              )}
+            </Box>
+          )}
       </>
       )}
 

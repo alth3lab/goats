@@ -30,7 +30,11 @@ import {
   DialogActions,
   Alert,
   AlertTitle,
-  Checkbox
+  Checkbox,
+  Card,
+  CardContent,
+  CardActions,
+  Grid
 } from '@mui/material'
 import { calculateGoatAge } from '@/lib/ageCalculator'
 import {
@@ -44,8 +48,19 @@ import {
   Inventory as ArchiveIcon,
   ReportProblem as DeathIcon,
   MoveDown as MoveIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  GridView as GridViewIcon,
+  ViewList as ListViewIcon,
+  FileDownload as ExportIcon,
+  Pets as PetsIcon,
+  Warning as WarningIcon,
+  TrendingUp as TrendingUpIcon,
+  Scale as ScaleIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
 
@@ -159,6 +174,15 @@ export default function GoatsPage() {
   const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
   const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
+  
+  // Advanced filters state
+  const [filterGender, setFilterGender] = useState('ALL')
+  const [filterAgeCategory, setFilterAgeCategory] = useState('ALL')
+  const [filterType, setFilterType] = useState('ALL')
+  const [filterBreed, setFilterBreed] = useState('ALL')
+  const [filterPen, setFilterPen] = useState('ALL')
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [form, setForm] = useState({
     tagId: '',
     name: '',
@@ -175,11 +199,117 @@ export default function GoatsPage() {
 
   useEffect(() => {
     loadGoats()
+    loadTypes()
+    loadPens()
   }, [])
 
   useEffect(() => {
     setPage(0)
-  }, [searchTerm, filterStatus, goats.length])
+  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen])
+
+  // Calculate statistics
+  const activeGoats = goats.filter(g => ['ACTIVE', 'QUARANTINE'].includes(g.status))
+  const stats = {
+    total: activeGoats.length,
+    males: activeGoats.filter(g => g.gender === 'MALE').length,
+    females: activeGoats.filter(g => g.gender === 'FEMALE').length,
+    weaningReady: activeGoats.filter(g => {
+      const age = calculateGoatAge(g.birthDate)
+      return age.totalMonths >= 3 && age.totalMonths < 5
+    }).length,
+    quarantine: activeGoats.filter(g => g.status === 'QUARANTINE').length,
+    avgAge: activeGoats.length > 0 
+      ? Math.round(activeGoats.reduce((sum, g) => {
+          const age = calculateGoatAge(g.birthDate)
+          return sum + age.totalMonths
+        }, 0) / activeGoats.length) 
+      : 0,
+    totalWeight: activeGoats.reduce((sum, g) => sum + (g.weight || 0), 0)
+  }
+
+  // Export functions
+  const exportToPDF = () => {
+    const doc = new jsPDF()
+    
+    doc.setLanguage('ar')
+    doc.setFontSize(18)
+    doc.text('تقرير قطيع الماعز', 105, 15, { align: 'center' })
+    
+    doc.setFontSize(10)
+    doc.text(`التاريخ: ${new Date().toLocaleDateString('ar-EG')}`, 105, 25, { align: 'center' })
+    
+    doc.setFontSize(12)
+    doc.text('الإحصائيات:', 190, 35, { align: 'right' })
+    doc.setFontSize(10)
+    doc.text(`إجمالي القطيع: ${stats.total}`, 190, 45, { align: 'right' })
+    doc.text(`الذكور: ${stats.males} | الإناث: ${stats.females}`, 190, 52, { align: 'right' })
+    doc.text(`جاهز للفطام: ${stats.weaningReady}`, 190, 59, { align: 'right' })
+    doc.text(`متوسط العمر: ${stats.avgAge} شهر`, 190, 66, { align: 'right' })
+    
+    const tableData = filteredGoats.map(goat => {
+      const age = calculateGoatAge(goat.birthDate)
+      return [
+        goat.tagId,
+        goat.name || '-',
+        goat.gender === 'MALE' ? 'ذكر' : 'أنثى',
+        goat.breed.type.nameAr,
+        goat.breed.nameAr,
+        `${age.years}س ${age.months}ش`,
+        goat.weight ? `${goat.weight} كجم` : '-',
+        goat.status === 'ACTIVE' ? 'نشط' : goat.status === 'QUARANTINE' ? 'حجر' : goat.status
+      ]
+    })
+    
+    ;(doc as any).autoTable({
+      startY: 75,
+      head: [['رقم التاج', 'الاسم', 'الجنس', 'النوع', 'السلالة', 'العمر', 'الوزن', 'الحالة']],
+      body: tableData,
+      styles: { font: 'helvetica', halign: 'center', fontSize: 8 }
+    })
+    
+    doc.save(`goats-report-${new Date().toISOString().split('T')[0]}.pdf`)
+  }
+
+  const exportToExcel = () => {
+    const statsSheet = XLSX.utils.json_to_sheet([
+      { 'المؤشر': 'إجمالي القطيع', 'القيمة': stats.total },
+      { 'المؤشر': 'الذكور', 'القيمة': stats.males },
+      { 'المؤشر': 'الإناث', 'القيمة': stats.females },
+      { 'المؤشر': 'جاهز للفطام', 'القيمة': stats.weaningReady },
+      { 'المؤشر': 'حجر صحي', 'القيمة': stats.quarantine },
+      { 'المؤشر': 'متوسط العمر (شهر)', 'القيمة': stats.avgAge },
+      { 'المؤشر': 'إجمالي الوزن (كجم)', 'القيمة': stats.totalWeight }
+    ])
+    
+    const goatsData = filteredGoats.map(goat => {
+      const age = calculateGoatAge(goat.birthDate)
+      return {
+        'رقم التاج': goat.tagId,
+        'الاسم': goat.name || '-',
+        'الجنس': goat.gender === 'MALE' ? 'ذكر' : 'أنثى',
+        'النوع': goat.breed.type.nameAr,
+        'السلالة': goat.breed.nameAr,
+        'تاريخ الميلاد': formatDate(goat.birthDate),
+        'العمر (سنوات)': age.years,
+        'العمر (شهور)': age.months,
+        'العمر (أيام)': age.days,
+        'الفئة العمرية': age.category === 'kid' ? 'رضيع' : age.category === 'young' ? 'جذع' : age.category === 'juvenile' ? 'يافع' : 'بالغ',
+        'الوزن (كجم)': goat.weight || '-',
+        'الحظيرة': goat.pen?.nameAr || '-',
+        'الحالة': goat.status === 'ACTIVE' ? 'نشط' : goat.status === 'QUARANTINE' ? 'حجر صحي' : goat.status === 'SOLD' ? 'مباع' : 'متوفى',
+        'رقم الأم': goat.motherTagId || '-',
+        'رقم الأب': goat.fatherTagId || '-',
+        'ملاحظات': goat.notes || '-'
+      }
+    })
+    const goatsSheet = XLSX.utils.json_to_sheet(goatsData)
+    
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
+    XLSX.utils.book_append_sheet(wb, goatsSheet, 'قائمة الماعز')
+    
+    XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
+  }
 
   const loadGoats = async () => {
     try {
@@ -429,7 +559,21 @@ export default function GoatsPage() {
       filterStatus === 'ARCHIVE' ? ['SOLD', 'DECEASED'].includes(goat.status) :
       goat.status === filterStatus
 
-    return matchesSearch && matchesStatus
+    // Advanced filters
+    const matchesGender = filterGender === 'ALL' || goat.gender === filterGender
+    
+    const age = calculateGoatAge(goat.birthDate)
+    const matchesAgeCategory = filterAgeCategory === 'ALL' || 
+      (filterAgeCategory === 'kid' && age.category === 'kid') ||
+      (filterAgeCategory === 'young' && age.category === 'young') ||
+      (filterAgeCategory === 'juvenile' && age.category === 'juvenile') ||
+      (filterAgeCategory === 'adult' && age.category === 'adult')
+    
+    const matchesType = filterType === 'ALL' || goat.breed.type.id === filterType
+    const matchesBreed = filterBreed === 'ALL' || goat.breed.id === filterBreed
+    const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
+
+    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen
   })
 
   const paginatedGoats = filteredGoats.slice(
@@ -550,6 +694,142 @@ export default function GoatsPage() {
 
   return (
     <Box>
+      {/* Statistics Cards */}
+      <Grid container spacing={2} mb={3}>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ height: '100%', bgcolor: '#e3f2fd' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+                <PetsIcon color="primary" />
+                <Typography variant="h4" fontWeight="bold" color="primary">
+                  {stats.total}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                إجمالي القطيع
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ height: '100%', bgcolor: '#e3f2fd' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+                <MaleIcon color="primary" />
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#2196f3' }}>
+                  {stats.males}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                الذكور
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ height: '100%', bgcolor: '#fce4ec' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+                <FemaleIcon sx={{ color: '#e91e63' }} />
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#e91e63' }}>
+                  {stats.females}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                الإناث
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ height: '100%', bgcolor: stats.weaningReady > 0 ? '#fff3e0' : '#f5f5f5' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+                {stats.weaningReady > 0 && <WarningIcon sx={{ color: '#ff9800' }} />}
+                <Typography variant="h4" fontWeight="bold" color={stats.weaningReady > 0 ? 'warning.main' : 'text.secondary'}>
+                  {stats.weaningReady}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                جاهز للفطام
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ height: '100%', bgcolor: '#f3e5f5' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+                <TrendingUpIcon color="secondary" />
+                <Typography variant="h4" fontWeight="bold" color="secondary">
+                  {stats.avgAge}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                متوسط العمر (شهر)
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ height: '100%', bgcolor: '#e8f5e9' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
+                <ScaleIcon sx={{ color: '#4caf50' }} />
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#4caf50' }}>
+                  {stats.totalWeight}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" mt={1}>
+                إجمالي الوزن (كجم)
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Smart Alerts */}
+      {(stats.weaningReady > 0 || stats.quarantine > 0) && (
+        <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', border: '1px solid #ff9800' }}>
+          <Stack spacing={2}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <WarningIcon color="warning" />
+              <Typography variant="h6" fontWeight="bold" color="warning.dark">
+                تنبيهات ذكية
+              </Typography>
+            </Stack>
+            
+            {stats.weaningReady > 0 && (
+              <Paper sx={{ p: 2, bgcolor: '#e3f2fd', cursor: 'pointer' }} onClick={() => setFilterStatus('WEANING_READY')}>
+                <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                  <PetsIcon color="info" />
+                  <Typography variant="subtitle1" fontWeight="bold" color="info.main">
+                    جاهز للفطام
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  يوجد {stats.weaningReady} مولود جاهز للفطام (عمر 3-5 أشهر). انقر للعرض.
+                </Typography>
+              </Paper>
+            )}
+
+            {stats.quarantine > 0 && (
+              <Paper sx={{ p: 2, bgcolor: '#ffebee' }}>
+                <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                  <WarningIcon color="error" />
+                  <Typography variant="subtitle1" fontWeight="bold" color="error">
+                    حجر صحي
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  يوجد {stats.quarantine} حيوان في الحجر الصحي. تابع حالتهم الصحية.
+                </Typography>
+              </Paper>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
       {/* Alerts Section */}
       {weaningCandidates > 0 && (
          <Alert 
@@ -578,6 +858,40 @@ export default function GoatsPage() {
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={exportToPDF}
+                sx={{ color: 'error.main', borderColor: 'error.main' }}
+                startIcon={<ExportIcon />}
+              >
+                PDF
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={exportToExcel}
+                sx={{ color: 'success.main', borderColor: 'success.main' }}
+                startIcon={<ExportIcon />}
+              >
+                Excel
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<ListViewIcon />}
+                onClick={() => setViewMode('table')}
+              >
+                جدول
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<GridViewIcon />}
+                onClick={() => setViewMode('grid')}
+              >
+                شبكة
+              </Button>
               {selectedGoatIds.length > 0 && (
                 <Button 
                    variant="contained" 
@@ -634,9 +948,218 @@ export default function GoatsPage() {
             </Select>
           </FormControl>
         </Stack>
+
+        {/* Advanced Filters */}
+        <Box mt={2}>
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            startIcon={<FilterIcon />}
+          >
+            {showAdvancedFilters ? 'إخفاء' : 'عرض'} الفلاتر المتقدمة
+          </Button>
+          
+          {showAdvancedFilters && (
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={12} sm={6} md={2.4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>الجنس</InputLabel>
+                  <Select
+                    value={filterGender}
+                    label="الجنس"
+                    onChange={(e) => setFilterGender(e.target.value)}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    <MenuItem value="MALE">ذكر</MenuItem>
+                    <MenuItem value="FEMALE">أنثى</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={2.4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>الفئة العمرية</InputLabel>
+                  <Select
+                    value={filterAgeCategory}
+                    label="الفئة العمرية"
+                    onChange={(e) => setFilterAgeCategory(e.target.value)}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    <MenuItem value="kid">رضيع (0-6 شهور)</MenuItem>
+                    <MenuItem value="young">جذع (6-12 شهر)</MenuItem>
+                    <MenuItem value="juvenile">يافع (1-2 سنة)</MenuItem>
+                    <MenuItem value="adult">بالغ (2+ سنة)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={2.4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>النوع</InputLabel>
+                  <Select
+                    value={filterType}
+                    label="النوع"
+                    onChange={(e) => {
+                      setFilterType(e.target.value)
+                      setFilterBreed('ALL')
+                      if (e.target.value !== 'ALL') {
+                        loadBreeds(e.target.value)
+                      }
+                    }}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    {types.map(type => (
+                      <MenuItem key={type.id} value={type.id}>{type.nameAr}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={2.4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>السلالة</InputLabel>
+                  <Select
+                    value={filterBreed}
+                    label="السلالة"
+                    onChange={(e) => setFilterBreed(e.target.value)}
+                    disabled={filterType === 'ALL'}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    {breeds.map(breed => (
+                      <MenuItem key={breed.id} value={breed.id}>{breed.nameAr}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={2.4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>الحظيرة</InputLabel>
+                  <Select
+                    value={filterPen}
+                    label="الحظيرة"
+                    onChange={(e) => setFilterPen(e.target.value)}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    {pens.map(pen => (
+                      <MenuItem key={pen.id} value={pen.id}>{pen.nameAr}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          )}
+        </Box>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      {/* Grid or Table View */}
+      {viewMode === 'grid' ? (
+        <Grid container spacing={3} mt={1}>
+          {paginatedGoats.map((goat) => {
+            const age = calculateGoatAge(goat.birthDate)
+            const isSelected = selectedGoatIds.indexOf(goat.id) !== -1
+            return (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={goat.id}>
+                <Card 
+                  sx={{ 
+                    height: '100%', 
+                    position: 'relative',
+                    border: isSelected ? 2 : 1,
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    '&:hover': { boxShadow: 6 }
+                  }}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onChange={(event) => handleSelectOne(event, goat.id)}
+                    sx={{ position: 'absolute', top: 8, left: 8, zIndex: 1 }}
+                  />
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Stack direction="row" justifyContent="center" spacing={1}>
+                        <Chip 
+                          label={goat.tagId} 
+                          color="primary" 
+                          size="medium"
+                          sx={{ fontSize: '1rem', fontWeight: 'bold' }}
+                        />
+                        {goat.gender === 'MALE' ? (
+                          <MaleIcon color="primary" sx={{ fontSize: 32 }} />
+                        ) : (
+                          <FemaleIcon sx={{ color: '#e91e63', fontSize: 32 }} />
+                        )}
+                      </Stack>
+                      
+                      <Typography variant="h6" textAlign="center" fontWeight="bold">
+                        {goat.name || '-'}
+                      </Typography>
+                      
+                      <Divider />
+                      
+                      <Stack spacing={1}>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="caption" color="text.secondary">النوع:</Typography>
+                          <Typography variant="body2" fontWeight="bold">{goat.breed.type.nameAr}</Typography>
+                        </Stack>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="caption" color="text.secondary">السلالة:</Typography>
+                          <Typography variant="body2">{goat.breed.nameAr}</Typography>
+                        </Stack>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="caption" color="text.secondary">العمر:</Typography>
+                          <Typography variant="body2">{age.years}س {age.months}ش {age.days}ي</Typography>
+                        </Stack>
+                        {goat.weight && (
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="caption" color="text.secondary">الوزن:</Typography>
+                            <Typography variant="body2">{goat.weight} كجم</Typography>
+                          </Stack>
+                        )}
+                        {goat.pen && (
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="caption" color="text.secondary">الحظيرة:</Typography>
+                            <Typography variant="body2">{goat.pen.nameAr}</Typography>
+                          </Stack>
+                        )}
+                      </Stack>
+                      
+                      <Stack direction="row" justifyContent="center">
+                        <Chip 
+                          label={getStatusLabel(goat.status)} 
+                          color={getStatusColor(goat.status)} 
+                          size="small"
+                        />
+                        {age.totalMonths >= 3 && age.totalMonths < 5 && goat.status === 'ACTIVE' && (
+                          <Chip 
+                            label="جاهز للفطام" 
+                            color="warning" 
+                            size="small"
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                  <CardActions sx={{ justifyContent: 'center', flexWrap: 'wrap', gap: 1 }}>
+                    <IconButton size="small" color="info" onClick={() => handleView(goat)}>
+                      <ViewIcon />
+                    </IconButton>
+                    <IconButton size="small" color="primary" onClick={() => handleEdit(goat)}>
+                      <EditIcon />
+                    </IconButton>
+                    {goat.status === 'ACTIVE' && (
+                      <IconButton size="small" color="error" onClick={() => handleOpenDeathDialog(goat)}>
+                        <DeathIcon />
+                      </IconButton>
+                    )}
+                    <IconButton size="small" color="warning" onClick={() => handleDeleteClick(goat)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </CardActions>
+                </Card>
+              </Grid>
+            )
+          })}
+        </Grid>
+      ) : (
+      <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2 }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
@@ -775,6 +1298,7 @@ export default function GoatsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      )}
 
       <TablePagination
         component="div"

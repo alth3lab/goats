@@ -22,13 +22,17 @@
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.4",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
     "mysql2": "^3.16.3",
     "next": "16.1.6",
     "prisma": "^5.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.7.0",
     "stylis": "^4.3.6",
     "stylis-plugin-rtl": "^2.1.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
