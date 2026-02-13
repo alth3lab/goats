@@ -299,44 +299,61 @@ export default function PensPage() {
   }
 
   // Export functions
-  const exportToPDF = () => {
-    const doc = new jsPDF()
+  const exportToPDF = async () => {
+    const doc = new jsPDF('p', 'pt', 'a4')
     
-    // Set Arabic font
-    doc.setLanguage('ar')
-    
-    // Title
-    doc.setFontSize(18)
-    doc.text('تقرير إدارة الحظائر', 105, 15, { align: 'center' })
-    
-    // Date
-    doc.setFontSize(10)
-    doc.text(`التاريخ: ${new Date().toLocaleDateString('ar-EG')}`, 105, 25, { align: 'center' })
-    
-    // Statistics
-    doc.setFontSize(12)
-    doc.text('الإحصائيات:', 190, 35, { align: 'right' })
-    doc.setFontSize(10)
-    doc.text(`إجمالي الحظائر: ${stats.totalPens}`, 190, 45, { align: 'right' })
-    doc.text(`إجمالي الحيوانات: ${stats.totalAnimals}`, 190, 52, { align: 'right' })
-    doc.text(`نسبة الامتلاء: ${stats.totalCapacity > 0 ? Math.round((stats.totalAnimals / stats.totalCapacity) * 100) : 0}%`, 190, 59, { align: 'right' })
-    doc.text(`حظائر ممتلئة: ${stats.fullPens}`, 190, 66, { align: 'right' })
-    doc.text(`حظائر مكتظة: ${stats.overcrowdedPens}`, 190, 73, { align: 'right' })
-    
-    // Table
-    const tableData = filteredPens.map(pen => [
-      pen.nameAr,
-      pen.type === 'BREEDING' ? 'ولادة' : pen.type === 'ISOLATION' ? 'عزل' : pen.type === 'FATTENING' ? 'تسمين' : 'عام',
-      pen._count.goats.toString(),
-      (pen.capacity || 0).toString(),
-      pen.capacity ? `${Math.round((pen._count.goats / pen.capacity) * 100)}%` : '-'
-    ])
-    
-    ;(doc as any).autoTable({
-      startY: 85,
-      head: [['الاسم', 'النوع', 'العدد', 'السعة', 'الامتلاء']],
-      body: tableData,
-      styles: { font: 'helvetica', halign: 'center' }
+    const rowsHtml = filteredPens.map(pen => `
+      <tr>
+        <td>${pen.nameAr}</td>
+        <td>${pen.type === 'BREEDING' ? 'ولادة' : pen.type === 'ISOLATION' ? 'عزل' : pen.type === 'FATTENING' ? 'تسمين' : 'عام'}</td>
+        <td>${pen._count.goats}</td>
+        <td>${pen.capacity || '-'}</td>
+        <td>${pen.capacity ? Math.round((pen._count.goats / pen.capacity) * 100) + '%' : '-'}</td>
+      </tr>
+    `).join('')
+
+    const html = `
+      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 20px; color: #333;">
+        <h2 style="text-align: center; margin-bottom: 10px;">تقرير إدارة الحظائر</h2>
+        <p style="text-align: center; margin-bottom: 20px;">التاريخ: ${new Date().toLocaleDateString('ar-AE')}</p>
+        
+        <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+          <h3 style="margin-top: 0; margin-bottom: 10px;">الإحصائيات</h3>
+          <ul style="list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <li><strong>إجمالي الحظائر:</strong> ${stats.totalPens}</li>
+            <li><strong>إجمالي الحيوانات:</strong> ${stats.totalAnimals}</li>
+            <li><strong>نسبة الامتلاء:</strong> ${stats.totalCapacity > 0 ? Math.round((stats.totalAnimals / stats.totalCapacity) * 100) : 0}%</li>
+            <li><strong>حظائر ممتلئة:</strong> ${stats.fullPens}</li>
+            <li><strong>حظائر مكتظة:</strong> ${stats.overcrowdedPens}</li>
+            <li><strong>حظائر فارغة:</strong> ${stats.emptyPens}</li>
+          </ul>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
+          <thead>
+            <tr style="background-color: #f5f5f5;">
+              <th style="border: 1px solid #ccc; padding: 8px;">الاسم</th>
+              <th style="border: 1px solid #ccc; padding: 8px;">النوع</th>
+              <th style="border: 1px solid #ccc; padding: 8px;">العدد</th>
+              <th style="border: 1px solid #ccc; padding: 8px;">السعة</th>
+              <th style="border: 1px solid #ccc; padding: 8px;">الامتلاء</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `
+
+    await new Promise<void>((resolve) => {
+      ;(doc as any).html(html, {
+        x: 15,
+        y: 15,
+        width: 565,
+        windowWidth: 1000,
+        callback: () => resolve()
+      })
     })
     
     doc.save(`pens-report-${new Date().toISOString().split('T')[0]}.pdf`)

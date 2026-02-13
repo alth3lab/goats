@@ -61,7 +61,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
@@ -228,49 +228,71 @@ export default function GoatsPage() {
           return sum + age.totalMonths
         }, 0) / activeGoats.length) 
       : 0,
-    totalWeight: activeGoats.reduce((sum, g) => sum + (g.weight || 0), 0)
+    totalWeight: Number(activeGoats.reduce((sum, g) => sum + (g.weight || 0), 0).toFixed(2))
   }
 
   // Export functions
-  const exportToPDF = () => {
-    const doc = new jsPDF()
-    
-    doc.setLanguage('ar')
-    doc.setFontSize(18)
-    doc.text('تقرير قطيع الماعز', 105, 15, { align: 'center' })
-    
-    doc.setFontSize(10)
-    doc.text(`التاريخ: ${new Date().toLocaleDateString('ar-EG')}`, 105, 25, { align: 'center' })
-    
-    doc.setFontSize(12)
-    doc.text('الإحصائيات:', 190, 35, { align: 'right' })
-    doc.setFontSize(10)
-    doc.text(`إجمالي القطيع: ${stats.total}`, 190, 45, { align: 'right' })
-    doc.text(`الذكور: ${stats.males} | الإناث: ${stats.females}`, 190, 52, { align: 'right' })
-    doc.text(`جاهز للفطام: ${stats.weaningReady}`, 190, 59, { align: 'right' })
-    doc.text(`متوسط العمر: ${stats.avgAge} شهر`, 190, 66, { align: 'right' })
-    
-    const tableData = filteredGoats.map(goat => {
+  const exportToPDF = async () => {
+    const doc = new jsPDF('p', 'pt', 'a4')
+    const dateText = new Date().toLocaleDateString('ar-EG')
+    const rowsHtml = filteredGoats.map(goat => {
       const age = calculateGoatAge(goat.birthDate)
-      return [
-        goat.tagId,
-        goat.name || '-',
-        goat.gender === 'MALE' ? 'ذكر' : 'أنثى',
-        goat.breed.type.nameAr,
-        goat.breed.nameAr,
-        `${age.years}س ${age.months}ش`,
-        goat.weight ? `${goat.weight} كجم` : '-',
-        goat.status === 'ACTIVE' ? 'نشط' : goat.status === 'QUARANTINE' ? 'حجر' : goat.status
-      ]
+      const status = goat.status === 'ACTIVE' ? 'نشط' : goat.status === 'QUARANTINE' ? 'حجر' : goat.status
+      return `
+        <tr>
+          <td>${status}</td>
+          <td>${goat.weight ? `${goat.weight} كجم` : '-'}</td>
+          <td>${age.years}س ${age.months}ش</td>
+          <td>${goat.breed.nameAr}</td>
+          <td>${goat.breed.type.nameAr}</td>
+          <td>${goat.gender === 'MALE' ? 'ذكر' : 'أنثى'}</td>
+          <td>${goat.name || '-'}</td>
+          <td>${goat.tagId}</td>
+        </tr>
+      `
+    }).join('')
+
+    const html = `
+      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 16px; color: #111;">
+        <h2 style="margin: 0 0 8px; text-align: center;">تقرير قطيع الماعز</h2>
+        <p style="margin: 0 0 16px; text-align: center;">التاريخ: ${dateText}</p>
+
+        <h3 style="margin: 0 0 8px;">الإحصائيات</h3>
+        <ul style="margin: 0 0 16px; padding-right: 18px;">
+          <li>إجمالي القطيع: ${stats.total}</li>
+          <li>الذكور: ${stats.males} | الإناث: ${stats.females}</li>
+          <li>جاهز للفطام: ${stats.weaningReady}</li>
+          <li>متوسط العمر: ${stats.avgAge} شهر</li>
+        </ul>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #ccc; padding: 6px;">الحالة</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">الوزن</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">العمر</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">السلالة</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">النوع</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">الجنس</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">الاسم</th>
+              <th style="border: 1px solid #ccc; padding: 6px;">رقم التاج</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `
+
+    await new Promise<void>((resolve) => {
+      ;(doc as any).html(html, {
+        x: 16,
+        y: 16,
+        width: 560,
+        windowWidth: 1024,
+        callback: () => resolve()
+      })
     })
-    
-    ;(doc as any).autoTable({
-      startY: 75,
-      head: [['رقم التاج', 'الاسم', 'الجنس', 'النوع', 'السلالة', 'العمر', 'الوزن', 'الحالة']],
-      body: tableData,
-      styles: { font: 'helvetica', halign: 'center', fontSize: 8 }
-    })
-    
+
     doc.save(`goats-report-${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
@@ -696,6 +718,16 @@ export default function GoatsPage() {
     }
   }
 
+  const statusFilterLabelMap: Record<string, string> = {
+    ALL: 'القطيع الحالي',
+    WEANING_READY: 'جاهز للفطام',
+    ARCHIVE: 'الأرشيف (مباع/متوفى)',
+    ACTIVE: 'نشط',
+    SOLD: 'مباع',
+    QUARANTINE: 'حجر صحي',
+    DECEASED: 'متوفى'
+  }
+
   return (
     <Box>
       {/* Statistics Cards */}
@@ -781,7 +813,7 @@ export default function GoatsPage() {
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
                 <ScaleIcon sx={{ color: '#4caf50' }} />
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#4caf50' }}>
-                  {stats.totalWeight}
+                  {stats.totalWeight.toFixed(2)}
                 </Typography>
               </Stack>
               <Typography variant="body2" color="text.secondary" mt={1}>
@@ -945,6 +977,7 @@ export default function GoatsPage() {
             <Select
               value={filterStatus}
               label="الحالة"
+              renderValue={(value) => statusFilterLabelMap[String(value)] || String(value)}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <MenuItem value="ALL">القطيع الحالي</MenuItem>
@@ -1344,6 +1377,10 @@ export default function GoatsPage() {
               <Select
                 value={form.typeId}
                 label="النوع"
+                renderValue={(value) => {
+                  const selectedType = types.find((item) => item.id === value)
+                  return selectedType?.nameAr || 'نوع غير متوفر'
+                }}
                 onChange={(e) => {
                   const typeId = e.target.value
                   setForm({ ...form, typeId, breedId: '' })
@@ -1367,6 +1404,10 @@ export default function GoatsPage() {
               <Select
                 value={form.breedId}
                 label="السلالة"
+                renderValue={(value) => {
+                  const selectedBreed = breeds.find((item) => item.id === value)
+                  return selectedBreed?.nameAr || 'سلالة غير متوفرة'
+                }}
                 onChange={(e) => setForm({ ...form, breedId: e.target.value })}
                 required
                 disabled={!form.typeId}

@@ -1,2164 +1,1071 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  Box,
-  Paper,
-  Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  Alert,
-  Tabs,
-  Tab,
-  Card,
-  CardContent,
-  CardActions,
-  Stack,
-  LinearProgress,
-  Tooltip,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  useMediaQuery
+  Box, Paper, Typography, Button, Chip, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Alert, Card, CardContent,
+  Stack, LinearProgress, Tooltip, InputAdornment,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Divider, Fade, Skeleton, useMediaQuery
 } from '@mui/material'
 import MuiGrid from '@mui/material/Grid'
 import { useTheme } from '@mui/material/styles'
-import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
-import DeleteIcon from '@mui/icons-material/Delete'
-import ScheduleIcon from '@mui/icons-material/Schedule'
-import InventoryIcon from '@mui/icons-material/Inventory'
-import WarningIcon from '@mui/icons-material/Warning'
-import GrassIcon from '@mui/icons-material/Grass'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import TrendingDownIcon from '@mui/icons-material/TrendingDown'
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
-import InfoIcon from '@mui/icons-material/Info'
-import SearchIcon from '@mui/icons-material/Search'
-import FilterListIcon from '@mui/icons-material/FilterList'
-import GridViewIcon from '@mui/icons-material/GridView'
-import ViewListIcon from '@mui/icons-material/ViewList'
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
-import DescriptionIcon from '@mui/icons-material/Description'
+import {
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Grass as GrassIcon, Inventory as InventoryIcon,
+  Warning as WarningIcon, Schedule as ScheduleIcon,
+  Today as TodayIcon, TrendingDown as LowIcon,
+  ShoppingCart as BuyIcon, LocalShipping as SupplierIcon,
+  CalendarMonth as CalendarIcon, PictureAsPdf as PdfIcon,
+  Description as ExcelIcon
+} from '@mui/icons-material'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 
 const Grid = MuiGrid as any
 
-const FEED_CATEGORIES = [
-  { value: 'HAY', label: 'تبن' },
-  { value: 'GRAINS', label: 'حبوب' },
-  { value: 'CONCENTRATE', label: 'مركزات' },
-  { value: 'SUPPLEMENTS', label: 'مكملات' },
-  { value: 'MINERALS', label: 'معادن' },
-  { value: 'OTHER', label: 'أخرى' }
+// ─── Constants ───
+const CATEGORIES = [
+  { value: 'HAY', label: 'تبن', color: '#8d6e63' },
+  { value: 'GRAINS', label: 'حبوب', color: '#ffa726' },
+  { value: 'CONCENTRATE', label: 'مركزات', color: '#42a5f5' },
+  { value: 'SUPPLEMENTS', label: 'مكملات', color: '#66bb6a' },
+  { value: 'MINERALS', label: 'معادن', color: '#ab47bc' },
+  { value: 'OTHER', label: 'أخرى', color: '#78909c' }
 ]
 
-const SMART_FEED_GUIDE = [
-  { key: 'kids_0_3', label: 'مواليد (0-3 أشهر)', minMonths: 0, maxMonths: 3, kgPerHeadPerDay: 0.35 },
-  { key: 'kids_3_6', label: 'صغار (3-6 أشهر)', minMonths: 3, maxMonths: 6, kgPerHeadPerDay: 0.55 },
-  { key: 'young_6_12', label: 'يافعة (6-12 شهر)', minMonths: 6, maxMonths: 12, kgPerHeadPerDay: 0.85 },
-  { key: 'subadult_12_24', label: 'نمو (12-24 شهر)', minMonths: 12, maxMonths: 24, kgPerHeadPerDay: 1.2 },
-  { key: 'adult_24_plus', label: 'بالغة (+24 شهر)', minMonths: 24, maxMonths: 999, kgPerHeadPerDay: 1.6 }
-]
+const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v
+const catColor = (v: string) => CATEGORIES.find(c => c.value === v)?.color ?? '#78909c'
 
-const FEEDING_TEMPLATES = [
-  {
-    key: 'kids',
-    label: 'مواليد',
-    dailyAmount: 0.45,
-    feedingTimes: '3',
-    notes: 'قالب مواليد: كمية منخفضة موزعة على 3 وجبات.'
-  },
-  {
-    key: 'pregnant',
-    label: 'حوامل',
-    dailyAmount: 1.5,
-    feedingTimes: '2',
-    notes: 'قالب حوامل: رفع الطاقة تدريجيًا في آخر الثلث الأخير.'
-  },
-  {
-    key: 'lactating',
-    label: 'مرضعات',
-    dailyAmount: 2.1,
-    feedingTimes: '3',
-    notes: 'قالب مرضعات: تركيز أعلى للطاقة مع تقسيم 3 وجبات.'
-  },
-  {
-    key: 'fattening',
-    label: 'تسمين',
-    dailyAmount: 1.8,
-    feedingTimes: '3',
-    notes: 'قالب تسمين: توازن مركزات + علف خشن لتحقيق نمو ثابت.'
+// ─── Types ───
+interface FeedType { id: string; name: string; nameAr: string; category: string; protein?: number; energy?: number; notes?: string }
+interface Stock { id: string; feedTypeId: string; feedType: FeedType; quantity: number; unit: string; cost?: number; purchaseDate: string; expiryDate?: string; supplier?: string; notes?: string }
+interface Schedule { id: string; feedTypeId: string; feedType: FeedType; penId?: string; pen?: { id: string; nameAr: string; _count?: { goats: number } }; quantity: number; frequency: number; startDate: string; endDate?: string; isActive: boolean; notes?: string }
+interface Pen { id: string; nameAr: string; name: string; _count?: { goats: number }; goats?: any[] }
+
+// ─── AI Feed Suggestion ───
+interface FeedSuggestion {
+  amount: number
+  meals: number
+  reasoning: string
+  ageGroup: string
+  avgWeight: number
+}
+
+function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status: string; weight?: number }[], feedCategory: string): FeedSuggestion | null {
+  if (!penGoats || penGoats.length === 0) return null
+
+  const now = Date.now()
+  const ages = penGoats.map(g => (now - new Date(g.birthDate).getTime()) / (365.25 * 86400000))
+  const avgAge = ages.reduce((a, b) => a + b, 0) / ages.length
+  const weights = penGoats.filter(g => g.weight).map(g => g.weight!)
+  const avgWeight = weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : (avgAge < 0.5 ? 15 : avgAge < 1 ? 30 : avgAge < 2 ? 45 : 55)
+
+  let ageGroup: string
+  if (avgAge < 0.25) ageGroup = 'رضيع (أقل من 3 أشهر)'
+  else if (avgAge < 0.5) ageGroup = 'فطيم (3-6 أشهر)'
+  else if (avgAge < 1) ageGroup = 'صغير (6-12 شهر)'
+  else if (avgAge < 2) ageGroup = 'شاب (1-2 سنة)'
+  else ageGroup = 'بالغ (أكبر من سنتين)'
+
+  // Feed recommendations (kg/head/day) by category and age group
+  // Based on standard goat nutrition guidelines
+  const matrix: Record<string, Record<string, { amount: number; meals: number; note: string }>> = {
+    HAY: {
+      'رضيع': { amount: 0.1, meals: 3, note: 'كمية قليلة كتعويد' },
+      'فطيم': { amount: 0.3, meals: 3, note: 'تدريجي مع الفطام' },
+      'صغير': { amount: 0.5, meals: 2, note: 'أساسي للنمو' },
+      'شاب': { amount: 0.8, meals: 2, note: 'نسبة 2% من الوزن' },
+      'بالغ': { amount: 1.0, meals: 2, note: 'نسبة 2% من الوزن' }
+    },
+    GRAINS: {
+      'رضيع': { amount: 0.05, meals: 2, note: 'كمية رمزية' },
+      'فطيم': { amount: 0.15, meals: 2, note: 'لدعم النمو' },
+      'صغير': { amount: 0.25, meals: 2, note: 'تدريجي' },
+      'شاب': { amount: 0.4, meals: 2, note: 'للطاقة والنمو' },
+      'بالغ': { amount: 0.5, meals: 2, note: 'حسب النشاط' }
+    },
+    CONCENTRATE: {
+      'رضيع': { amount: 0.0, meals: 0, note: 'غير مناسب للرضّع' },
+      'فطيم': { amount: 0.1, meals: 2, note: 'كمية بسيطة' },
+      'صغير': { amount: 0.2, meals: 2, note: 'لدعم النمو' },
+      'شاب': { amount: 0.3, meals: 2, note: 'للبروتين' },
+      'بالغ': { amount: 0.4, meals: 2, note: 'للإنتاج والصحة' }
+    },
+    SUPPLEMENTS: {
+      'رضيع': { amount: 0.0, meals: 0, note: 'غير مطلوب' },
+      'فطيم': { amount: 0.02, meals: 1, note: 'فيتامينات أساسية' },
+      'صغير': { amount: 0.03, meals: 1, note: 'مكملات نمو' },
+      'شاب': { amount: 0.05, meals: 1, note: 'دعم المناعة' },
+      'بالغ': { amount: 0.05, meals: 1, note: 'صيانة عامة' }
+    },
+    MINERALS: {
+      'رضيع': { amount: 0.0, meals: 0, note: 'غير مطلوب' },
+      'فطيم': { amount: 0.01, meals: 1, note: 'كالسيوم وفوسفور' },
+      'صغير': { amount: 0.02, meals: 1, note: 'لبناء العظام' },
+      'شاب': { amount: 0.03, meals: 1, note: 'للنمو السليم' },
+      'بالغ': { amount: 0.03, meals: 1, note: 'وقائي' }
+    },
+    OTHER: {
+      'رضيع': { amount: 0.1, meals: 2, note: 'حسب النوع' },
+      'فطيم': { amount: 0.2, meals: 2, note: 'حسب النوع' },
+      'صغير': { amount: 0.3, meals: 2, note: 'حسب النوع' },
+      'شاب': { amount: 0.4, meals: 2, note: 'حسب النوع' },
+      'بالغ': { amount: 0.5, meals: 2, note: 'حسب النوع' }
+    }
   }
-]
 
-interface TabPanelProps {
-  children?: React.ReactNode
-  index: number
-  value: number
+  const ageKey = avgAge < 0.25 ? 'رضيع' : avgAge < 0.5 ? 'فطيم' : avgAge < 1 ? 'صغير' : avgAge < 2 ? 'شاب' : 'بالغ'
+  const rec = matrix[feedCategory]?.[ageKey] || matrix['OTHER'][ageKey]
+
+  // Adjust by weight if available (heavier → slightly more)
+  let adjustedAmount = rec.amount
+  if (avgWeight > 60) adjustedAmount *= 1.15
+  else if (avgWeight > 40) adjustedAmount *= 1.0
+  else if (avgWeight < 20) adjustedAmount *= 0.85
+
+  // Pregnant females get 20% more
+  const femaleCount = penGoats.filter(g => g.gender === 'FEMALE').length
+  if (femaleCount > penGoats.length * 0.7) adjustedAmount *= 1.1
+
+  adjustedAmount = Math.round(adjustedAmount * 100) / 100
+
+  const reasoning = `${ageGroup} • متوسط الوزن ${avgWeight.toFixed(0)} كجم • ${rec.note}${femaleCount > penGoats.length * 0.7 ? ' • +10% (إناث)' : ''}`
+
+  return { amount: adjustedAmount, meals: rec.meals || 2, reasoning, ageGroup, avgWeight }
 }
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
-  return (
-    <div hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ p: { xs: 1.5, sm: 3 } }}>{children}</Box>}
-    </div>
-  )
-}
+// ─── View Enum ───
+type View = 'today' | 'stock' | 'schedules'
 
 export default function FeedsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const [tabValue, setTabValue] = useState(0)
-  const [feedTypes, setFeedTypes] = useState<any[]>([])
-  const [stocks, setStocks] = useState<any[]>([])
-  const [schedules, setSchedules] = useState<any[]>([])
-  const [pens, setPens] = useState<any[]>([])
+
+  // Data
+  const [feedTypes, setFeedTypes] = useState<FeedType[]>([])
+  const [stocks, setStocks] = useState<Stock[]>([])
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [pens, setPens] = useState<Pen[]>([])
   const [loading, setLoading] = useState(true)
-  const [typeDialogOpen, setTypeDialogOpen] = useState(false)
-  const [stockDialogOpen, setStockDialogOpen] = useState(false)
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
-  const [selectedType, setSelectedType] = useState<any>(null)
-  const [selectedStock, setSelectedStock] = useState<any>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  
-  // New features state
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
-  const [filterCategory, setFilterCategory] = useState('ALL')
-  const [filterStatus, setFilterStatus] = useState('ALL')
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-  const [generatingMonthly, setGeneratingMonthly] = useState(false)
-  const [deletingAllSchedules, setDeletingAllSchedules] = useState(false)
-  const [feedingRecords, setFeedingRecords] = useState<any[]>([])
-  const [savingIntake, setSavingIntake] = useState(false)
 
-  const [typeData, setTypeData] = useState({
-    nameAr: '',
-    nameEn: '',
-    category: 'HAY',
-    protein: 0,
-    energy: 0,
-    fiber: 0,
-    description: ''
-  })
+  // Navigation
+  const [view, setView] = useState<View>('today')
 
-  const [stockData, setStockData] = useState({
-    feedTypeId: '',
-    quantity: 0,
-    unit: 'كيس',
-    unitPrice: 0,
-    purchaseDate: new Date().toISOString().split('T')[0],
-    expiryDate: '',
-    supplier: '',
-    notes: ''
-  })
+  // Dialogs
+  const [typeDialog, setTypeDialog] = useState(false)
+  const [stockDialog, setStockDialog] = useState(false)
+  const [scheduleDialog, setScheduleDialog] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<{ type: 'stock' | 'type' | 'schedule'; item: any } | null>(null)
 
-  const [scheduleData, setScheduleData] = useState({
-    penId: '',
-    feedTypeId: '',
-    dailyAmount: 0,
-    feedingTimes: '2',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
-    isActive: true,
-    notes: ''
-  })
+  // Forms
+  const [editingType, setEditingType] = useState<FeedType | null>(null)
+  const [editingStock, setEditingStock] = useState<Stock | null>(null)
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
+  const [typeForm, setTypeForm] = useState({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, description: '' })
+  const [stockForm, setStockForm] = useState({ feedTypeId: '', quantity: 0, unit: 'كجم', unitPrice: 0, purchaseDate: today(), expiryDate: '', supplier: '', notes: '' })
+  const [scheduleForm, setScheduleForm] = useState({ penId: '', feedTypeId: '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '' })
+  const [aiSuggestion, setAiSuggestion] = useState<FeedSuggestion | null>(null)
 
-  const [intakeData, setIntakeData] = useState({
-    penId: '',
-    feedTypeId: '',
-    date: new Date().toISOString().split('T')[0],
-    offeredQty: 0,
-    leftoverQty: 0,
-    notes: ''
-  })
+  // ─── Fetch ───
+  useEffect(() => { fetchAll() }, [])
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  const fetchAll = async () => {
+    setLoading(true)
     try {
-      const [typesRes, stocksRes, schedulesRes, pensRes, recordsRes] = await Promise.all([
-        fetch('/api/feeds'),
-        fetch('/api/feeds/stock'),
-        fetch('/api/feeds/schedule'),
-        fetch('/api/pens'),
-        fetch('/api/feeding-records')
+      const [t, s, sc, p] = await Promise.all([
+        fetch('/api/feeds').then(r => r.ok ? r.json() : []),
+        fetch('/api/feeds/stock').then(r => r.ok ? r.json() : []),
+        fetch('/api/feeds/schedule').then(r => r.ok ? r.json() : []),
+        fetch('/api/pens').then(r => r.ok ? r.json() : [])
       ])
+      setFeedTypes(t); setStocks(s); setSchedules(sc); setPens(p)
+    } catch { /* silent */ } finally { setLoading(false) }
+  }
 
-      if (!typesRes.ok) {
-        const error = await typesRes.json().catch(() => ({ error: 'خطأ في جلب البيانات' }))
-        console.error('Feeds fetch error:', error)
-        alert(error.error || 'فشل في جلب الأعلاف')
-        return
+  // ─── Computed ───
+  const activeSchedules = useMemo(() => schedules.filter(s => s.isActive), [schedules])
+
+  const todayFeedings = useMemo(() => {
+    const byPen: Record<string, {
+      pen: string; penId: string; heads: number;
+      items: { feed: string; amount: number; meals: number; category: string; unitCost: number; stockQty: number }[]
+    }> = {}
+    activeSchedules.forEach(s => {
+      const penId = s.penId || 'none'
+      const penName = s.pen?.nameAr || 'بدون حظيرة'
+      const heads = s.pen?._count?.goats || 0
+      if (!byPen[penId]) byPen[penId] = { pen: penName, penId, heads, items: [] }
+      const stock = stocks.find(st => st.feedTypeId === s.feedTypeId)
+      const totalStockForType = stocks.filter(st => st.feedTypeId === s.feedTypeId).reduce((sum, st) => sum + st.quantity, 0)
+      byPen[penId].items.push({
+        feed: s.feedType?.nameAr || '-',
+        amount: s.quantity,
+        meals: s.frequency,
+        category: s.feedType?.category || 'OTHER',
+        unitCost: stock?.cost || 0,
+        stockQty: totalStockForType
+      })
+    })
+    return Object.values(byPen)
+  }, [activeSchedules, stocks])
+
+  const stockSummary = useMemo(() => {
+    const byType: Record<string, { feedType: FeedType; totalQty: number; totalValue: number; lowestExpiry: string | null; isLow: boolean }> = {}
+    stocks.forEach(s => {
+      const id = s.feedTypeId
+      if (!byType[id]) byType[id] = { feedType: s.feedType, totalQty: 0, totalValue: 0, lowestExpiry: null, isLow: false }
+      byType[id].totalQty += s.quantity
+      byType[id].totalValue += s.quantity * (s.cost || 0)
+      if (s.expiryDate && (!byType[id].lowestExpiry || s.expiryDate < byType[id].lowestExpiry!)) {
+        byType[id].lowestExpiry = s.expiryDate
       }
-
-      if (typesRes.ok) setFeedTypes(await typesRes.json())
-      if (stocksRes.ok) setStocks(await stocksRes.json())
-      if (schedulesRes.ok) setSchedules(await schedulesRes.json())
-      if (pensRes.ok) setPens(await pensRes.json())
-      if (recordsRes.ok) setFeedingRecords(await recordsRes.json())
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getScheduleDailyAmount = (schedule: any) => {
-    return Number(schedule.dailyAmount ?? schedule.quantity ?? 0)
-  }
-
-  const getScheduleFeedingTimes = (schedule: any) => {
-    return Number(schedule.feedingTimes ?? schedule.frequency ?? 0)
-  }
-
-  const parseIntakeMeta = (notes?: string | null) => {
-    if (!notes || !notes.startsWith('INTAKE|')) return null
-    const parts = notes.split('|').slice(1)
-    const data: Record<string, string> = {}
-    parts.forEach(part => {
-      const [key, value] = part.split('=')
-      if (key && value !== undefined) data[key] = value
     })
-    return {
-      offered: Number(data.offered || 0),
-      leftover: Number(data.leftover || 0),
-      waste: Number(data.waste || 0),
-      penId: data.penId || '',
-      feedTypeId: data.feedTypeId || ''
-    }
-  }
+    Object.values(byType).forEach(v => { v.isLow = v.totalQty < 50 })
+    return Object.values(byType).sort((a, b) => a.totalQty - b.totalQty)
+  }, [stocks])
 
-  const getIntakeUnitCost = (feedTypeId: string) => {
-    const relatedStocks = stocks.filter(stock => stock.feedTypeId === feedTypeId)
-    if (!relatedStocks.length) return 0
-    const totalQty = relatedStocks.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-    const totalValue = relatedStocks.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.cost || 0)), 0)
-    return totalQty > 0 ? (totalValue / totalQty) : 0
-  }
-
-  const getGoatAgeInMonths = (birthDate?: string | Date | null) => {
-    if (!birthDate) return 0
-    const birth = new Date(birthDate)
-    const now = new Date()
-    const diffMonths = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth())
-    return Math.max(0, diffMonths)
-  }
-
-  const selectedPen = pens.find(pen => pen.id === scheduleData.penId)
-  const selectedPenGoats = (selectedPen?.goats || []).filter((goat: any) => goat.status ? goat.status === 'ACTIVE' : true)
-
-  const smartRecommendation = SMART_FEED_GUIDE.map(group => {
-    const goatsInGroup = selectedPenGoats.filter((goat: any) => {
-      const ageMonths = getGoatAgeInMonths(goat.birthDate)
-      return ageMonths >= group.minMonths && ageMonths < group.maxMonths
+  const alerts = useMemo(() => {
+    const list: { severity: 'error' | 'warning' | 'info'; text: string }[] = []
+    const expired = stocks.filter(s => s.expiryDate && new Date(s.expiryDate) < new Date())
+    const expiring = stocks.filter(s => {
+      if (!s.expiryDate) return false
+      const d = daysUntil(s.expiryDate)
+      return d > 0 && d <= 30
     })
+    const low = stockSummary.filter(s => s.isLow)
+    if (expired.length) list.push({ severity: 'error', text: `${expired.length} أصناف منتهية الصلاحية — يجب التخلص منها فوراً` })
+    if (expiring.length) list.push({ severity: 'warning', text: `${expiring.length} أصناف ستنتهي صلاحيتها خلال 30 يوم` })
+    if (low.length) list.push({ severity: 'warning', text: `${low.length} أنواع أعلاف بمخزون منخفض (أقل من 50 كجم)` })
+    if (activeSchedules.length === 0 && pens.length > 0) list.push({ severity: 'info', text: 'لا توجد جداول تغذية نشطة — أنشئ جدول لبدء التتبع' })
+    return list
+  }, [stocks, stockSummary, activeSchedules, pens])
 
-    const count = goatsInGroup.length
-    const dailyNeed = count * group.kgPerHeadPerDay
+  const totalStockValue = useMemo(() => stocks.reduce((s, i) => s + i.quantity * (i.cost || 0), 0), [stocks])
 
-    return {
-      ...group,
-      count,
-      dailyNeed
-    }
-  })
+  // Daily consumption per feed type (from active schedules)
+  const dailyConsumptionByType = useMemo(() => {
+    const byType: Record<string, number> = {}
+    activeSchedules.forEach(s => {
+      const heads = s.pen?._count?.goats || 1
+      const daily = s.quantity * heads
+      byType[s.feedTypeId] = (byType[s.feedTypeId] || 0) + daily
+    })
+    return byType
+  }, [activeSchedules])
 
-  const smartTotals = {
-    heads: selectedPenGoats.length,
-    dailyAmount: smartRecommendation.reduce((sum, item) => sum + item.dailyNeed, 0),
-    monthlyAmount: smartRecommendation.reduce((sum, item) => sum + item.dailyNeed, 0) * 30
-  }
-
-  const recommendedPerHead = smartTotals.heads > 0 ? (smartTotals.dailyAmount / smartTotals.heads) : 0
-  const scheduleVsSmartDiff = Number(scheduleData.dailyAmount) - recommendedPerHead
-
-  const handleApplyFeedingTemplate = (templateKey: string) => {
-    const template = FEEDING_TEMPLATES.find(item => item.key === templateKey)
-    if (!template) return
-
-    setScheduleData(prev => ({
-      ...prev,
-      dailyAmount: template.dailyAmount,
-      feedingTimes: template.feedingTimes,
-      notes: prev.notes?.trim() ? prev.notes : template.notes
-    }))
-  }
-
-  const getSmartPerHeadForGoats = (goats: any[]) => {
-    if (!goats || goats.length === 0) return 0
-    const activeGoats = goats.filter((goat: any) => goat.status ? goat.status === 'ACTIVE' : true)
-    if (activeGoats.length === 0) return 0
-
-    const totalDaily = SMART_FEED_GUIDE.reduce((sum, group) => {
-      const count = activeGoats.filter((goat: any) => {
-        const ageMonths = getGoatAgeInMonths(goat.birthDate)
-        return ageMonths >= group.minMonths && ageMonths < group.maxMonths
-      }).length
-      return sum + (count * group.kgPerHeadPerDay)
+  const dailyCost = useMemo(() => {
+    return activeSchedules.reduce((sum, s) => {
+      const heads = s.pen?._count?.goats || 1
+      const stock = stocks.find(st => st.feedTypeId === s.feedTypeId)
+      return sum + (s.quantity * heads * (stock?.cost || 0))
     }, 0)
+  }, [activeSchedules, stocks])
 
-    return totalDaily / activeGoats.length
+  // ─── Handlers ───
+  const openAddType = () => { setEditingType(null); setTypeForm({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, description: '' }); setTypeDialog(true) }
+  const openEditType = (t: FeedType) => { setEditingType(t); setTypeForm({ nameAr: t.nameAr, nameEn: t.name, category: t.category, protein: t.protein || 0, energy: t.energy || 0, description: t.notes || '' }); setTypeDialog(true) }
+
+  const openAddStock = () => { setEditingStock(null); setStockForm({ feedTypeId: feedTypes[0]?.id || '', quantity: 0, unit: 'كجم', unitPrice: 0, purchaseDate: today(), expiryDate: '', supplier: '', notes: '' }); setStockDialog(true) }
+  const openEditStock = (s: Stock) => { setEditingStock(s); setStockForm({ feedTypeId: s.feedTypeId, quantity: s.quantity, unit: s.unit, unitPrice: s.cost || 0, purchaseDate: s.purchaseDate.split('T')[0], expiryDate: s.expiryDate ? s.expiryDate.split('T')[0] : '', supplier: s.supplier || '', notes: s.notes || '' }); setStockDialog(true) }
+
+  const computeSuggestion = useCallback((penId: string, feedTypeId: string) => {
+    const pen = pens.find(p => p.id === penId)
+    const feed = feedTypes.find(f => f.id === feedTypeId)
+    if (pen?.goats && pen.goats.length > 0 && feed) {
+      setAiSuggestion(suggestFeedAmount(pen.goats, feed.category))
+    } else {
+      setAiSuggestion(null)
+    }
+  }, [pens, feedTypes])
+
+  const openAddSchedule = () => { setEditingSchedule(null); setAiSuggestion(null); setScheduleForm({ penId: '', feedTypeId: feedTypes[0]?.id || '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '' }); setScheduleDialog(true) }
+  const openEditSchedule = (s: Schedule) => { setEditingSchedule(s); setAiSuggestion(null); setScheduleForm({ penId: s.penId || '', feedTypeId: s.feedTypeId, dailyAmount: s.quantity, feedingTimes: String(s.frequency), startDate: s.startDate.split('T')[0], endDate: s.endDate ? s.endDate.split('T')[0] : '', notes: s.notes || '' }); setScheduleDialog(true) }
+
+  const saveType = async () => {
+    const url = editingType ? `/api/feeds/${editingType.id}` : '/api/feeds'
+    const method = editingType ? 'PUT' : 'POST'
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(typeForm) })
+    if (res.ok) { fetchAll(); setTypeDialog(false) } else { const d = await res.json().catch(() => ({})); alert(d.error || 'فشل في الحفظ') }
   }
 
-  const smartPerHeadByPen = pens.reduce((acc: Record<string, number>, pen: any) => {
-    acc[pen.id] = getSmartPerHeadForGoats(pen.goats || [])
-    return acc
-  }, {})
-
-  const activeSchedules = schedules.filter(schedule => schedule.isActive)
-  const activeSchedulesByPen = activeSchedules.reduce((acc: Record<string, any[]>, schedule: any) => {
-    const penId = schedule.penId || schedule.pen?.id
-    if (!penId) return acc
-    if (!acc[penId]) acc[penId] = []
-    acc[penId].push(schedule)
-    return acc
-  }, {})
-
-  const adjustedPerHeadByScheduleId = Object.values(activeSchedulesByPen).reduce((acc: Record<string, { perHead: number; mode: 'علمي' | 'يدوي' }>, penSchedules: any) => {
-    const schedulesForPen = penSchedules as any[]
-    const penId = schedulesForPen[0]?.penId || schedulesForPen[0]?.pen?.id
-    const smartPerHead = Number(smartPerHeadByPen[penId] || 0)
-    const scheduledPerHeadTotal = schedulesForPen.reduce((sum, schedule) => sum + getScheduleDailyAmount(schedule), 0)
-
-    schedulesForPen.forEach(schedule => {
-      let perHead = getScheduleDailyAmount(schedule)
-      let mode: 'علمي' | 'يدوي' = 'يدوي'
-
-      if (smartPerHead > 0 && scheduledPerHeadTotal > 0) {
-        const scheduleShare = getScheduleDailyAmount(schedule) / scheduledPerHeadTotal
-        perHead = smartPerHead * scheduleShare
-        mode = 'علمي'
-      } else if (smartPerHead > 0 && scheduledPerHeadTotal === 0) {
-        perHead = smartPerHead / Math.max(1, schedulesForPen.length)
-        mode = 'علمي'
-      }
-
-      acc[schedule.id] = { perHead, mode }
-    })
-
-    return acc
-  }, {})
-
-  const activeSchedulesWithContext = schedules
-    .filter(schedule => schedule.isActive)
-    .map(schedule => {
-      const pen = schedule.pen || pens.find(p => p.id === schedule.penId)
-      // Use active goats count: prefer _count.goats (from API with ACTIVE filter), fallback to currentCount, then manual count
-      let headsCount = Number(schedule?.pen?._count?.goats ?? pen?._count?.goats ?? pen?.currentCount ?? 0)
-      // If pen data is available with goats array, count ACTIVE goats only
-      if (headsCount === 0 && pen?.goats) {
-        headsCount = pen.goats.filter((g: any) => !g.status || g.status === 'ACTIVE').length
-      }
-      const calibrated = adjustedPerHeadByScheduleId[schedule.id]
-      const perHeadDailyAmount = calibrated?.perHead ?? getScheduleDailyAmount(schedule)
-      const dailyNeed = headsCount > 0 ? (perHeadDailyAmount * headsCount) : perHeadDailyAmount
-
-      return {
-        ...schedule,
-        pen,
-        headsCount,
-        perHeadDailyAmount,
-        dailyNeed,
-        calculationMode: calibrated?.mode || 'يدوي'
-      }
-    })
-
-  const stockByFeedType = stocks.reduce((acc: Record<string, number>, stock) => {
-    if (!stock.feedTypeId) return acc
-    acc[stock.feedTypeId] = (acc[stock.feedTypeId] || 0) + Number(stock.quantity || 0)
-    return acc
-  }, {})
-
-  const monthlyPlanningMap = activeSchedulesWithContext.reduce((acc: Record<string, any>, schedule) => {
-    const feedTypeId = schedule.feedTypeId
-    if (!feedTypeId) return acc
-
-    if (!acc[feedTypeId]) {
-      acc[feedTypeId] = {
-        feedTypeId,
-        feedType: schedule.feedType,
-        headsCount: 0,
-        dailyNeed: 0,
-        scientificCount: 0,
-        manualCount: 0
-      }
-    }
-
-    acc[feedTypeId].headsCount += schedule.headsCount
-    acc[feedTypeId].dailyNeed += schedule.dailyNeed
-    if (schedule.calculationMode === 'علمي') acc[feedTypeId].scientificCount += 1
-    else acc[feedTypeId].manualCount += 1
-    return acc
-  }, {})
-
-  const monthlyPlanning = Object.values(monthlyPlanningMap)
-    .map((item: any) => {
-      const availableStock = Number(stockByFeedType[item.feedTypeId] || 0)
-      const monthlyNeed = item.dailyNeed * 30
-      const monthlyNeedWithSafety = monthlyNeed * 1.1
-      const recommendedPurchase = Math.max(0, monthlyNeedWithSafety - availableStock)
-      const stockCoverageDays = item.dailyNeed > 0 ? (availableStock / item.dailyNeed) : 0
-
-      return {
-        ...item,
-        availableStock,
-        monthlyNeed,
-        monthlyNeedWithSafety,
-        recommendedPurchase,
-        stockCoverageDays,
-        deficit: Math.max(0, monthlyNeed - availableStock),
-        surplus: Math.max(0, availableStock - monthlyNeed),
-        calculationMode: item.scientificCount > 0 ? 'علمي' : 'يدوي'
-      }
-    })
-    .sort((a: any, b: any) => b.recommendedPurchase - a.recommendedPurchase)
-
-  // Calculate unique pens and their heads (avoid duplication)
-  const penHeadsMap = new Map<string, number>()
-  activeSchedulesWithContext.forEach(schedule => {
-    if (schedule.penId && !penHeadsMap.has(schedule.penId)) {
-      penHeadsMap.set(schedule.penId, schedule.headsCount)
-    }
-  })
-  const uniqueActivePenIds = Array.from(penHeadsMap.keys())
-  const totalHeadsInActivePens = Array.from(penHeadsMap.values()).reduce((sum, count) => sum + count, 0)
-
-  const monthlyPlanSummary = {
-    activePens: uniqueActivePenIds.length,
-    totalHeads: totalHeadsInActivePens,
-    totalMonthlyNeed: monthlyPlanning.reduce((sum: number, item: any) => sum + item.monthlyNeed, 0),
-    totalAvailableStock: monthlyPlanning.reduce((sum: number, item: any) => sum + item.availableStock, 0),
-    totalRecommendedPurchase: monthlyPlanning.reduce((sum: number, item: any) => sum + item.recommendedPurchase, 0),
-    criticalItems: monthlyPlanning.filter((item: any) => item.stockCoverageDays < 14 || item.recommendedPurchase > 0).length
+  const saveStock = async () => {
+    const url = editingStock ? `/api/feeds/stock/${editingStock.id}` : '/api/feeds/stock'
+    const method = editingStock ? 'PUT' : 'POST'
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stockForm) })
+    if (res.ok) { fetchAll(); setStockDialog(false) } else { const d = await res.json().catch(() => ({})); alert(d.error || 'فشل في الحفظ') }
   }
 
-  const groupedSchedulesByPen = Object.values(
-    schedules.reduce((acc: Record<string, any>, schedule: any) => {
-      const penId = schedule.penId || schedule.pen?.id || 'unknown'
-
-      if (!acc[penId]) {
-        acc[penId] = {
-          penId,
-          penName: schedule.pen?.nameAr || 'غير محدد',
-          startDate: schedule.startDate,
-          isActive: schedule.isActive,
-          foods: [] as any[]
-        }
-      }
-
-      const current = acc[penId]
-      if (new Date(schedule.startDate) > new Date(current.startDate)) {
-        current.startDate = schedule.startDate
-      }
-      current.isActive = current.isActive || schedule.isActive
-      current.foods.push({
-        id: schedule.id,
-        name: schedule.feedType?.nameAr || 'نوع غير معروف',
-        dailyAmount: getScheduleDailyAmount(schedule),
-        feedingTimes: getScheduleFeedingTimes(schedule)
-      })
-
-      return acc
-    }, {})
-  )
-
-  // Calculate statistics
-  const stats = {
-    totalTypes: feedTypes.length,
-    totalStockValue: stocks.reduce((sum, stock) => sum + (stock.quantity * (stock.cost || 0)), 0),
-    totalStockQuantity: stocks.reduce((sum, stock) => sum + stock.quantity, 0),
-    lowStockItems: stocks.filter(stock => stock.quantity < 10).length,
-    expiringItems: stocks.filter(stock => {
-      if (!stock.expiryDate) return false
-      const days = Math.ceil((new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-      return days <= 30 && days > 0
-    }).length,
-    expiredItems: stocks.filter(stock => {
-      if (!stock.expiryDate) return false
-      return new Date(stock.expiryDate) < new Date()
-    }).length,
-    activeSchedules: schedules.filter(s => s.isActive).length,
-    dailyCost: activeSchedulesWithContext.reduce((sum, schedule) => {
-      const stock = stocks.find(s => s.feedTypeId === schedule.feedTypeId)
-      const unitPrice = stock?.cost || 0
-      // dailyNeed already includes headsCount calculation
-      return sum + (schedule.dailyNeed * unitPrice)
-    }, 0),
-    monthlyCost: 0
-  }
-  stats.monthlyCost = stats.dailyCost * 30
-
-  // Filter stocks
-  const filteredStocks = stocks.filter(stock => {
-    const matchesSearch = searchQuery === '' || 
-      stock.feedType?.nameAr?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      stock.supplier?.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesCategory = filterCategory === 'ALL' || stock.feedType?.category === filterCategory
-    
-    let matchesStatus = true
-    if (filterStatus === 'LOW_STOCK') matchesStatus = stock.quantity < 10
-    else if (filterStatus === 'EXPIRING') {
-      if (!stock.expiryDate) matchesStatus = false
-      else {
-        const days = Math.ceil((new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-        matchesStatus = days <= 30 && days > 0
-      }
-    }
-    else if (filterStatus === 'EXPIRED') {
-      matchesStatus = stock.expiryDate && new Date(stock.expiryDate) < new Date()
-    }
-    
-    return matchesSearch && matchesCategory && matchesStatus
-  })
-
-  // Export to PDF
-  const exportToPDF = () => {
-    const doc = new jsPDF()
-    
-    // Add Arabic font support
-    doc.text('تقرير إدارة الأعلاف', 105, 15, { align: 'center' })
-    doc.setFontSize(10)
-    doc.text(`تاريخ التقرير: ${new Date().toLocaleDateString('ar-AE')}`, 105, 25, { align: 'center' })
-    
-    // Statistics section
-    doc.setFontSize(12)
-    doc.text('الإحصائيات', 14, 35)
-    doc.setFontSize(10)
-    let yPos = 45
-    doc.text(`عدد أنواع الأعلاف: ${stats.totalTypes}`, 14, yPos)
-    yPos += 7
-    doc.text(`إجمالي قيمة المخزون: ${stats.totalStockValue.toFixed(2)} درهم`, 14, yPos)
-    yPos += 7
-    doc.text(`الأعلاف منخفضة المخزون: ${stats.lowStockItems}`, 14, yPos)
-    yPos += 7
-    doc.text(`التكلفة اليومية: ${stats.dailyCost.toFixed(2)} درهم`, 14, yPos)
-    yPos += 7
-    doc.text(`التكلفة الشهرية المتوقعة: ${stats.monthlyCost.toFixed(2)} درهم`, 14, yPos)
-    
-    // Stocks table
-    yPos += 15
-    doc.setFontSize(12)
-    doc.text('المخزون', 14, yPos)
-    
-    const stocksData = filteredStocks.map(stock => [
-      stock.feedType?.nameAr || '',
-      `${stock.quantity} ${stock.unit}`,
-      `${stock.cost || 0} AED`,
-      `${(stock.quantity * (stock.cost || 0)).toFixed(2)} AED`,
-      stock.supplier || '-',
-      new Date(stock.purchaseDate).toLocaleDateString('ar-AE')
-    ])
-    
-    ;(doc as any).autoTable({
-      startY: yPos + 5,
-      head: [['نوع العلف', 'الكمية', 'سعر الوحدة', 'القيمة الإجمالية', 'المورد', 'تاريخ الشراء']],
-      body: stocksData,
-      styles: { font: 'helvetica', fontSize: 9 }
+  const saveSchedule = async () => {
+    const url = editingSchedule ? `/api/feeds/schedule/${editingSchedule.id}` : '/api/feeds/schedule'
+    const method = editingSchedule ? 'PUT' : 'POST'
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...scheduleForm, dailyAmount: Number(scheduleForm.dailyAmount), feedingTimes: Number(scheduleForm.feedingTimes) })
     })
-    
-    doc.save(`feeds-report-${new Date().toISOString().split('T')[0]}.pdf`)
+    if (res.ok) { fetchAll(); setScheduleDialog(false); setEditingSchedule(null) } else { const d = await res.json().catch(() => ({})); alert(d.error || 'فشل في الحفظ') }
   }
 
-  // Export to Excel
-  const exportToExcel = () => {
-    // Statistics sheet
-    const statsData = [
-      ['الإحصائية', 'القيمة'],
-      ['عدد أنواع الأعلاف', stats.totalTypes],
-      ['إجمالي قيمة المخزون', `${stats.totalStockValue.toFixed(2)} درهم`],
-      ['كمية المخزون الإجمالية', stats.totalStockQuantity],
-      ['الأعلاف منخفضة المخزون', stats.lowStockItems],
-      ['الأعلاف القريبة من الانتهاء', stats.expiringItems],
-      ['الأعلاف المنتهية', stats.expiredItems],
-      ['عدد الجداول النشطة', stats.activeSchedules],
-      ['التكلفة اليومية', `${stats.dailyCost.toFixed(2)} درهم`],
-      ['التكلفة الشهرية المتوقعة', `${stats.monthlyCost.toFixed(2)} درهم`]
-    ]
-    
-    // Stocks sheet
-    const stocksData = [
-      ['نوع العلف', 'الفئة', 'الكمية', 'الوحدة', 'سعر الوحدة', 'القيمة الإجمالية', 'المورد', 'تاريخ الشراء', 'تاريخ الانتهاء'],
-      ...filteredStocks.map(stock => [
-        stock.feedType?.nameAr || '',
-        FEED_CATEGORIES.find(c => c.value === stock.feedType?.category)?.label || '',
-        stock.quantity,
-        stock.unit,
-        stock.cost || 0,
-        stock.quantity * (stock.cost || 0),
-        stock.supplier || '',
-        new Date(stock.purchaseDate).toLocaleDateString('ar-AE'),
-        stock.expiryDate ? new Date(stock.expiryDate).toLocaleDateString('ar-AE') : ''
-      ])
-    ]
-    
-    // Schedules sheet
-    const schedulesData = [
-      ['الحظيرة', 'نوع العلف', 'الكمية اليومية (كجم)', 'عدد الوجبات', 'تاريخ البدء', 'الحالة'],
-      ...schedules.map(schedule => [
-        schedule.pen?.nameAr || '',
-        schedule.feedType?.nameAr || '',
-        getScheduleDailyAmount(schedule),
-        getScheduleFeedingTimes(schedule),
-        new Date(schedule.startDate).toLocaleDateString('ar-AE'),
-        schedule.isActive ? 'نشط' : 'متوقف'
-      ])
-    ]
-    
+  const toggleScheduleActive = async (s: Schedule) => {
+    const res = await fetch(`/api/feeds/schedule/${s.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !s.isActive })
+    })
+    if (res.ok) fetchAll()
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteDialog) return
+    const { type, item } = deleteDialog
+    const url = type === 'stock' ? `/api/feeds/stock/${item.id}` : type === 'schedule' ? `/api/feeds/schedule/${item.id}` : `/api/feeds/${item.id}`
+    await fetch(url, { method: 'DELETE' })
+    fetchAll(); setDeleteDialog(null)
+  }
+
+  // ─── Export ───
+  const exportPDF = async () => {
+    const doc = new jsPDF('p', 'pt', 'a4')
+    const dateStr = new Date().toLocaleDateString('ar-AE')
+    const rows = stocks.map(s => `<tr>
+      <td style="border:1px solid #ddd;padding:4px">${s.feedType?.nameAr || '-'}</td>
+      <td style="border:1px solid #ddd;padding:4px">${s.quantity} ${s.unit}</td>
+      <td style="border:1px solid #ddd;padding:4px">${s.cost || 0} درهم</td>
+      <td style="border:1px solid #ddd;padding:4px">${s.supplier || '-'}</td>
+    </tr>`).join('')
+
+    const html = `<div style="font-family:Cairo,Arial,sans-serif;direction:rtl;padding:20px;color:#333">
+      <h2 style="text-align:center;margin-bottom:8px">تقرير إدارة الأعلاف</h2>
+      <p style="text-align:center;margin-bottom:20px">تاريخ التقرير: ${dateStr}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#f5f5f5">
+          <th style="border:1px solid #ddd;padding:6px">نوع العلف</th>
+          <th style="border:1px solid #ddd;padding:6px">الكمية</th>
+          <th style="border:1px solid #ddd;padding:6px">سعر الوحدة</th>
+          <th style="border:1px solid #ddd;padding:6px">المورد</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`
+
+    await new Promise<void>(resolve => { (doc as any).html(html, { x: 15, y: 15, width: 565, windowWidth: 1000, callback: () => resolve() }) })
+    doc.save(`feeds-${today()}.pdf`)
+  }
+
+  const exportExcel = () => {
+    const data = stocks.map(s => ({
+      'نوع العلف': s.feedType?.nameAr || '',
+      'الكمية': s.quantity,
+      'الوحدة': s.unit,
+      'سعر الوحدة': s.cost || 0,
+      'القيمة': s.quantity * (s.cost || 0),
+      'المورد': s.supplier || '',
+      'تاريخ الشراء': new Date(s.purchaseDate).toLocaleDateString('ar-AE'),
+      'تاريخ الانتهاء': s.expiryDate ? new Date(s.expiryDate).toLocaleDateString('ar-AE') : ''
+    }))
     const wb = XLSX.utils.book_new()
-    const statsWs = XLSX.utils.aoa_to_sheet(statsData)
-    const stocksWs = XLSX.utils.aoa_to_sheet(stocksData)
-    const schedulesWs = XLSX.utils.aoa_to_sheet(schedulesData)
-    
-    XLSX.utils.book_append_sheet(wb, statsWs, 'الإحصائيات')
-    XLSX.utils.book_append_sheet(wb, stocksWs, 'المخزون')
-    XLSX.utils.book_append_sheet(wb, schedulesWs, 'جداول التغذية')
-    
-    XLSX.writeFile(wb, `feeds-report-${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'المخزون')
+    XLSX.writeFile(wb, `feeds-${today()}.xlsx`)
   }
 
-  const handleSaveType = async () => {
-    try {
-      const url = selectedType ? `/api/feeds/${selectedType.id}` : '/api/feeds'
-      const method = selectedType ? 'PUT' : 'POST'
+  // ─── View Navigation ───
+  const navItems: { key: View; label: string; icon: any; count?: number }[] = [
+    { key: 'today', label: 'لوحة اليوم', icon: <TodayIcon /> },
+    { key: 'stock', label: 'المخزون', icon: <InventoryIcon />, count: stocks.length },
+    { key: 'schedules', label: 'جداول التغذية', icon: <ScheduleIcon />, count: activeSchedules.length }
+  ]
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(typeData)
-      })
-
-      if (res.ok) {
-        fetchData()
-        setTypeDialogOpen(false)
-        setSelectedType(null)
-        setTypeData({
-          nameAr: '',
-          nameEn: '',
-          category: 'HAY',
-          protein: 0,
-          energy: 0,
-          fiber: 0,
-          description: ''
-        })
-      } else {
-        const data = await res.json().catch(() => ({}))
-        console.error('Failed to save feed type:', data?.error || res.statusText)
-        alert(data?.error || 'فشل في حفظ نوع العلف')
-      }
-    } catch (error) {
-      console.error('Failed to save feed type:', error)
-      alert('فشل في حفظ نوع العلف')
-    }
-  }
-
-  const handleSaveStock = async () => {
-    if (selectedStock) {
-      await handleUpdateStock()
-      return
-    }
-    
-    try {
-      const res = await fetch('/api/feeds/stock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(stockData)
-      })
-
-      if (res.ok) {
-        fetchData()
-        setStockDialogOpen(false)
-        setSelectedStock(null)
-        setStockData({
-          feedTypeId: '',
-          quantity: 0,
-          unit: 'كيس',
-          unitPrice: 0,
-          purchaseDate: new Date().toISOString().split('T')[0],
-          expiryDate: '',
-          supplier: '',
-          notes: ''
-        })
-      } else {
-        const data = await res.json().catch(() => ({}))
-        alert(data?.error || 'فشل في حفظ المخزون')
-      }
-    } catch (error) {
-      console.error('Failed to add stock:', error)
-      alert('فشل في حفظ المخزون')
-    }
-  }
-
-  const handleEditStock = (stock: any) => {
-    setSelectedStock(stock)
-    setStockData({
-      feedTypeId: stock.feedTypeId,
-      quantity: stock.quantity,
-      unit: stock.unit,
-      unitPrice: stock.cost || 0,
-      purchaseDate: new Date(stock.purchaseDate).toISOString().split('T')[0],
-      expiryDate: stock.expiryDate ? new Date(stock.expiryDate).toISOString().split('T')[0] : '',
-      supplier: stock.supplier || '',
-      notes: stock.notes || ''
-    })
-    setStockDialogOpen(true)
-  }
-
-  const handleUpdateStock = async () => {
-    if (!selectedStock) return
-    
-    try {
-      const res = await fetch(`/api/feeds/stock/${selectedStock.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(stockData)
-      })
-
-      if (res.ok) {
-        fetchData()
-        setStockDialogOpen(false)
-        setSelectedStock(null)
-        setStockData({
-          feedTypeId: '',
-          quantity: 0,
-          unit: 'كيس',
-          unitPrice: 0,
-          purchaseDate: new Date().toISOString().split('T')[0],
-          expiryDate: '',
-          supplier: '',
-          notes: ''
-        })
-      } else {
-        const data = await res.json().catch(() => ({}))
-        alert(data?.error || 'فشل في تحديث المخزون')
-      }
-    } catch (error) {
-      console.error('Failed to update stock:', error)
-      alert('فشل في تحديث المخزون')
-    }
-  }
-
-  const handleDeleteStock = async () => {
-    if (!selectedStock) return
-    
-    try {
-      const res = await fetch(`/api/feeds/stock/${selectedStock.id}`, {
-        method: 'DELETE'
-      })
-
-      if (res.ok) {
-        fetchData()
-        setDeleteDialogOpen(false)
-        setSelectedStock(null)
-      }
-    } catch (error) {
-      console.error('Failed to delete stock:', error)
-    }
-  }
-
-  const handleSaveSchedule = async () => {
-    try {
-      const res = await fetch('/api/feeds/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...scheduleData,
-          dailyAmount: Number(scheduleData.dailyAmount),
-          feedingTimes: Number(scheduleData.feedingTimes)
-        })
-      })
-
-      if (res.ok) {
-        fetchData()
-        setScheduleDialogOpen(false)
-        setScheduleData({
-          penId: '',
-          feedTypeId: '',
-          dailyAmount: 0,
-          feedingTimes: '2',
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: '',
-          isActive: true,
-          notes: ''
-        })
-      }
-    } catch (error) {
-      console.error('Failed to add schedule:', error)
-    }
-  }
-
-  const handleGenerateMonthlySchedules = async () => {
-    try {
-      setGeneratingMonthly(true)
-      const res = await fetch('/api/feeds/schedule/monthly', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replaceExisting: true })
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data?.error || 'فشل في إنشاء الجداول الشهرية الذكية')
-        return
-      }
-
-      fetchData()
-      alert(`تم حذف ${data?.deletedCount || 0} جدول سابق وإنشاء ${data?.createdSchedules || 0} جدول ذكي (${data?.processedPens || 0} حظيرة)`)
-    } catch (error) {
-      console.error('Failed to generate monthly schedules:', error)
-      alert('فشل في إنشاء الجداول الشهرية الذكية')
-    } finally {
-      setGeneratingMonthly(false)
-    }
-  }
-
-  const handleDeleteAllSchedules = async () => {
-    const confirmed = window.confirm('سيتم حذف جميع جداول التغذية الحالية نهائيًا. هل تريد المتابعة؟')
-    if (!confirmed) return
-
-    try {
-      setDeletingAllSchedules(true)
-      const res = await fetch('/api/feeds/schedule', {
-        method: 'DELETE'
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data?.error || 'فشل في حذف جميع الجداول')
-        return
-      }
-
-      fetchData()
-      alert(`تم حذف ${data?.deletedCount || 0} جدول تغذية`) 
-    } catch (error) {
-      console.error('Failed to delete all schedules:', error)
-      alert('فشل في حذف جميع الجداول')
-    } finally {
-      setDeletingAllSchedules(false)
-    }
-  }
-
-  const handleSaveIntakeRecord = async () => {
-    if (!intakeData.penId || !intakeData.feedTypeId) {
-      alert('يرجى اختيار الحظيرة ونوع العلف')
-      return
-    }
-
-    const offered = Number(intakeData.offeredQty || 0)
-    const leftover = Number(intakeData.leftoverQty || 0)
-    if (offered <= 0) {
-      alert('الكمية المقدمة يجب أن تكون أكبر من صفر')
-      return
-    }
-    if (leftover < 0 || leftover > offered) {
-      alert('الكمية المتبقية غير صحيحة')
-      return
-    }
-
-    const netConsumed = offered - leftover
-    const wastePct = offered > 0 ? (leftover / offered) * 100 : 0
-    const selectedFeedType = feedTypes.find(type => type.id === intakeData.feedTypeId)
-    const unitCost = getIntakeUnitCost(intakeData.feedTypeId)
-    const totalCost = unitCost * netConsumed
-    const encodedNotes = `INTAKE|offered=${offered}|leftover=${leftover}|waste=${wastePct.toFixed(2)}|penId=${intakeData.penId}|feedTypeId=${intakeData.feedTypeId}|userNotes=${intakeData.notes || ''}`
-
-    try {
-      setSavingIntake(true)
-      const res = await fetch('/api/feeding-records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          goatId: null,
-          date: intakeData.date,
-          feedType: selectedFeedType?.nameAr || 'غير محدد',
-          quantity: Number(netConsumed.toFixed(3)),
-          unit: 'كجم',
-          cost: Number(totalCost.toFixed(2)),
-          notes: encodedNotes
-        })
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data?.error || 'فشل في حفظ سجل الاستهلاك')
-        return
-      }
-
-      fetchData()
-      setIntakeData({
-        penId: '',
-        feedTypeId: '',
-        date: new Date().toISOString().split('T')[0],
-        offeredQty: 0,
-        leftoverQty: 0,
-        notes: ''
-      })
-      alert('تم حفظ الاستهلاك الفعلي بنجاح')
-    } catch (error) {
-      console.error('Failed to save intake record:', error)
-      alert('فشل في حفظ سجل الاستهلاك')
-    } finally {
-      setSavingIntake(false)
-    }
-  }
-
-  const intakeRecords = feedingRecords
-    .map(record => ({ ...record, meta: parseIntakeMeta(record.notes) }))
-    .filter(record => record.meta)
-
-  const intakeSummary = {
-    offered: intakeRecords.reduce((sum, record) => sum + Number(record.meta?.offered || 0), 0),
-    consumed: intakeRecords.reduce((sum, record) => sum + Number(record.quantity || 0), 0),
-    leftover: intakeRecords.reduce((sum, record) => sum + Number(record.meta?.leftover || 0), 0),
-    totalCost: intakeRecords.reduce((sum, record) => sum + Number(record.cost || 0), 0)
-  }
-
-  // Calculate active heads total (avoid counting inactive goats)
-  const activeHeadsTotal = pens.reduce((sum, pen) => {
-    let count = Number(pen._count?.goats || pen.currentCount || 0)
-    // If pen has goats array, count ACTIVE only
-    if (count === 0 && pen.goats) {
-      count = pen.goats.filter((g: any) => !g.status || g.status === 'ACTIVE').length
-    }
-    return sum + count
-  }, 0)
-  const costPerHead = activeHeadsTotal > 0 ? (intakeSummary.totalCost / activeHeadsTotal) : 0
-  const wastePercent = intakeSummary.offered > 0 ? (intakeSummary.leftover / intakeSummary.offered) * 100 : 0
-
-  const expiringStocks = stocks.filter(stock => {
-    if (!stock.expiryDate) return false
-    const daysUntilExpiry = Math.ceil((new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    return daysUntilExpiry <= 30 && daysUntilExpiry > 0
-  })
+  if (loading) return (
+    <Box sx={{ p: 3 }}>
+      <Skeleton variant="rectangular" height={60} sx={{ mb: 2, borderRadius: 2 }} />
+      <Grid container spacing={2}>
+        {[1, 2, 3, 4].map(i => <Grid item xs={12} sm={6} md={3} key={i}><Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} /></Grid>)}
+      </Grid>
+    </Box>
+  )
 
   return (
     <Box>
-      {/* Header with Export Buttons */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={3} gap={1.5}>
-        <Typography variant={isMobile ? 'h5' : 'h4'}>إدارة الأعلاف</Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<PictureAsPdfIcon />}
-            onClick={exportToPDF}
-            size="small"
-            fullWidth={isMobile}
-          >
-            تصدير PDF
-          </Button>
-          <Button
-            variant="outlined"
-            color="success"
-            startIcon={<DescriptionIcon />}
-            onClick={exportToExcel}
-            size="small"
-            fullWidth={isMobile}
-          >
-            تصدير Excel
-          </Button>
-        </Stack>
-      </Stack>
-
-      <Paper>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
-          <Tab label="نظرة عامة" icon={<TrendingUpIcon />} iconPosition="start" />
-          <Tab label="أنواع الأعلاف" icon={<GrassIcon />} iconPosition="start" />
-          <Tab label="المخزون" icon={<InventoryIcon />} iconPosition="start" />
-          <Tab label="الجداول" icon={<ScheduleIcon />} iconPosition="start" />
-          <Tab label="التخطيط الذكي" icon={<InfoIcon />} iconPosition="start" />
-          <Tab label="الاستهلاك الفعلي" icon={<AttachMoneyIcon />} iconPosition="start" />
-        </Tabs>
-
-        {/* Tab 0: نظرة عامة */}
-        <TabPanel value={tabValue} index={0}>
-          <Typography variant="h5" mb={3}>📊 الإحصائيات العامة</Typography>
-          <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'primary.light', borderRadius: 2 }}>
-                  <GrassIcon color="primary" />
-                </Box>
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">{stats.totalTypes}</Typography>
-                  <Typography variant="body2" color="text.secondary">أنواع الأعلاف</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'success.light', borderRadius: 2 }}>
-                  <AttachMoneyIcon color="success" />
-                </Box>
-                <Box>
-                  <Typography variant="h5" fontWeight="bold">{stats.totalStockValue.toFixed(0)}</Typography>
-                  <Typography variant="body2" color="text.secondary">قيمة المخزون (درهم)</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'warning.light', borderRadius: 2 }}>
-                  <InventoryIcon color="warning" />
-                </Box>
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">{stats.lowStockItems}</Typography>
-                  <Typography variant="body2" color="text.secondary">مخزون منخفض</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'info.light', borderRadius: 2 }}>
-                  <TrendingUpIcon color="info" />
-                </Box>
-                <Box>
-                  <Typography variant="h5" fontWeight="bold">{stats.dailyCost.toFixed(0)}</Typography>
-                  <Typography variant="body2" color="text.secondary">التكلفة اليومية (درهم)</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        {/* Additional Statistics */}
-        <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'error.light', borderRadius: 2 }}>
-                  <WarningIcon color="error" />
-                </Box>
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">{stats.expiringItems}</Typography>
-                  <Typography variant="body2" color="text.secondary">قريبة من الانتهاء (30 يوم)</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'secondary.light', borderRadius: 2 }}>
-                  <ScheduleIcon color="secondary" />
-                </Box>
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">{stats.activeSchedules}</Typography>
-                  <Typography variant="body2" color="text.secondary">جداول نشطة</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ p: 1, bgcolor: 'primary.light', borderRadius: 2 }}>
-                  <ShoppingCartIcon color="primary" />
-                </Box>
-                <Box>
-                  <Typography variant="h5" fontWeight="bold">{stats.monthlyCost.toFixed(0)}</Typography>
-                  <Typography variant="body2" color="text.secondary">التكلفة الشهرية المتوقعة</Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Smart Notifications */}
-      {(stats.lowStockItems > 0 || stats.expiringItems > 0 || stats.expiredItems > 0) && (
-        <Paper sx={{ p: 2, mb: 3, bgcolor: 'rgba(255, 152, 0, 0.05)' }}>
-          <Stack spacing={2}>
-            <Typography variant="h6" color="warning.main" display="flex" alignItems="center" gap={1}>
-              <WarningIcon /> تنبيهات هامة
-            </Typography>
-            
-            {stats.lowStockItems > 0 && (
-              <Alert severity="warning" icon={<TrendingDownIcon />}>
-                لديك {stats.lowStockItems} نوع علف بمخزون منخفض (أقل من 10 وحدات). يُنصح بإعادة الطلب قريباً.
-              </Alert>
-            )}
-            
-            {stats.expiringItems > 0 && (
-              <Alert severity="error" icon={<WarningIcon />}>
-                تنبيه! هناك {stats.expiringItems} نوع علف سينتهي خلال 30 يوم. تحقق من المخزون لتجنب الهدر.
-              </Alert>
-            )}
-            
-            {stats.expiredItems > 0 && (
-              <Alert severity="error">
-                تحذير! لديك {stats.expiredItems} نوع علف منتهي الصلاحية. يجب التخلص منه فوراً.
-              </Alert>
-            )}
-            
-            {stats.dailyCost > 500 && (
-              <Alert severity="info" icon={<InfoIcon />}>
-                ملاحظة: تكلفة التغذية اليومية مرتفعة ({stats.dailyCost.toFixed(0)} درهم). راجع جداول التغذية لتحسين الكفاءة.
-              </Alert>
-            )}
+      {/* ─── Top Bar ─── */}
+      <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <GrassIcon color="success" sx={{ fontSize: 32 }} />
+            <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">إدارة الأعلاف</Typography>
           </Stack>
-        </Paper>
-      )}
-        </TabPanel>
-
-        {/* Tab 1: أنواع الأعلاف */}
-        <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedType(null)
-                setTypeData({
-                  nameAr: '',
-                  nameEn: '',
-                  category: 'HAY',
-                  protein: 0,
-                  energy: 0,
-                  fiber: 0,
-                  description: ''
-                })
-                setTypeDialogOpen(true)
-              }}
-            >
-              إضافة نوع علف
-            </Button>
-          </Box>
-          <Grid container spacing={2}>
-            {feedTypes.map((type) => (
-              <Grid item xs={12} md={6} lg={4} key={type.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="h6">{type.nameAr}</Typography>
-                      <Chip
-                        label={FEED_CATEGORIES.find(c => c.value === type.category)?.label}
-                        size="small"
-                        color="primary"
-                      />
-                    </Box>
-                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                      {type.nameEn}
-                    </Typography>
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="body2">بروتين: {type.protein}%</Typography>
-                      <Typography variant="body2">طاقة: {type.energy} kcal</Typography>
-                      <Typography variant="body2">ألياف: {type.fiber}%</Typography>
-                    </Box>
-                    {type.description && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        {type.description}
-                      </Typography>
-                    )}
-                    <Box sx={{ mt: 2 }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setSelectedType(type)
-                          setTypeData({
-                            nameAr: type.nameAr,
-                            nameEn: type.name || type.nameEn || '',
-                            category: type.category,
-                            protein: type.protein || 0,
-                            energy: type.energy || 0,
-                            fiber: 0,
-                            description: type.notes || ''
-                          })
-                          setTypeDialogOpen(true)
-                        }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </TabPanel>
-
-        {/* Tab 2: المخزون */}
-        <TabPanel value={tabValue} index={2}>
-          {/* Filters and Actions */}
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3} justifyContent="space-between">
-            <Stack direction="row" spacing={2} flex={1}>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  setSelectedStock(null)
-                  setStockData({
-                    feedTypeId: '',
-                    quantity: 0,
-                    unit: 'كيس',
-                    unitPrice: 0,
-                    purchaseDate: new Date().toISOString().split('T')[0],
-                    expiryDate: '',
-                    supplier: '',
-                    notes: ''
-                  })
-                  setStockDialogOpen(true)
-                }}
-              >
-                إضافة مخزون
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={viewMode === 'grid' ? <ViewListIcon /> : <GridViewIcon />}
-                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              >
-                {viewMode === 'grid' ? 'عرض جدولي' : 'عرض شبكي'}
-              </Button>
-            </Stack>
-          </Stack>
-          
-          {/* Advanced Filters */}
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                placeholder="بحث عن علف أو مورد..."
-                size="small"
-                fullWidth
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>
-                }}
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {navItems.map(n => (
+              <Chip
+                key={n.key}
+                icon={n.icon}
+                label={`${n.label}${n.count !== undefined ? ` (${n.count})` : ''}`}
+                variant={view === n.key ? 'filled' : 'outlined'}
+                color={view === n.key ? 'primary' : 'default'}
+                onClick={() => setView(n.key)}
+                sx={{ fontWeight: view === n.key ? 700 : 400 }}
               />
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>الفئة</InputLabel>
-                <Select
-                  value={filterCategory}
-                  label="الفئة"
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                >
-                  <MenuItem value="ALL">الكل</MenuItem>
-                  {FEED_CATEGORIES.map(cat => (
-                    <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 180 }}>
-                <InputLabel>الحالة</InputLabel>
-                <Select
-                  value={filterStatus}
-                  label="الحالة"
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <MenuItem value="ALL">الكل</MenuItem>
-                  <MenuItem value="LOW_STOCK">مخزون منخفض</MenuItem>
-                  <MenuItem value="EXPIRING">قريب من الانتهاء</MenuItem>
-                  <MenuItem value="EXPIRED">منتهي</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
-          </Paper>
-
-          {/* Grid or Table View */}
-          {viewMode === 'grid' ? (
-             <Grid container spacing={3}>
-              {filteredStocks.map((stock) => {
-                const daysUntilExpiry = stock.expiryDate
-                  ? Math.ceil((new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                  : null
-                const isLowStock = stock.quantity < 10
-                const isExpiring = daysUntilExpiry !== null && daysUntilExpiry <= 30 && daysUntilExpiry > 0
-                const isExpired = stock.expiryDate && new Date(stock.expiryDate) < new Date()
-                const totalValue = stock.quantity * (stock.cost || 0)
-                
-                return (
-                  <Grid item xs={12} sm={6} md={4} key={stock.id}>
-                    <Card sx={{ 
-                      height: '100%', 
-                      border: isExpired ? '2px solid #f44336' : isExpiring ? '2px solid #ff9800' : 'none',
-                      position: 'relative'
-                    }}>
-                      {(isLowStock || isExpiring || isExpired) && (
-                        <Chip 
-                          label={isExpired ? 'منتهي' : isExpiring ? 'قريب من الانتهاء' : 'مخزون منخفض'} 
-                          color={isExpired ? 'error' : isExpiring ? 'warning' : 'default'}
-                          size="small"
-                          sx={{ position: 'absolute', top: 10, right: 10 }} 
-                        />
-                      )}
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          {stock.feedType?.nameAr}
-                        </Typography>
-                        <Chip
-                          label={FEED_CATEGORIES.find(c => c.value === stock.feedType?.category)?.label}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                          sx={{ mb: 2 }}
-                        />
-                        
-                        <Stack spacing={1.5}>
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">الكمية المتوفرة</Typography>
-                            <Typography variant="h5" color="primary.main">
-                              {stock.quantity} {stock.unit}
-                            </Typography>
-                            {isLowStock && (
-                              <LinearProgress 
-                                variant="determinate" 
-                                value={(stock.quantity / 10) * 100} 
-                                color="warning"
-                                sx={{ mt: 1, height: 6, borderRadius: 3 }}
-                              />
-                            )}
-                          </Box>
-                          
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">القيمة الإجمالية</Typography>
-                            <Typography variant="h6" color="success.main">
-                              {totalValue.toFixed(2)} درهم
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              ({stock.cost || 0} درهم / {stock.unit})
-                            </Typography>
-                          </Box>
-                          
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">تاريخ الشراء</Typography>
-                            <Typography variant="body2">
-                              {new Date(stock.purchaseDate).toLocaleDateString('ar-AE')}
-                            </Typography>
-                          </Box>
-                          
-                          {stock.expiryDate && (
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">تاريخ الانتهاء</Typography>
-                              <Typography variant="body2" color={isExpired ? 'error.main' : isExpiring ? 'warning.main' : 'inherit'}>
-                                {new Date(stock.expiryDate).toLocaleDateString('ar-AE')}
-                                {daysUntilExpiry !== null && daysUntilExpiry > 0 && (
-                                  <Typography component="span" variant="caption" display="block">
-                                    ({daysUntilExpiry} يوم متبقي)
-                                  </Typography>
-                                )}
-                              </Typography>
-                            </Box>
-                          )}
-                          
-                          {stock.supplier && (
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">المورد</Typography>
-                              <Typography variant="body2">{stock.supplier}</Typography>
-                            </Box>
-                          )}
-                        </Stack>
-                      </CardContent>
-                      <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                        <Tooltip title="تعديل">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleEditStock(stock)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="حذف">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => {
-                              setSelectedStock(stock)
-                              setDeleteDialogOpen(true)
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                )
-              })}
-            </Grid>
-          ) : (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>نوع العلف</TableCell>
-                    <TableCell>الفئة</TableCell>
-                    <TableCell>الكمية</TableCell>
-                    <TableCell>سعر الوحدة</TableCell>
-                    <TableCell>القيمة الإجمالية</TableCell>
-                    <TableCell>تاريخ الشراء</TableCell>
-                    <TableCell>تاريخ الانتهاء</TableCell>
-                    <TableCell>المورد</TableCell>
-                    <TableCell>الحالة</TableCell>
-                    <TableCell align="center">إجراءات</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredStocks.map((stock) => {
-                    const daysUntilExpiry = stock.expiryDate
-                      ? Math.ceil((new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                      : null
-                    const isLowStock = stock.quantity < 10
-                    const isExpiring = daysUntilExpiry !== null && daysUntilExpiry <= 30 && daysUntilExpiry > 0
-                    const isExpired = stock.expiryDate && new Date(stock.expiryDate) < new Date()
-                    
-                    return (
-                      <TableRow key={stock.id} sx={{ bgcolor: isExpired ? 'rgba(244, 67, 54, 0.05)' : 'inherit' }}>
-                        <TableCell>{stock.feedType?.nameAr}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={FEED_CATEGORIES.find(c => c.value === stock.feedType?.category)?.label}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color={isLowStock ? 'warning.main' : 'inherit'}>
-                            {stock.quantity} {stock.unit}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{stock.cost || 0} درهم</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
-                          {(stock.quantity * (stock.cost || 0)).toFixed(2)} درهم
-                        </TableCell>
-                        <TableCell>{new Date(stock.purchaseDate).toLocaleDateString('ar-AE')}</TableCell>
-                        <TableCell>
-                          {stock.expiryDate ? (
-                            <Stack spacing={0.5}>
-                              <Typography variant="body2" color={isExpired ? 'error' : isExpiring ? 'warning.main' : 'inherit'}>
-                                {new Date(stock.expiryDate).toLocaleDateString('ar-AE')}
-                              </Typography>
-                              {daysUntilExpiry !== null && daysUntilExpiry > 0 && (
-                                <Typography variant="caption" color={isExpiring ? 'warning.main' : 'text.secondary'}>
-                                  {daysUntilExpiry} يوم متبقي
-                                </Typography>
-                              )}
-                            </Stack>
-                          ) : '-'}
-                        </TableCell>
-                        <TableCell>{stock.supplier || '-'}</TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={0.5}>
-                            {isExpired && <Chip label="منتهي" size="small" color="error" />}
-                            {isExpiring && <Chip label="قريب" size="small" color="warning" />}
-                            {isLowStock && <Chip label="منخفض" size="small" color="default" />}
-                            {!isExpired && !isExpiring && !isLowStock && <Chip label="جيد" size="small" color="success" />}
-                          </Stack>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Stack direction="row" spacing={1} justifyContent="center">
-                            <Tooltip title="تعديل">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleEditStock(stock)}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="حذف">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => {
-                                  setSelectedStock(stock)
-                                  setDeleteDialogOpen(true)
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </TabPanel>
-
-        {/* Tab 3: الجداول */}
-        <TabPanel value={tabValue} index={3}>
-          <Typography variant="h5" mb={2}>📋 جداول التغذية</Typography>
-          <Box sx={{ mb: 2 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setScheduleDialogOpen(true)}
-              >
-                إضافة جدول تغذية
-              </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={handleGenerateMonthlySchedules}
-                disabled={generatingMonthly || deletingAllSchedules}
-              >
-                {generatingMonthly ? 'جاري الإنشاء...' : 'إنشاء جداول شهرية ذكية'}
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleDeleteAllSchedules}
-                disabled={deletingAllSchedules || generatingMonthly}
-              >
-                {deletingAllSchedules ? 'جاري الحذف...' : 'حذف كل الجداول'}
-              </Button>
-            </Stack>
-          </Box>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>الحظيرة</TableCell>
-                  <TableCell>الأطعمة المقترحة</TableCell>
-                  <TableCell>تاريخ البدء</TableCell>
-                  <TableCell>الحالة</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {groupedSchedulesByPen.map((group: any) => (
-                  <TableRow key={group.penId}>
-                    <TableCell>{group.penName}</TableCell>
-                    <TableCell>
-                      <Stack spacing={0.5}>
-                        {group.foods.map((food: any) => (
-                          <Typography key={food.id} variant="body2">
-                            {food.name}: {food.dailyAmount} كجم / {food.feedingTimes} وجبات
-                          </Typography>
-                        ))}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>{new Date(group.startDate).toLocaleDateString('ar-AE')}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={group.isActive ? 'نشط' : 'متوقف'}
-                        color={group.isActive ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </TabPanel>
-
-        {/* Tab 4: التخطيط الذكي */}
-        <TabPanel value={tabValue} index={4}>
-          <Typography variant="h5" mb={3}>🤖 المساعد الذكي</Typography>
-          <Grid container spacing={2} mb={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="body2" color="text.secondary">إجمالي الرؤوس (نشط)</Typography>
-                  <Typography variant="h4" fontWeight="bold">{monthlyPlanSummary.totalHeads}</Typography>
-                  <Typography variant="caption" color="text.secondary">{monthlyPlanSummary.activePens} حظيرة نشطة</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="body2" color="text.secondary">الاحتياج الشهري</Typography>
-                  <Typography variant="h5" fontWeight="bold">{monthlyPlanSummary.totalMonthlyNeed.toFixed(1)} كجم</Typography>
-                  <Typography variant="caption" color="text.secondary">بناءً على عدد الرؤوس</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="body2" color="text.secondary">المخزون المتاح</Typography>
-                  <Typography variant="h5" fontWeight="bold">{monthlyPlanSummary.totalAvailableStock.toFixed(1)} كجم</Typography>
-                  <Typography variant="caption" color="text.secondary">المتاح حاليًا</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="body2" color="text.secondary">الشراء المقترح (10%)</Typography>
-                  <Typography variant="h5" fontWeight="bold" color={monthlyPlanSummary.totalRecommendedPurchase > 0 ? 'warning.main' : 'success.main'}>
-                    {monthlyPlanSummary.totalRecommendedPurchase.toFixed(1)} كجم
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">{monthlyPlanSummary.criticalItems} عناصر حرجة</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" mb={2}>تحليل الاحتياج الشهري حسب نوع العلف</Typography>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>نوع العلف</TableCell>
-                    <TableCell>نمط الحساب</TableCell>
-                    <TableCell>عدد الرؤوس</TableCell>
-                    <TableCell>احتياج يومي (كجم)</TableCell>
-                    <TableCell>احتياج شهري (كجم)</TableCell>
-                    <TableCell>المتاح (كجم)</TableCell>
-                    <TableCell>يكفي (يوم)</TableCell>
-                    <TableCell>شراء مقترح (كجم)</TableCell>
-                    <TableCell>الحالة</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {monthlyPlanning.map((plan: any) => {
-                    const isCritical = plan.stockCoverageDays < 7
-                    const isWarning = plan.stockCoverageDays >= 7 && plan.stockCoverageDays < 14
-
-                    return (
-                      <TableRow key={plan.feedTypeId}>
-                        <TableCell>{plan.feedType?.nameAr || '-'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            color={plan.calculationMode === 'علمي' ? 'info' : 'default'}
-                            label={plan.calculationMode}
-                          />
-                        </TableCell>
-                        <TableCell>{plan.headsCount}</TableCell>
-                        <TableCell>{plan.dailyNeed.toFixed(2)}</TableCell>
-                        <TableCell>{plan.monthlyNeed.toFixed(2)}</TableCell>
-                        <TableCell>{plan.availableStock.toFixed(2)}</TableCell>
-                        <TableCell>{plan.stockCoverageDays.toFixed(1)}</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', color: plan.recommendedPurchase > 0 ? 'warning.main' : 'inherit' }}>
-                          {plan.recommendedPurchase.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {isCritical ? (
-                            <Chip size="small" color="error" label="حرج" />
-                          ) : isWarning ? (
-                            <Chip size="small" color="warning" label="منخفض" />
-                          ) : (
-                            <Chip size="small" color="success" label="جيد" />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </TabPanel>
-
-        {/* Tab 5: الاستهلاك الفعلي */}
-        <TabPanel value={tabValue} index={5}>
-          <Typography variant="h5" mb={3}>📊 تسجيل الاستهلاك الفعلي</Typography>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  select
-                  fullWidth
-                  label="الحظيرة"
-                  value={intakeData.penId}
-                  onChange={(e) => setIntakeData({ ...intakeData, penId: e.target.value })}
-                >
-                  {pens.map(pen => (
-                    <MenuItem key={pen.id} value={pen.id}>{pen.nameAr}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  select
-                  fullWidth
-                  label="نوع العلف"
-                  value={intakeData.feedTypeId}
-                  onChange={(e) => setIntakeData({ ...intakeData, feedTypeId: e.target.value })}
-                >
-                  {feedTypes.map(type => (
-                    <MenuItem key={type.id} value={type.id}>{type.nameAr}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="التاريخ"
-                  InputLabelProps={{ shrink: true }}
-                  value={intakeData.date}
-                  onChange={(e) => setIntakeData({ ...intakeData, date: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="الكمية المقدمة"
-                  value={intakeData.offeredQty}
-                  onChange={(e) => setIntakeData({ ...intakeData, offeredQty: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="المتبقي/الهدر"
-                  value={intakeData.leftoverQty}
-                  onChange={(e) => setIntakeData({ ...intakeData, leftoverQty: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12} md={9}>
-                <TextField
-                  fullWidth
-                  label="ملاحظات"
-                  value={intakeData.notes}
-                  onChange={(e) => setIntakeData({ ...intakeData, notes: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleSaveIntakeRecord}
-                  disabled={savingIntake}
-                  sx={{ height: '56px' }}
-                >
-                  {savingIntake ? 'جاري الحفظ...' : 'حفظ الاستهلاك الفعلي'}
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          <Typography variant="h6" mb={2}>📈 ملخص الاستهلاك</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent><Typography variant="body2" color="text.secondary">المقدم</Typography><Typography variant="h6">{intakeSummary.offered.toFixed(2)} كجم</Typography></CardContent></Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent><Typography variant="body2" color="text.secondary">المستهلك فعليًا</Typography><Typography variant="h6">{intakeSummary.consumed.toFixed(2)} كجم</Typography></CardContent></Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent><Typography variant="body2" color="text.secondary">نسبة الهدر</Typography><Typography variant="h6" color={wastePercent > 10 ? 'warning.main' : 'success.main'}>{wastePercent.toFixed(1)}%</Typography></CardContent></Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card><CardContent><Typography variant="body2" color="text.secondary">تكلفة الرأس</Typography><Typography variant="h6">{costPerHead.toFixed(2)} درهم</Typography></CardContent></Card>
-            </Grid>
-          </Grid>
-        </TabPanel>
+            ))}
+          </Stack>
+        </Stack>
       </Paper>
 
+      {/* ─── Alerts ─── */}
+      {alerts.length > 0 && (
+        <Stack spacing={1} mb={2}>
+          {alerts.map((a, i) => <Alert key={i} severity={a.severity} variant="outlined">{a.text}</Alert>)}
+        </Stack>
+      )}
+
+      {/* ═══════════════════ VIEW: TODAY ═══════════════════ */}
+      {view === 'today' && (
+        <Fade in>
+          <Box>
+            {/* ── Combined Summary Strip ── */}
+            {(() => {
+              const totalHeads = todayFeedings.reduce((s, p) => s + p.heads, 0)
+              const totalKg = todayFeedings.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.amount * p.heads, 0), 0)
+              const totalCost = todayFeedings.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.amount * p.heads * i.unitCost, 0), 0)
+              const byFeed: Record<string, { name: string; category: string; totalKg: number }> = {}
+              todayFeedings.forEach(p => p.items.forEach(i => {
+                if (!byFeed[i.feed]) byFeed[i.feed] = { name: i.feed, category: i.category, totalKg: 0 }
+                byFeed[i.feed].totalKg += i.amount * p.heads
+              }))
+              const feedBreakdown = Object.values(byFeed).sort((a, b) => b.totalKg - a.totalKg)
+
+              const kpis = [
+                { icon: <GrassIcon sx={{ fontSize: 18 }} />, color: '#4caf50', label: 'أنواع الأعلاف', value: feedTypes.length },
+                { icon: <ScheduleIcon sx={{ fontSize: 18 }} />, color: '#9c27b0', label: 'جداول نشطة', value: activeSchedules.length },
+                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalHeads}</Box>, color: '#2196f3', label: 'رأس', value: null },
+                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalKg.toFixed(1)}</Box>, color: '#00897b', label: 'كجم/يوم', value: null },
+                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalCost.toFixed(0)}</Box>, color: '#ff9800', label: 'د.إ/يوم', value: null },
+                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalStockValue.toFixed(0)}</Box>, color: '#1565c0', label: 'مخزون د.إ', value: null },
+              ]
+
+              return (
+                <Paper sx={{ p: 2, mb: 2, borderRadius: 3, background: 'linear-gradient(135deg, #f5f7ff 0%, #f0faf5 100%)' }}>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="center">
+                    {kpis.map((k, i) => (
+                      <Paper key={i} variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 0.75, borderColor: `${k.color}30` }}>
+                        <Box sx={{ color: k.color, display: 'flex', alignItems: 'center' }}>{k.icon}</Box>
+                        {k.value !== null ? (
+                          <Typography variant="body2" fontWeight="bold">{k.value}</Typography>
+                        ) : null}
+                        <Typography variant="caption" color="text.secondary">{k.label}</Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
+                  {/* Per feed type breakdown */}
+                  {feedBreakdown.length > 0 && (
+                    <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap mt={1.5} pt={1.5} sx={{ borderTop: '1px dashed', borderColor: 'divider' }}>
+                      {feedBreakdown.map(f => (
+                        <Chip
+                          key={f.name}
+                          size="small"
+                          label={`${f.name}: ${f.totalKg.toFixed(1)} كجم`}
+                          sx={{
+                            fontWeight: 'bold', fontSize: 11.5,
+                            bgcolor: `${catColor(f.category)}18`,
+                            color: catColor(f.category),
+                            border: `1px solid ${catColor(f.category)}40`,
+                          }}
+                          icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: catColor(f.category), ml: '8px !important' }} />}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              )
+            })()}
+
+            {/* ── Main Content: Feeding Plan + Stock Side by Side ── */}
+            <Grid container spacing={2}>
+              {/* Left: Feeding Plan */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <TodayIcon color="primary" />
+                      <Typography variant="h6" fontWeight="bold">خطة التغذية اليوم</Typography>
+                    </Stack>
+                    <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إضافة جدول</Button>
+                  </Stack>
+
+                  {todayFeedings.length === 0 ? (
+                    <Alert severity="info" variant="outlined">لا توجد جداول تغذية نشطة. أنشئ جدول تغذية لتظهر هنا.</Alert>
+                  ) : (
+                    <Grid container spacing={2}>
+                      {todayFeedings.map(p => {
+                        const penDailyKg = p.items.reduce((s, i) => s + i.amount * p.heads, 0)
+                        const penDailyCost = p.items.reduce((s, i) => s + i.amount * p.heads * i.unitCost, 0)
+                        return (
+                          <Grid item xs={12} sm={6} key={p.penId}>
+                            <Card sx={{
+                              borderRadius: 3, height: '100%',
+                              background: 'linear-gradient(135deg, #f8fffe 0%, #f0f7ff 100%)',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              transition: 'box-shadow 0.2s',
+                              '&:hover': { boxShadow: 4 }
+                            }}>
+                              {/* Card Header */}
+                              <Box sx={{ px: 2, py: 1.25, background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)', borderRadius: '12px 12px 0 0' }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M9 21V12h6v9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    </Box>
+                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#fff' }}>{p.pen}</Typography>
+                                  </Stack>
+                                  <Chip label={`${p.heads} رأس`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', fontSize: 11, height: 22 }} />
+                                </Stack>
+                              </Box>
+
+                              <CardContent sx={{ pt: 1.5, pb: '12px !important' }}>
+                                <TableContainer>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>العلف</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>كجم/رأس</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>وجبات</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>الإجمالي</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {p.items.map((item, i) => {
+                                        const totalForItem = item.amount * p.heads
+                                        const daysRemaining = item.stockQty > 0 ? Math.floor(item.stockQty / totalForItem) : 0
+                                        return (
+                                          <TableRow key={i} sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                                            <TableCell sx={{ py: 0.5, fontSize: 12 }}>
+                                              <Stack direction="row" spacing={0.5} alignItems="center">
+                                                <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: catColor(item.category), flexShrink: 0 }} />
+                                                <Typography variant="body2" fontSize={12} noWrap>{item.feed}</Typography>
+                                              </Stack>
+                                            </TableCell>
+                                            <TableCell align="center" sx={{ py: 0.5, fontSize: 12, fontWeight: 600 }}>{item.amount}</TableCell>
+                                            <TableCell align="center" sx={{ py: 0.5, fontSize: 12 }}>{item.meals}×</TableCell>
+                                            <TableCell align="center" sx={{ py: 0.5 }}>
+                                              <Tooltip title={daysRemaining > 0 ? `يكفي المخزون لـ ${daysRemaining} يوم` : 'لا يوجد مخزون'}>
+                                                <Chip
+                                                  label={`${totalForItem.toFixed(1)}`}
+                                                  size="small"
+                                                  sx={{
+                                                    fontSize: 10.5, fontWeight: 'bold', height: 20,
+                                                    bgcolor: daysRemaining <= 3 ? '#ffebee' : daysRemaining <= 7 ? '#fff8e1' : '#e8f5e9',
+                                                    color: daysRemaining <= 3 ? '#c62828' : daysRemaining <= 7 ? '#e65100' : '#2e7d32',
+                                                  }}
+                                                />
+                                              </Tooltip>
+                                            </TableCell>
+                                          </TableRow>
+                                        )
+                                      })}
+                                    </TableBody>
+                                  </Table>
+                                </TableContainer>
+
+                                {/* Footer */}
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1} pt={1} sx={{ borderTop: '1px dashed #e0e0e0' }}>
+                                  <Typography variant="caption" fontWeight="bold" color="primary.main">
+                                    {penDailyKg.toFixed(1)} كجم/يوم {penDailyCost > 0 ? `≈ ${penDailyCost.toFixed(0)} د.إ` : ''}
+                                  </Typography>
+                                  {p.heads > 0 && (
+                                    <Chip label={`${(penDailyKg / p.heads).toFixed(1)} كجم/رأس`} size="small" variant="outlined" color="primary" sx={{ fontSize: 10.5, fontWeight: 'bold', height: 20 }} />
+                                  )}
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        )
+                      })}
+                    </Grid>
+                  )}
+                </Paper>
+              </Grid>
+
+              {/* Stock - Horizontal */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <InventoryIcon color="primary" />
+                      <Typography variant="h6" fontWeight="bold">المخزون</Typography>
+                    </Stack>
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton size="small" color="error" onClick={exportPDF}><PdfIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" color="success" onClick={exportExcel}><ExcelIcon fontSize="small" /></IconButton>
+                    </Stack>
+                  </Stack>
+                  {stockSummary.length === 0 ? (
+                    <Alert severity="info" variant="outlined" sx={{ fontSize: 12 }}>لا يوجد مخزون</Alert>
+                  ) : (
+                    <Grid container spacing={2}>
+                      {stockSummary.map(s => {
+                        const pct = Math.min(100, (s.totalQty / 200) * 100)
+                        const expDays = s.lowestExpiry ? daysUntil(s.lowestExpiry) : null
+                        const isExpired = expDays !== null && expDays <= 0
+                        const dailyUse = dailyConsumptionByType[s.feedType.id] || 0
+                        const stockDaysLeft = dailyUse > 0 ? Math.floor(s.totalQty / dailyUse) : null
+                        const color = catColor(s.feedType.category)
+                        return (
+                          <Grid item xs={6} sm={4} md={3} lg={2} key={s.feedType.id}>
+                            <Card sx={{
+                              borderRadius: 3, height: '100%',
+                              background: 'linear-gradient(135deg, #f8fffe 0%, #f0f7ff 100%)',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              transition: 'box-shadow 0.2s',
+                              '&:hover': { boxShadow: 4 }
+                            }}>
+                              {/* Header */}
+                              <Box sx={{ px: 1.5, py: 1, background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`, borderRadius: '12px 12px 0 0' }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                  <Stack direction="row" spacing={0.75} alignItems="center">
+                                    <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="#fff" strokeWidth="2"/>
+                                        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="#fff" strokeWidth="2"/>
+                                      </svg>
+                                    </Box>
+                                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#fff' }} noWrap>{s.feedType.nameAr}</Typography>
+                                  </Stack>
+                                  <Chip label={catLabel(s.feedType.category)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', fontSize: 10, height: 20 }} />
+                                </Stack>
+                              </Box>
+
+                              <CardContent sx={{ pt: 1.5, pb: '12px !important', px: 1.5 }}>
+                                <Typography variant="h5" fontWeight="bold" color={s.isLow ? 'warning.main' : 'primary.main'} mb={0.5}>
+                                  {s.totalQty.toFixed(0)} <Typography component="span" variant="caption" color="text.secondary">كجم</Typography>
+                                </Typography>
+                                <LinearProgress variant="determinate" value={pct} color={s.isLow ? 'warning' : 'primary'} sx={{ height: 5, borderRadius: 3, mb: 1 }} />
+
+                                {/* Footer */}
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" pt={0.75} sx={{ borderTop: '1px dashed #e0e0e0' }}>
+                                  {dailyUse > 0 ? (
+                                    <Typography variant="caption" color="text.secondary">{dailyUse.toFixed(1)} كجم/يوم</Typography>
+                                  ) : (
+                                    <Typography variant="caption" color="text.secondary">{s.totalValue.toFixed(0)} د.إ</Typography>
+                                  )}
+                                  {stockDaysLeft !== null ? (
+                                    <Chip
+                                      label={`${stockDaysLeft} يوم`}
+                                      size="small"
+                                      sx={{
+                                        height: 20, fontSize: 10.5, fontWeight: 'bold',
+                                        bgcolor: stockDaysLeft <= 3 ? '#ffebee' : stockDaysLeft <= 7 ? '#fff8e1' : '#e8f5e9',
+                                        color: stockDaysLeft <= 3 ? '#c62828' : stockDaysLeft <= 7 ? '#e65100' : '#2e7d32',
+                                      }}
+                                    />
+                                  ) : expDays !== null ? (
+                                    <Typography variant="caption" color={isExpired ? 'error.main' : expDays <= 30 ? 'warning.main' : 'text.secondary'}>
+                                      {isExpired ? 'منتهي!' : `${expDays} يوم`}
+                                    </Typography>
+                                  ) : null}
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        )
+                      })}
+                    </Grid>
+                  )}
+                </Paper>
+              </Grid>
+            </Grid>
+          </Box>
+        </Fade>
+      )}
+
+      {/* ═══════════════════ VIEW: STOCK ═══════════════════ */}
+      {view === 'stock' && (
+        <Fade in>
+          <Box>
+            {/* Quick Add Buttons */}
+            <Stack direction="row" spacing={1.5} mb={2}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddType}>نوع علف جديد</Button>
+              <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={openAddStock}>إضافة للمخزون</Button>
+            </Stack>
+
+            {/* Feed Types */}
+            <Paper sx={{ p: 2.5, borderRadius: 3, mb: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                <GrassIcon color="success" />
+                <Typography variant="h6" fontWeight="bold">أنواع الأعلاف ({feedTypes.length})</Typography>
+              </Stack>
+              <Grid container spacing={2}>
+                {feedTypes.map(t => {
+                  const color = catColor(t.category)
+                  return (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={t.id}>
+                      <Card sx={{
+                        borderRadius: 3, height: '100%',
+                        background: 'linear-gradient(135deg, #f8fffe 0%, #f0f7ff 100%)',
+                        border: '1px solid', borderColor: 'divider',
+                        transition: 'box-shadow 0.2s',
+                        '&:hover': { boxShadow: 4 }
+                      }}>
+                        <Box sx={{ px: 1.5, py: 1, background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`, borderRadius: '12px 12px 0 0' }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#fff' }}>{t.nameAr}</Typography>
+                            <Chip label={catLabel(t.category)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', fontSize: 10, height: 20 }} />
+                          </Stack>
+                        </Box>
+                        <CardContent sx={{ pt: 1.5, pb: '10px !important', px: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>{t.name}</Typography>
+                          {(t.protein || t.energy) && (
+                            <Stack direction="row" spacing={0.75} mb={1} flexWrap="wrap" useFlexGap>
+                              {t.protein ? <Chip label={`بروتين ${t.protein}%`} size="small" variant="outlined" sx={{ fontSize: 10.5, height: 22 }} /> : null}
+                              {t.energy ? <Chip label={`${t.energy} kcal`} size="small" variant="outlined" sx={{ fontSize: 10.5, height: 22 }} /> : null}
+                            </Stack>
+                          )}
+                          <Stack direction="row" spacing={0.5} pt={0.75} sx={{ borderTop: '1px dashed #e0e0e0' }}>
+                            <IconButton size="small" onClick={() => openEditType(t)}><EditIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'type', item: t })}><DeleteIcon fontSize="small" /></IconButton>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  )
+                })}
+              </Grid>
+            </Paper>
+
+            {/* Stock Items */}
+            <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+              <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                <InventoryIcon color="primary" />
+                <Typography variant="h6" fontWeight="bold">المخزون ({stocks.length})</Typography>
+              </Stack>
+              {stocks.length === 0 ? (
+                <Alert severity="info" variant="outlined">لا يوجد مخزون</Alert>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>نوع العلف</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>الفئة</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>الكمية</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>سعر الوحدة</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>القيمة</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>المورد</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>تاريخ الشراء</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>الانتهاء</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>الاستهلاك</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>الحالة</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>إجراءات</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {stocks.map(s => {
+                        const expD = s.expiryDate ? daysUntil(s.expiryDate) : null
+                        const isExpired = expD !== null && expD <= 0
+                        const isExpiring = expD !== null && expD > 0 && expD <= 30
+                        const isLow = s.quantity < 50
+                        const color = catColor(s.feedType?.category || 'OTHER')
+                        const value = (s.quantity * (s.cost || 0))
+                        const dailyUse = dailyConsumptionByType[s.feedTypeId] || 0
+                        const stockDaysLeft = dailyUse > 0 ? Math.floor(s.quantity / dailyUse) : null
+                        return (
+                          <TableRow key={s.id} hover sx={{ '&:hover': { bgcolor: '#f8fffe' } }}>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="bold">{s.feedType?.nameAr || '-'}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={catLabel(s.feedType?.category)} size="small" sx={{ bgcolor: color, color: '#fff', fontWeight: 'bold', fontSize: 10.5, height: 22 }} />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="bold" color={isLow ? 'warning.main' : 'inherit'}>
+                                {s.quantity} {s.unit}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>{s.cost ? `${s.cost} د.إ` : '-'}</TableCell>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="bold">{value.toFixed(0)} د.إ</Typography>
+                            </TableCell>
+                            <TableCell>{s.supplier || '-'}</TableCell>
+                            <TableCell>{new Date(s.purchaseDate).toLocaleDateString('ar-AE')}</TableCell>
+                            <TableCell>
+                              {s.expiryDate ? (
+                                <Typography variant="body2" color={isExpired ? 'error.main' : isExpiring ? 'warning.main' : 'inherit'} fontWeight={isExpired || isExpiring ? 'bold' : 'normal'}>
+                                  {new Date(s.expiryDate).toLocaleDateString('ar-AE')}
+                                </Typography>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {dailyUse > 0 ? (
+                                <Typography variant="body2" fontWeight="bold" color="primary.main">{dailyUse.toFixed(1)} كجم/يوم</Typography>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {(() => {
+                                const statusChip = isExpired ? { label: 'منتهي', color: '#c62828', bg: '#ffebee' }
+                                  : isExpiring ? { label: `ينتهي ${expD} يوم`, color: '#e65100', bg: '#fff8e1' }
+                                  : isLow ? { label: 'منخفض', color: '#e65100', bg: '#fff8e1' }
+                                  : { label: 'جيد', color: '#2e7d32', bg: '#e8f5e9' }
+                                return (
+                                  <Stack spacing={0.5} alignItems="flex-start">
+                                    <Chip label={statusChip.label} size="small" sx={{ bgcolor: statusChip.bg, color: statusChip.color, fontWeight: 'bold', fontSize: 10.5, height: 22 }} />
+                                    {stockDaysLeft !== null && (
+                                      <Chip
+                                        label={`يكفي ${stockDaysLeft} يوم`}
+                                        size="small"
+                                        sx={{
+                                          height: 20, fontSize: 10, fontWeight: 'bold',
+                                          bgcolor: stockDaysLeft <= 3 ? '#ffebee' : stockDaysLeft <= 7 ? '#fff8e1' : '#e8f5e9',
+                                          color: stockDaysLeft <= 3 ? '#c62828' : stockDaysLeft <= 7 ? '#e65100' : '#2e7d32',
+                                        }}
+                                      />
+                                    )}
+                                  </Stack>
+                                )
+                              })()}
+                            </TableCell>
+                            <TableCell>
+                              <Stack direction="row" spacing={0.5}>
+                                <IconButton size="small" color="primary" onClick={() => openEditStock(s)}><EditIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'stock', item: s })}><DeleteIcon fontSize="small" /></IconButton>
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Paper>
+          </Box>
+        </Fade>
+      )}
+
+      {/* ═══════════════════ VIEW: SCHEDULES ═══════════════════ */}
+      {view === 'schedules' && (
+        <Fade in>
+          <Box>
+            <Stack direction="row" spacing={1.5} mb={2}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إضافة جدول تغذية</Button>
+            </Stack>
+
+            {schedules.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                <ScheduleIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">لا توجد جداول تغذية</Typography>
+                <Typography variant="body2" color="text.secondary" mb={2}>أنشئ جدول تغذية لكل حظيرة لتنظيم الوجبات اليومية</Typography>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إنشاء أول جدول</Button>
+              </Paper>
+            ) : (
+              <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                      <TableCell><strong>الحظيرة</strong></TableCell>
+                      <TableCell><strong>عدد الرؤوس</strong></TableCell>
+                      <TableCell><strong>نوع العلف</strong></TableCell>
+                      <TableCell><strong>كجم / رأس / يوم</strong></TableCell>
+                      <TableCell><strong>الوجبات</strong></TableCell>
+                      <TableCell><strong>الإجمالي اليومي</strong></TableCell>
+                      <TableCell><strong>تاريخ البدء</strong></TableCell>
+                      <TableCell><strong>الحالة</strong></TableCell>
+                      <TableCell align="center"><strong>إجراءات</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {schedules.map(s => {
+                      const heads = s.pen?._count?.goats || 0
+                      return (
+                        <TableRow key={s.id} hover sx={{ opacity: s.isActive ? 1 : 0.6 }}>
+                          <TableCell><Typography fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography></TableCell>
+                          <TableCell>{heads}</TableCell>
+                          <TableCell>
+                            <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: '#fff' }} />
+                          </TableCell>
+                          <TableCell>{s.quantity} كجم</TableCell>
+                          <TableCell>{s.frequency} وجبات</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>{(s.quantity * heads).toFixed(1)} كجم</TableCell>
+                          <TableCell>{new Date(s.startDate).toLocaleDateString('ar-AE')}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={s.isActive ? 'نشط' : 'متوقف'}
+                              size="small"
+                              color={s.isActive ? 'success' : 'default'}
+                              onClick={() => toggleScheduleActive(s)}
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton size="small" color="primary" onClick={() => openEditSchedule(s)}><EditIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'schedule', item: s })}><DeleteIcon fontSize="small" /></IconButton>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        </Fade>
+      )}
+
+      {/* ═══════════════════ DIALOGS ═══════════════════ */}
+
       {/* Feed Type Dialog */}
-      <Dialog open={typeDialogOpen} onClose={() => {
-        setTypeDialogOpen(false)
-        setSelectedType(null)
-      }} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{selectedType ? 'تعديل نوع العلف' : 'إضافة نوع علف جديد'}</DialogTitle>
+      <Dialog open={typeDialog} onClose={() => setTypeDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{editingType ? 'تعديل نوع علف' : 'إضافة نوع علف'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="الاسم بالعربية"
-                value={typeData.nameAr}
-                onChange={(e) => setTypeData({ ...typeData, nameAr: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="الاسم بالإنجليزية"
-                value={typeData.nameEn}
-                onChange={(e) => setTypeData({ ...typeData, nameEn: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                label="الفئة"
-                value={typeData.category}
-                onChange={(e) => setTypeData({ ...typeData, category: e.target.value })}
-              >
-                {FEED_CATEGORIES.map(cat => (
-                  <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="نسبة البروتين (%)"
-                value={typeData.protein}
-                onChange={(e) => setTypeData({ ...typeData, protein: Number(e.target.value) })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="الطاقة (kcal)"
-                value={typeData.energy}
-                onChange={(e) => setTypeData({ ...typeData, energy: Number(e.target.value) })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="نسبة الألياف (%)"
-                value={typeData.fiber}
-                onChange={(e) => setTypeData({ ...typeData, fiber: Number(e.target.value) })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="الوصف"
-                value={typeData.description}
-                onChange={(e) => setTypeData({ ...typeData, description: e.target.value })}
-              />
-            </Grid>
-          </Grid>
+          <Stack spacing={2} mt={1}>
+            <TextField fullWidth label="الاسم بالعربية" value={typeForm.nameAr} onChange={e => setTypeForm({ ...typeForm, nameAr: e.target.value })} />
+            <TextField fullWidth label="الاسم بالإنجليزية" value={typeForm.nameEn} onChange={e => setTypeForm({ ...typeForm, nameEn: e.target.value })} />
+            <TextField select fullWidth label="الفئة" value={typeForm.category} onChange={e => setTypeForm({ ...typeForm, category: e.target.value })}>
+              {CATEGORIES.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+            </TextField>
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth type="number" label="بروتين (%)" value={typeForm.protein} onChange={e => setTypeForm({ ...typeForm, protein: Number(e.target.value) })} />
+              <TextField fullWidth type="number" label="طاقة (kcal)" value={typeForm.energy} onChange={e => setTypeForm({ ...typeForm, energy: Number(e.target.value) })} />
+            </Stack>
+            <TextField fullWidth multiline rows={2} label="وصف" value={typeForm.description} onChange={e => setTypeForm({ ...typeForm, description: e.target.value })} />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setTypeDialogOpen(false)
-            setSelectedType(null)
-          }}>إلغاء</Button>
-          <Button onClick={handleSaveType} variant="contained">حفظ</Button>
+          <Button onClick={() => setTypeDialog(false)}>إلغاء</Button>
+          <Button variant="contained" onClick={saveType}>حفظ</Button>
         </DialogActions>
       </Dialog>
 
       {/* Stock Dialog */}
-      <Dialog open={stockDialogOpen} onClose={() => {
-        setStockDialogOpen(false)
-        setSelectedStock(null)
-      }} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{selectedStock ? 'تعديل المخزون' : 'إضافة مخزون علف'}</DialogTitle>
+      <Dialog open={stockDialog} onClose={() => setStockDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{editingStock ? 'تعديل المخزون' : 'إضافة للمخزون'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                label="نوع العلف"
-                value={stockData.feedTypeId}
-                onChange={(e) => setStockData({ ...stockData, feedTypeId: e.target.value })}
-              >
-                {feedTypes.map(type => (
-                  <MenuItem key={type.id} value={type.id}>{type.nameAr}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="الكمية "
-                value={stockData.quantity}
-                onChange={(e) => setStockData({ ...stockData, quantity: Number(e.target.value) })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="الوحدة"
-                value={stockData.unit}
-                onChange={(e) => setStockData({ ...stockData, unit: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="سعر الوحدة"
-                value={stockData.unitPrice}
-                onChange={(e) => setStockData({ ...stockData, unitPrice: Number(e.target.value) })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="تاريخ الشراء"
-                InputLabelProps={{ shrink: true }}
-                value={stockData.purchaseDate}
-                onChange={(e) => setStockData({ ...stockData, purchaseDate: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="تاريخ الانتهاء"
-                InputLabelProps={{ shrink: true }}
-                value={stockData.expiryDate}
-                onChange={(e) => setStockData({ ...stockData, expiryDate: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="المورد"
-                value={stockData.supplier}
-                onChange={(e) => setStockData({ ...stockData, supplier: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                label="ملاحظات"
-                value={stockData.notes}
-                onChange={(e) => setStockData({ ...stockData, notes: e.target.value })}
-              />
-            </Grid>
-          </Grid>
+          <Stack spacing={2} mt={1}>
+            <TextField select fullWidth label="نوع العلف" value={stockForm.feedTypeId} onChange={e => setStockForm({ ...stockForm, feedTypeId: e.target.value })}>
+              {feedTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.nameAr}</MenuItem>)}
+            </TextField>
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth type="number" label="الكمية" value={stockForm.quantity} onChange={e => setStockForm({ ...stockForm, quantity: Number(e.target.value) })} />
+              <TextField fullWidth label="الوحدة" value={stockForm.unit} onChange={e => setStockForm({ ...stockForm, unit: e.target.value })} />
+            </Stack>
+            <TextField fullWidth type="number" label="سعر الوحدة" value={stockForm.unitPrice} onChange={e => setStockForm({ ...stockForm, unitPrice: Number(e.target.value) })} />
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth type="date" label="تاريخ الشراء" InputLabelProps={{ shrink: true }} value={stockForm.purchaseDate} onChange={e => setStockForm({ ...stockForm, purchaseDate: e.target.value })} />
+              <TextField fullWidth type="date" label="تاريخ الانتهاء" InputLabelProps={{ shrink: true }} value={stockForm.expiryDate} onChange={e => setStockForm({ ...stockForm, expiryDate: e.target.value })} />
+            </Stack>
+            <TextField fullWidth label="المورد" value={stockForm.supplier} onChange={e => setStockForm({ ...stockForm, supplier: e.target.value })} />
+            <TextField fullWidth multiline rows={2} label="ملاحظات" value={stockForm.notes} onChange={e => setStockForm({ ...stockForm, notes: e.target.value })} />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setStockDialogOpen(false)
-            setSelectedStock(null)
-          }}>إلغاء</Button>
-          <Button onClick={handleSaveStock} variant="contained">حفظ</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>تأكيد الحذف</DialogTitle>
-        <DialogContent>
-          <Typography>
-            هل أنت متأكد من حذف هذا المخزون؟ لا يمكن التراجع عن هذا الإجراء.
-          </Typography>
-          {selectedStock && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-              <Typography variant="body2" fontWeight="bold">
-                {selectedStock.feedType?.nameAr}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                الكمية: {selectedStock.quantity} {selectedStock.unit}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
-          <Button onClick={handleDeleteStock} variant="contained" color="error">
-            حذف
-          </Button>
+          <Button onClick={() => setStockDialog(false)}>إلغاء</Button>
+          <Button variant="contained" onClick={saveStock}>حفظ</Button>
         </DialogActions>
       </Dialog>
 
       {/* Schedule Dialog */}
-      <Dialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle>إضافة جدول تغذية</DialogTitle>
+      <Dialog open={scheduleDialog} onClose={() => { setScheduleDialog(false); setEditingSchedule(null); setAiSuggestion(null) }} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{editingSchedule ? 'تعديل جدول التغذية' : 'إضافة جدول تغذية'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                label="الحظيرة"
-                value={scheduleData.penId}
-                onChange={(e) => setScheduleData({ ...scheduleData, penId: e.target.value })}
-              >
-                {pens.map(pen => (
-                  <MenuItem key={pen.id} value={pen.id}>{pen.nameAr}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                label="نوع العلف"
-                value={scheduleData.feedTypeId}
-                onChange={(e) => setScheduleData({ ...scheduleData, feedTypeId: e.target.value })}
-              >
-                {feedTypes.map(type => (
-                  <MenuItem key={type.id} value={type.id}>{type.nameAr}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle2" mb={1}>قوالب تغذية جاهزة</Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
-                  {FEEDING_TEMPLATES.map(template => (
-                    <Button
-                      key={template.key}
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleApplyFeedingTemplate(template.key)}
-                    >
-                      {template.label} ({template.dailyAmount} كجم / {template.feedingTimes} وجبات)
-                    </Button>
-                  ))}
-                </Stack>
-              </Paper>
-            </Grid>
-            {scheduleData.penId && (
-              <Grid item xs={12}>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
-                  <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} mb={2}>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight="bold">المساعد الذكي للتغذية</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        مبني على أعمار الأغنام الموجودة فعليًا في الحظيرة
-                      </Typography>
+          <Stack spacing={2} mt={1}>
+            <TextField select fullWidth label="الحظيرة" value={scheduleForm.penId} onChange={e => {
+              const newPenId = e.target.value
+              setScheduleForm({ ...scheduleForm, penId: newPenId })
+              computeSuggestion(newPenId, scheduleForm.feedTypeId)
+            }}>
+              {pens.map(p => <MenuItem key={p.id} value={p.id}>{p.nameAr} ({p._count?.goats || 0} رأس)</MenuItem>)}
+            </TextField>
+            <TextField select fullWidth label="نوع العلف" value={scheduleForm.feedTypeId} onChange={e => {
+              const newFeedTypeId = e.target.value
+              setScheduleForm({ ...scheduleForm, feedTypeId: newFeedTypeId })
+              computeSuggestion(scheduleForm.penId, newFeedTypeId)
+            }}>
+              {feedTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.nameAr}</MenuItem>)}
+            </TextField>
+
+            {/* AI Suggestion Card */}
+            {aiSuggestion && (
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f3e8ff', borderColor: '#c084fc' }}>
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1H9a1 1 0 01-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" fill="#fff"/>
+                        <path d="M9 21h6M10 17v1a2 2 0 002 2h0a2 2 0 002-2v-1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
                     </Box>
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#7c3aed' }}>اقتراح ذكي للكمية</Typography>
+                  </Stack>
+                  <Typography variant="body2" sx={{ color: '#5b21b6', fontSize: 12.5 }}>{aiSuggestion.reasoning}</Typography>
+                  <Stack direction="row" spacing={1}>
                     <Button
-                      variant="outlined"
                       size="small"
-                      onClick={() => setScheduleData({ ...scheduleData, dailyAmount: Number(recommendedPerHead.toFixed(2)) })}
-                      disabled={smartTotals.heads === 0}
+                      variant="contained"
+                      sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' }, fontSize: 12, borderRadius: 2 }}
+                      onClick={() => setScheduleForm(f => ({ ...f, dailyAmount: aiSuggestion.amount, feedingTimes: String(aiSuggestion.meals) }))}
                     >
-                      تطبيق الكمية المقترحة للرأس ({recommendedPerHead.toFixed(2)} كجم)
+                      تطبيق: {aiSuggestion.amount} كجم / {aiSuggestion.meals} وجبات
                     </Button>
                   </Stack>
-
-                  {smartTotals.heads === 0 ? (
-                    <Alert severity="warning">لا توجد أغنام نشطة في هذه الحظيرة لحساب توصية علمية.</Alert>
-                  ) : (
-                    <>
-                      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2}>
-                        <Chip label={`عدد الرؤوس: ${smartTotals.heads}`} color="primary" />
-                        <Chip label={`احتياج يومي للحظيرة: ${smartTotals.dailyAmount.toFixed(2)} كجم`} color="info" />
-                        <Chip label={`احتياج شهري للحظيرة: ${smartTotals.monthlyAmount.toFixed(2)} كجم`} color="secondary" />
-                      </Stack>
-
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>فئة العمر</TableCell>
-                              <TableCell>عدد الرؤوس</TableCell>
-                              <TableCell>كجم/رأس/يوم</TableCell>
-                              <TableCell>احتياج الفئة/يوم</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {smartRecommendation.map(item => (
-                              <TableRow key={item.key}>
-                                <TableCell>{item.label}</TableCell>
-                                <TableCell>{item.count}</TableCell>
-                                <TableCell>{item.kgPerHeadPerDay}</TableCell>
-                                <TableCell>{item.dailyNeed.toFixed(2)} كجم</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-
-                      <Alert severity={Math.abs(scheduleVsSmartDiff) > 0.4 ? 'warning' : 'success'} sx={{ mt: 2 }}>
-                        الكمية الحالية بالرأس: {Number(scheduleData.dailyAmount).toFixed(2)} كجم — الموصى بها: {recommendedPerHead.toFixed(2)} كجم (الفرق: {scheduleVsSmartDiff.toFixed(2)} كجم)
-                      </Alert>
-                    </>
-                  )}
-                </Paper>
-              </Grid>
+                </Stack>
+              </Paper>
             )}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="الكمية اليومية (كجم)"
-                value={scheduleData.dailyAmount}
-                onChange={(e) => setScheduleData({ ...scheduleData, dailyAmount: Number(e.target.value) })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="عدد الوجبات في اليوم"
-                value={scheduleData.feedingTimes}
-                onChange={(e) => setScheduleData({ ...scheduleData, feedingTimes: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="تاريخ البدء"
-                InputLabelProps={{ shrink: true }}
-                value={scheduleData.startDate}
-                onChange={(e) => setScheduleData({ ...scheduleData, startDate: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="تاريخ الانتهاء"
-                InputLabelProps={{ shrink: true }}
-                value={scheduleData.endDate}
-                onChange={(e) => setScheduleData({ ...scheduleData, endDate: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                label="ملاحظات"
-                value={scheduleData.notes}
-                onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
-              />
-            </Grid>
-          </Grid>
+
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth type="number" label="كجم / رأس / يوم" value={scheduleForm.dailyAmount} onChange={e => setScheduleForm({ ...scheduleForm, dailyAmount: Number(e.target.value) })} />
+              <TextField fullWidth type="number" label="عدد الوجبات" value={scheduleForm.feedingTimes} onChange={e => setScheduleForm({ ...scheduleForm, feedingTimes: e.target.value })} />
+            </Stack>
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth type="date" label="تاريخ البدء" InputLabelProps={{ shrink: true }} value={scheduleForm.startDate} onChange={e => setScheduleForm({ ...scheduleForm, startDate: e.target.value })} />
+              <TextField fullWidth type="date" label="تاريخ الانتهاء (اختياري)" InputLabelProps={{ shrink: true }} value={scheduleForm.endDate} onChange={e => setScheduleForm({ ...scheduleForm, endDate: e.target.value })} />
+            </Stack>
+            <TextField fullWidth multiline rows={2} label="ملاحظات" value={scheduleForm.notes} onChange={e => setScheduleForm({ ...scheduleForm, notes: e.target.value })} />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setScheduleDialogOpen(false)}>إلغاء</Button>
-          <Button onClick={handleSaveSchedule} variant="contained">حفظ</Button>
+          <Button onClick={() => { setScheduleDialog(false); setEditingSchedule(null); setAiSuggestion(null) }}>إلغاء</Button>
+          <Button variant="contained" onClick={saveSchedule}>{editingSchedule ? 'تحديث' : 'حفظ'}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteDialog} onClose={() => setDeleteDialog(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>تأكيد الحذف</DialogTitle>
+        <DialogContent>
+          <Typography>هل أنت متأكد من الحذف؟ لا يمكن التراجع.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog(null)}>إلغاء</Button>
+          <Button variant="contained" color="error" onClick={confirmDelete}>حذف</Button>
         </DialogActions>
       </Dialog>
     </Box>
   )
 }
+
+// ─── Helper Components ───
+
+function KpiCard({ icon, color, label, value }: { icon: React.ReactNode; color: string; label: string; value: string | number }) {
+  return (
+    <Card sx={{ borderRadius: 2 }}>
+      <CardContent sx={{ py: 2 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box sx={{ p: 1, bgcolor: `${color}20`, borderRadius: 2, display: 'flex' }}>
+            {icon}
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">{value}</Typography>
+            <Typography variant="caption" color="text.secondary">{label}</Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Utilities ───
+function today() { return new Date().toISOString().split('T')[0] }
+function daysUntil(d: string) { return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) }
