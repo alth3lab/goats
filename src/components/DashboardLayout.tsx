@@ -102,6 +102,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const drawerWidth = collapsed ? collapsedDrawerWidth : expandedDrawerWidth
+  const mobileAppBarHeight = '88px'
+  const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -235,11 +237,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          zIndex: (theme) => theme.zIndex.drawer + 2,
           bgcolor: 'background.paper',
           color: 'text.primary',
           boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
           borderBottom: '1px solid',
-          borderColor: 'divider'
+          borderColor: 'divider',
+          pt: { xs: 'env(safe-area-inset-top)', sm: 0 },
+          pl: { xs: 'env(safe-area-inset-left)', sm: 0 },
+          pr: { xs: 'env(safe-area-inset-right)', sm: 0 },
+          transform: 'translateZ(0)'
         }}
       >
         <Toolbar
@@ -248,7 +255,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             alignItems: 'center',
             flexWrap: { xs: 'wrap', sm: 'nowrap' },
             py: { xs: 0.75, sm: 0 },
-            minHeight: { xs: 88, sm: 64 }
+            minHeight: { xs: mobileAppBarHeight, sm: 64 }
           }}
         >
           <IconButton
@@ -257,10 +264,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onClick={handleDrawerToggle}
             sx={{ 
               display: { xs: 'inline-flex', sm: 'none' },
+              position: 'relative',
               flexShrink: 0,
               alignSelf: 'center',
               zIndex: 2,
               mr: 1,
+              visibility: 'visible',
               bgcolor: 'rgba(79,122,87,0.08)',
               '&:hover': { bgcolor: 'rgba(79,122,87,0.14)' }
             }}
@@ -354,7 +363,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           p: { xs: 1.5, sm: 3 }
         }}
       >
-        <Toolbar />
+        <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px' } }} />
         {children}
       </Box>
     </Box>

@@ -115,7 +115,7 @@ const GoatNode = ({ member, label, color = "default" }: { member?: FamilyMember 
       p: 1.5, 
       textAlign: 'center', 
       minWidth: 120, 
-      bgcolor: member ? (color === "primary" ? '#e3f2fd' : color === "secondary" ? '#f3e5f5' : 'background.paper') : '#f5f5f5',
+      bgcolor: member ? (color === "primary" ? 'primary.light' : color === "secondary" ? 'secondary.light' : 'background.paper') : 'action.hover',
       border: member ? 1 : 1,
       borderColor: member ? 'divider' : 'transparent',
       borderStyle: member ? 'solid' : 'dashed'
@@ -1125,7 +1125,7 @@ export default function GoatsPage() {
                         {goat.gender === 'MALE' ? (
                           <MaleIcon color="primary" sx={{ fontSize: 32 }} />
                         ) : (
-                          <FemaleIcon sx={{ color: '#e91e63', fontSize: 32 }} />
+                          <FemaleIcon sx={{ color: 'secondary.main', fontSize: 32 }} />
                         )}
                       </Stack>
                       
@@ -1259,7 +1259,7 @@ export default function GoatsPage() {
                         </>
                       ) : (
                         <>
-                          <FemaleIcon sx={{ color: '#e91e63' }} />
+                          <FemaleIcon sx={{ color: 'secondary.main' }} />
                           <span>أنثى</span>
                         </>
                       )}

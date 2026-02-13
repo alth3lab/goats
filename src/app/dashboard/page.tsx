@@ -28,6 +28,7 @@ import {
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useTheme, alpha } from '@mui/material/styles'
 import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
 
 interface Stats {
@@ -65,6 +66,7 @@ interface Pen {
 }
 
 export default function DashboardPage() {
+  const theme = useTheme()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
@@ -101,28 +103,28 @@ export default function DashboardPage() {
     {
       title: 'الماعز والخرفان',
       icon: <PetsIcon sx={{ fontSize: 40 }} />,
-      color: '#2e7d32',
+      color: 'primary',
       link: '/dashboard/goats',
       stats: loading ? '...' : `${formatNumber(stats?.activeGoats || 0)} نشط`
     },
     {
       title: 'السجلات الصحية',
       icon: <HealthIcon sx={{ fontSize: 40 }} />,
-      color: '#d32f2f',
+      color: 'error',
       link: '/dashboard/health',
       stats: 'إدارة الصحة'
     },
     {
       title: 'التكاثر',
       icon: <BreedingIcon sx={{ fontSize: 40 }} />,
-      color: '#e91e63',
+      color: 'secondary',
       link: '/dashboard/breeding',
       stats: loading ? '...' : `${formatNumber(stats?.pregnantGoats || 0)} حامل`
     },
     {
       title: 'المبيعات',
       icon: <SalesIcon sx={{ fontSize: 40 }} />,
-      color: '#1976d2',
+      color: 'info',
       link: '/dashboard/sales',
       stats: loading ? '...' : formatCurrency(stats?.totalSales || 0)
     },
@@ -298,24 +300,24 @@ export default function DashboardPage() {
                           <PieChart>
                             <Pie
                               data={[
-                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: '#2196f3' },
-                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: '#f44336' },
-                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: '#4caf50' },
-                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: '#ff9800' }
+                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.primary.main },
+                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.error.main },
+                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.success.main },
+                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.warning.main }
                               ].filter(item => item.value > 0)}
                               cx="50%"
                               cy="50%"
                               labelLine={false}
                               label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                               outerRadius={80}
-                              fill="#8884d8"
+                              fill={theme.palette.primary.main}
                               dataKey="value"
                             >
                               {[
-                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: '#2196f3' },
-                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: '#f44336' },
-                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: '#4caf50' },
-                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: '#ff9800' }
+                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.primary.main },
+                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.error.main },
+                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.success.main },
+                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.warning.main }
                               ].filter(item => item.value > 0).map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                               ))}
@@ -339,20 +341,20 @@ export default function DashboardPage() {
                           <PieChart>
                             <Pie
                               data={[
-                                { name: 'ذكور', value: stats?.maleGoats || 0, color: '#2196f3' },
-                                { name: 'إناث', value: stats?.femaleGoats || 0, color: '#e91e63' }
+                                { name: 'ذكور', value: stats?.maleGoats || 0, color: theme.palette.primary.main },
+                                { name: 'إناث', value: stats?.femaleGoats || 0, color: theme.palette.secondary.main }
                               ].filter(item => item.value > 0)}
                               cx="50%"
                               cy="50%"
                               labelLine={false}
                               label={({ name, value, percent }) => `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
                               outerRadius={80}
-                              fill="#8884d8"
+                              fill={theme.palette.primary.main}
                               dataKey="value"
                             >
                               {[
-                                { name: 'ذكور', value: stats?.maleGoats || 0, color: '#2196f3' },
-                                { name: 'إناث', value: stats?.femaleGoats || 0, color: '#e91e63' }
+                                { name: 'ذكور', value: stats?.maleGoats || 0, color: theme.palette.primary.main },
+                                { name: 'إناث', value: stats?.femaleGoats || 0, color: theme.palette.secondary.main }
                               ].filter(item => item.value > 0).map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                               ))}
@@ -387,8 +389,8 @@ export default function DashboardPage() {
                             <YAxis />
                             <RechartsTooltip />
                             <Legend />
-                            <Bar dataKey="عدد الحيوانات" fill="#82ca9d" />
-                            <Bar dataKey="السعة" fill="#8884d8" />
+                            <Bar dataKey="عدد الحيوانات" fill={theme.palette.success.main} />
+                            <Bar dataKey="السعة" fill={theme.palette.primary.main} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -425,8 +427,8 @@ export default function DashboardPage() {
                     justifyContent: 'center',
                     mx: 'auto',
                     mb: 2,
-                    bgcolor: `${card.color}20`,
-                    color: card.color
+                    bgcolor: alpha(theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].main, 0.14),
+                    color: theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].main
                   }}
                 >
                   {card.icon}
@@ -439,7 +441,11 @@ export default function DashboardPage() {
                 </Typography>
                 <Button
                   variant="contained"
-                  sx={{ mt: 2, bgcolor: card.color, '&:hover': { bgcolor: card.color } }}
+                  sx={{
+                    mt: 2,
+                    bgcolor: theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].main,
+                    '&:hover': { bgcolor: theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].dark }
+                  }}
                 >
                   فتح
                 </Button>
@@ -470,8 +476,8 @@ export default function DashboardPage() {
                   justifyContent: 'center',
                   mx: 'auto',
                   mb: 2,
-                  bgcolor: '#ff980020',
-                  color: '#ff9800'
+                  bgcolor: alpha(theme.palette.warning.main, 0.14),
+                  color: theme.palette.warning.main
                 }}
               >
                 <StatsIcon sx={{ fontSize: 40 }} />
@@ -484,7 +490,7 @@ export default function DashboardPage() {
               </Typography>
               <Button
                 variant="contained"
-                sx={{ mt: 2, bgcolor: '#ff9800', '&:hover': { bgcolor: '#ff9800' } }}
+                sx={{ mt: 2, bgcolor: 'warning.main', '&:hover': { bgcolor: 'warning.dark' } }}
               >
                 إدارة
               </Button>

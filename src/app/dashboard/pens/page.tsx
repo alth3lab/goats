@@ -718,7 +718,7 @@ export default function PensPage() {
                 
                 return (
                   <Grid size={{ xs: 12, sm: 6, md: viewMode === 'grid' ? 6 : 4, lg: viewMode === 'grid' ? 4 : 4 }} key={pen.id}>
-                    <Card sx={{ height: '100%', position: 'relative', border: isOvercrowded ? '2px solid #ef5350' : 'none' }}>
+                    <Card sx={{ height: '100%', position: 'relative', border: isOvercrowded ? '2px solid' : 'none', borderColor: isOvercrowded ? 'error.main' : 'transparent' }}>
                       {isFull && (
                         <Chip 
                           label={isOvercrowded ? 'تجاوز السعة !' : 'ممتلئة'} 
@@ -766,7 +766,7 @@ export default function PensPage() {
                             </Typography>
                         </Box>
 
-                        <Stack direction="row" spacing={2} mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid #eee' }}>
+                        <Stack direction="row" spacing={2} mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                            <Stack direction="row" spacing={0.5} alignItems="center">
                               <MaleIcon fontSize="small" color="primary" />
                               <Typography variant="body2" fontWeight="bold">
@@ -775,7 +775,7 @@ export default function PensPage() {
                            </Stack>
                            
                            <Stack direction="row" spacing={0.5} alignItems="center">
-                              <FemaleIcon fontSize="small" sx={{ color: '#e91e63' }} />
+                              <FemaleIcon fontSize="small" sx={{ color: 'secondary.main' }} />
                               <Typography variant="body2" fontWeight="bold">
                                  {pen.goats?.filter((g: any) => g.gender === 'FEMALE').length || 0}
                               </Typography>
@@ -871,7 +871,7 @@ export default function PensPage() {
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                      <TableRow sx={{ bgcolor: 'action.hover' }}>
                         <TableCell padding="checkbox">
                           <Checkbox
                             indeterminate={
@@ -930,7 +930,7 @@ export default function PensPage() {
                                   </>
                                 ) : (
                                   <>
-                                    <FemaleIcon sx={{ color: '#e91e63' }} />
+                                    <FemaleIcon sx={{ color: 'secondary.main' }} />
                                     <span>أنثى</span>
                                   </>
                                 )}
@@ -995,7 +995,7 @@ export default function PensPage() {
                   </Table>
                 </TableContainer>
               ) : (
-                <Typography color="text.secondary" align="center" py={4} bgcolor="#f9f9f9" borderRadius={2}>
+                <Typography color="text.secondary" align="center" py={4} bgcolor="action.hover" borderRadius={2}>
                   هذه الحظيرة خالية حالياً
                 </Typography>
               )}
@@ -1074,7 +1074,7 @@ export default function PensPage() {
         <DialogContent>
           {selectedGoatForTransfer && (
             <Box>
-              <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5' }}>
+              <Paper sx={{ p: 2, mb: 3, bgcolor: 'action.hover' }}>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                   الحيوان المحدد:
                 </Typography>
@@ -1148,7 +1148,7 @@ export default function PensPage() {
           </Stack>
         </DialogTitle>
         <DialogContent>
-          <Paper sx={{ p: 2, mb: 3, bgcolor: '#e3f2fd' }}>
+          <Paper sx={{ p: 2, mb: 3, bgcolor: 'primary.light' }}>
             <Typography variant="subtitle2" color="primary" gutterBottom>
               عدد الحيوانات المحددة: {selectedGoatsForBulk.size}
             </Typography>

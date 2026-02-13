@@ -111,7 +111,7 @@ function SearchPageContent() {
                   <Typography variant="h6" fontWeight="bold">{type}</Typography>
                   <Chip label={items.length} size="small" />
                 </Stack>
-                <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid #eee' }}>
+                <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                   {items.map((item, index) => (
                     <ListItem key={`${item.title}-${index}`} disablePadding divider={index !== items.length - 1}>
                       <ListItemButton onClick={() => router.push(item.href)}>

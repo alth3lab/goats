@@ -39,13 +39,13 @@ import SyncIcon from '@mui/icons-material/Sync'
 import PetsIcon from '@mui/icons-material/Pets'
 
 const EVENT_TYPES = [
-  { value: 'BIRTH', label: 'ولادة', icon: BabyIcon, color: '#4caf50' },
-  { value: 'VACCINATION', label: 'تطعيم', icon: VaccinesIcon, color: '#ff9800' },
-  { value: 'DEWORMING', label: 'تقليل الديدان', icon: PetsIcon, color: '#00bcd4' },
-  { value: 'CHECKUP', label: 'فحص', icon: MedicalIcon, color: '#2196f3' },
-  { value: 'BREEDING', label: 'تزاوج', icon: FavoriteIcon, color: '#e91e63' },
-  { value: 'WEANING', label: 'فطام', icon: CakeIcon, color: '#9c27b0' },
-  { value: 'SALE', label: 'بيع', icon: ShoppingCartIcon, color: '#ff5722' }
+  { value: 'BIRTH', label: 'ولادة', icon: BabyIcon, color: 'success.main' },
+  { value: 'VACCINATION', label: 'تطعيم', icon: VaccinesIcon, color: 'warning.main' },
+  { value: 'DEWORMING', label: 'تقليل الديدان', icon: PetsIcon, color: 'info.main' },
+  { value: 'CHECKUP', label: 'فحص', icon: MedicalIcon, color: 'primary.main' },
+  { value: 'BREEDING', label: 'تزاوج', icon: FavoriteIcon, color: 'secondary.main' },
+  { value: 'WEANING', label: 'فطام', icon: CakeIcon, color: 'secondary.dark' },
+  { value: 'SALE', label: 'بيع', icon: ShoppingCartIcon, color: 'error.main' }
 ]
 
 export default function CalendarPage() {

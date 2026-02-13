@@ -117,7 +117,7 @@ export default function ExpensesPage() {
       <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
               <TableCell><strong>التاريخ</strong></TableCell>
               <TableCell><strong>الفئة</strong></TableCell>
               <TableCell><strong>الوصف</strong></TableCell>

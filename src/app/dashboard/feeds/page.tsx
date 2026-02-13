@@ -10,7 +10,9 @@ import {
   Divider, Fade, Skeleton, useMediaQuery
 } from '@mui/material'
 import MuiGrid from '@mui/material/Grid'
-import { useTheme } from '@mui/material/styles'
+import { useTheme, alpha } from '@mui/material/styles'
+import type { GridColDef } from '@mui/x-data-grid'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Grass as GrassIcon, Inventory as InventoryIcon,
@@ -263,6 +265,80 @@ export default function FeedsPage() {
     }, 0)
   }, [activeSchedules, stocks])
 
+  const stockRows = useMemo(() => {
+    return stocks.map((s) => {
+      const expD = s.expiryDate ? daysUntil(s.expiryDate) : null
+      const isExpired = expD !== null && expD <= 0
+      const isExpiring = expD !== null && expD > 0 && expD <= 30
+      const isLow = s.quantity < 50
+      const dailyUse = dailyConsumptionByType[s.feedTypeId] || 0
+      return {
+        id: s.id,
+        item: s,
+        feedName: s.feedType?.nameAr || '-',
+        category: catLabel(s.feedType?.category),
+        categoryColor: catColor(s.feedType?.category || 'OTHER'),
+        quantity: `${s.quantity} ${s.unit}`,
+        unitPrice: s.cost ? `${s.cost} د.إ` : '-',
+        value: `${(s.quantity * (s.cost || 0)).toFixed(0)} د.إ`,
+        supplier: s.supplier || '-',
+        purchaseDate: new Date(s.purchaseDate).toLocaleDateString('ar-AE'),
+        expiryDate: s.expiryDate ? new Date(s.expiryDate).toLocaleDateString('ar-AE') : '-',
+        dailyUse: dailyUse > 0 ? `${dailyUse.toFixed(1)} كجم/يوم` : '-',
+        status: isExpired ? 'منتهي' : isExpiring ? `ينتهي ${expD} يوم` : isLow ? 'منخفض' : 'جيد',
+        statusColor: isExpired ? 'error' : isExpiring || isLow ? 'warning' : 'success'
+      }
+    })
+  }, [stocks, dailyConsumptionByType])
+
+  const stockColumns = useMemo<GridColDef[]>(() => [
+    { field: 'feedName', headerName: 'نوع العلف', flex: 1.2, minWidth: 140 },
+    {
+      field: 'category',
+      headerName: 'الفئة',
+      minWidth: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value as string}
+          size="small"
+          sx={{
+            bgcolor: alpha(params.row.categoryColor as string, 0.14),
+            color: params.row.categoryColor as string,
+            fontWeight: 700
+          }}
+        />
+      )
+    },
+    { field: 'quantity', headerName: 'الكمية', minWidth: 120 },
+    { field: 'unitPrice', headerName: 'سعر الوحدة', minWidth: 110 },
+    { field: 'value', headerName: 'القيمة', minWidth: 110 },
+    { field: 'supplier', headerName: 'المورد', minWidth: 130 },
+    { field: 'purchaseDate', headerName: 'تاريخ الشراء', minWidth: 120 },
+    { field: 'expiryDate', headerName: 'الانتهاء', minWidth: 120 },
+    { field: 'dailyUse', headerName: 'الاستهلاك', minWidth: 120 },
+    {
+      field: 'status',
+      headerName: 'الحالة',
+      minWidth: 120,
+      renderCell: (params) => (
+        <Chip label={params.value as string} size="small" color={params.row.statusColor as any} variant="outlined" />
+      )
+    },
+    {
+      field: 'actions',
+      headerName: 'إجراءات',
+      minWidth: 110,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={0.5}>
+          <IconButton size="small" color="primary" onClick={() => openEditStock(params.row.item)}><EditIcon fontSize="small" /></IconButton>
+          <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'stock', item: params.row.item })}><DeleteIcon fontSize="small" /></IconButton>
+        </Stack>
+      )
+    }
+  ], [])
+
   // ─── Handlers ───
   const openAddType = () => { setEditingType(null); setTypeForm({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, description: '' }); setTypeDialog(true) }
   const openEditType = (t: FeedType) => { setEditingType(t); setTypeForm({ nameAr: t.nameAr, nameEn: t.name, category: t.category, protein: t.protein || 0, energy: t.energy || 0, description: t.notes || '' }); setTypeDialog(true) }
@@ -422,59 +498,22 @@ export default function FeedsPage() {
       {view === 'today' && (
         <Fade in>
           <Box>
-            {/* ── Combined Summary Strip ── */}
+            {/* ── Combined Summary Strip (MVP) ── */}
             {(() => {
               const totalHeads = todayFeedings.reduce((s, p) => s + p.heads, 0)
               const totalKg = todayFeedings.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.amount * p.heads, 0), 0)
               const totalCost = todayFeedings.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.amount * p.heads * i.unitCost, 0), 0)
-              const byFeed: Record<string, { name: string; category: string; totalKg: number }> = {}
-              todayFeedings.forEach(p => p.items.forEach(i => {
-                if (!byFeed[i.feed]) byFeed[i.feed] = { name: i.feed, category: i.category, totalKg: 0 }
-                byFeed[i.feed].totalKg += i.amount * p.heads
-              }))
-              const feedBreakdown = Object.values(byFeed).sort((a, b) => b.totalKg - a.totalKg)
-
-              const kpis = [
-                { icon: <GrassIcon sx={{ fontSize: 18 }} />, color: '#4caf50', label: 'أنواع الأعلاف', value: feedTypes.length },
-                { icon: <ScheduleIcon sx={{ fontSize: 18 }} />, color: '#9c27b0', label: 'جداول نشطة', value: activeSchedules.length },
-                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalHeads}</Box>, color: '#2196f3', label: 'رأس', value: null },
-                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalKg.toFixed(1)}</Box>, color: '#00897b', label: 'كجم/يوم', value: null },
-                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalCost.toFixed(0)}</Box>, color: '#ff9800', label: 'د.إ/يوم', value: null },
-                { icon: <Box component="span" sx={{ fontWeight: 'bold', fontSize: 14 }}>{totalStockValue.toFixed(0)}</Box>, color: '#1565c0', label: 'مخزون د.إ', value: null },
-              ]
 
               return (
-                <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="center">
-                    {kpis.map((k, i) => (
-                      <Paper key={i} variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 0.75, borderColor: `${k.color}30` }}>
-                        <Box sx={{ color: k.color, display: 'flex', alignItems: 'center' }}>{k.icon}</Box>
-                        {k.value !== null ? (
-                          <Typography variant="body2" fontWeight="bold">{k.value}</Typography>
-                        ) : null}
-                        <Typography variant="caption" color="text.secondary">{k.label}</Typography>
-                      </Paper>
-                    ))}
+                <Paper sx={{ p: 2, mb: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="subtitle2" color="text.secondary" mb={1}>ملخص اليوم</Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip color="primary" variant="outlined" label={`جداول نشطة: ${activeSchedules.length}`} />
+                    <Chip color="info" variant="outlined" label={`عدد الرؤوس: ${totalHeads}`} />
+                    <Chip color="success" variant="outlined" label={`إجمالي اليوم: ${totalKg.toFixed(1)} كجم`} />
+                    <Chip color="warning" variant="outlined" label={`تكلفة اليوم: ${totalCost.toFixed(0)} د.إ`} />
+                    <Chip color="secondary" variant="outlined" label={`قيمة المخزون: ${totalStockValue.toFixed(0)} د.إ`} />
                   </Stack>
-                  {/* Per feed type breakdown */}
-                  {feedBreakdown.length > 0 && (
-                    <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap mt={1.5} pt={1.5} sx={{ borderTop: '1px dashed', borderColor: 'divider' }}>
-                      {feedBreakdown.map(f => (
-                        <Chip
-                          key={f.name}
-                          size="small"
-                          label={`${f.name}: ${f.totalKg.toFixed(1)} كجم`}
-                          sx={{
-                            fontWeight: 'bold', fontSize: 11.5,
-                            bgcolor: `${catColor(f.category)}18`,
-                            color: catColor(f.category),
-                            border: `1px solid ${catColor(f.category)}40`,
-                          }}
-                          icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: catColor(f.category), ml: '8px !important' }} />}
-                        />
-                      ))}
-                    </Stack>
-                  )}
                 </Paper>
               )
             })()}
@@ -510,18 +549,27 @@ export default function FeedsPage() {
                               '&:hover': { boxShadow: 4 }
                             }}>
                               {/* Card Header */}
-                              <Box sx={{ px: 2, py: 1.25, bgcolor: 'primary.light', borderRadius: '12px 12px 0 0' }}>
+                              <Box
+                                sx={{
+                                  px: 2,
+                                  py: 1.25,
+                                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                  borderBottom: '1px solid',
+                                  borderColor: alpha(theme.palette.primary.main, 0.2),
+                                  borderRadius: '12px 12px 0 0'
+                                }}
+                              >
                                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                                   <Stack direction="row" spacing={1} alignItems="center">
-                                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: alpha(theme.palette.primary.main, 0.14), color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                        <path d="M9 21V12h6v9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                       </svg>
                                     </Box>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#fff' }}>{p.pen}</Typography>
+                                    <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">{p.pen}</Typography>
                                   </Stack>
-                                  <Chip label={`${p.heads} رأس`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', fontSize: 11, height: 22 }} />
+                                  <Chip label={`${p.heads} رأس`} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: 'primary.dark', fontWeight: 'bold', fontSize: 11, height: 22 }} />
                                 </Stack>
                               </Box>
 
@@ -530,10 +578,10 @@ export default function FeedsPage() {
                                   <Table size="small">
                                     <TableHead>
                                       <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>العلف</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>كجم/رأس</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>وجبات</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid #e0e0e0' }}>الإجمالي</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>العلف</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>كجم/رأس</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>وجبات</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>الإجمالي</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -557,8 +605,8 @@ export default function FeedsPage() {
                                                   size="small"
                                                   sx={{
                                                     fontSize: 10.5, fontWeight: 'bold', height: 20,
-                                                    bgcolor: daysRemaining <= 3 ? '#ffebee' : daysRemaining <= 7 ? '#fff8e1' : '#e8f5e9',
-                                                    color: daysRemaining <= 3 ? '#c62828' : daysRemaining <= 7 ? '#e65100' : '#2e7d32',
+                                                    bgcolor: daysRemaining <= 3 ? 'error.light' : daysRemaining <= 7 ? 'warning.light' : 'success.light',
+                                                    color: daysRemaining <= 3 ? 'error.dark' : daysRemaining <= 7 ? 'warning.dark' : 'success.dark',
                                                   }}
                                                 />
                                               </Tooltip>
@@ -571,7 +619,7 @@ export default function FeedsPage() {
                                 </TableContainer>
 
                                 {/* Footer */}
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1} pt={1} sx={{ borderTop: '1px dashed #e0e0e0' }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1} pt={1} sx={{ borderTop: '1px dashed', borderColor: 'divider' }}>
                                   <Typography variant="caption" fontWeight="bold" color="primary.main">
                                     {penDailyKg.toFixed(1)} كجم/يوم {penDailyCost > 0 ? `≈ ${penDailyCost.toFixed(0)} د.إ` : ''}
                                   </Typography>
@@ -624,18 +672,27 @@ export default function FeedsPage() {
                               '&:hover': { boxShadow: 4 }
                             }}>
                               {/* Header */}
-                              <Box sx={{ px: 1.5, py: 1, background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`, borderRadius: '12px 12px 0 0' }}>
+                              <Box
+                                sx={{
+                                  px: 1.5,
+                                  py: 1,
+                                  bgcolor: alpha(color, 0.12),
+                                  borderBottom: '1px solid',
+                                  borderColor: alpha(color, 0.28),
+                                  borderRadius: '12px 12px 0 0'
+                                }}
+                              >
                                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                                   <Stack direction="row" spacing={0.75} alignItems="center">
-                                    <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: alpha(color, 0.2), color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="#fff" strokeWidth="2"/>
-                                        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="#fff" strokeWidth="2"/>
+                                        <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="2"/>
+                                        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="currentColor" strokeWidth="2"/>
                                       </svg>
                                     </Box>
-                                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#fff' }} noWrap>{s.feedType.nameAr}</Typography>
+                                    <Typography variant="caption" fontWeight="bold" sx={{ color }} noWrap>{s.feedType.nameAr}</Typography>
                                   </Stack>
-                                  <Chip label={catLabel(s.feedType.category)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', fontSize: 10, height: 20 }} />
+                                  <Chip label={catLabel(s.feedType.category)} size="small" sx={{ bgcolor: alpha(color, 0.18), color, fontWeight: 'bold', fontSize: 10, height: 20 }} />
                                 </Stack>
                               </Box>
 
@@ -646,7 +703,7 @@ export default function FeedsPage() {
                                 <LinearProgress variant="determinate" value={pct} color={s.isLow ? 'warning' : 'primary'} sx={{ height: 5, borderRadius: 3, mb: 1 }} />
 
                                 {/* Footer */}
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" pt={0.75} sx={{ borderTop: '1px dashed #e0e0e0' }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" pt={0.75} sx={{ borderTop: '1px dashed', borderColor: 'divider' }}>
                                   {dailyUse > 0 ? (
                                     <Typography variant="caption" color="text.secondary">{dailyUse.toFixed(1)} كجم/يوم</Typography>
                                   ) : (
@@ -658,8 +715,8 @@ export default function FeedsPage() {
                                       size="small"
                                       sx={{
                                         height: 20, fontSize: 10.5, fontWeight: 'bold',
-                                        bgcolor: stockDaysLeft <= 3 ? '#ffebee' : stockDaysLeft <= 7 ? '#fff8e1' : '#e8f5e9',
-                                        color: stockDaysLeft <= 3 ? '#c62828' : stockDaysLeft <= 7 ? '#e65100' : '#2e7d32',
+                                        bgcolor: stockDaysLeft <= 3 ? 'error.light' : stockDaysLeft <= 7 ? 'warning.light' : 'success.light',
+                                        color: stockDaysLeft <= 3 ? 'error.dark' : stockDaysLeft <= 7 ? 'warning.dark' : 'success.dark',
                                       }}
                                     />
                                   ) : expDays !== null ? (
@@ -710,10 +767,19 @@ export default function FeedsPage() {
                         transition: 'box-shadow 0.2s',
                         '&:hover': { boxShadow: 4 }
                       }}>
-                        <Box sx={{ px: 1.5, py: 1, background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`, borderRadius: '12px 12px 0 0' }}>
+                        <Box
+                          sx={{
+                            px: 1.5,
+                            py: 1,
+                            bgcolor: alpha(color, 0.12),
+                            borderBottom: '1px solid',
+                            borderColor: alpha(color, 0.28),
+                            borderRadius: '12px 12px 0 0'
+                          }}
+                        >
                           <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#fff' }}>{t.nameAr}</Typography>
-                            <Chip label={catLabel(t.category)} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', fontSize: 10, height: 20 }} />
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color }}>{t.nameAr}</Typography>
+                            <Chip label={catLabel(t.category)} size="small" sx={{ bgcolor: alpha(color, 0.18), color, fontWeight: 'bold', fontSize: 10, height: 20 }} />
                           </Stack>
                         </Box>
                         <CardContent sx={{ pt: 1.5, pb: '10px !important', px: 1.5 }}>
@@ -724,7 +790,7 @@ export default function FeedsPage() {
                               {t.energy ? <Chip label={`${t.energy} kcal`} size="small" variant="outlined" sx={{ fontSize: 10.5, height: 22 }} /> : null}
                             </Stack>
                           )}
-                          <Stack direction="row" spacing={0.5} pt={0.75} sx={{ borderTop: '1px dashed #e0e0e0' }}>
+                          <Stack direction="row" spacing={0.5} pt={0.75} sx={{ borderTop: '1px dashed', borderColor: 'divider' }}>
                             <IconButton size="small" onClick={() => openEditType(t)}><EditIcon fontSize="small" /></IconButton>
                             <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'type', item: t })}><DeleteIcon fontSize="small" /></IconButton>
                           </Stack>
@@ -736,7 +802,7 @@ export default function FeedsPage() {
               </Grid>
             </Paper>
 
-            {/* Stock Items */}
+            {/* Stock Items (MVP DataGrid) */}
             <Paper sx={{ p: 2.5, borderRadius: 3 }}>
               <Stack direction="row" spacing={1} alignItems="center" mb={2}>
                 <InventoryIcon color="primary" />
@@ -745,100 +811,14 @@ export default function FeedsPage() {
               {stocks.length === 0 ? (
                 <Alert severity="info" variant="outlined">لا يوجد مخزون</Alert>
               ) : (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>نوع العلف</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>الفئة</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>الكمية</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>سعر الوحدة</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>القيمة</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>المورد</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>تاريخ الشراء</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>الانتهاء</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>الاستهلاك</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>الحالة</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>إجراءات</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {stocks.map(s => {
-                        const expD = s.expiryDate ? daysUntil(s.expiryDate) : null
-                        const isExpired = expD !== null && expD <= 0
-                        const isExpiring = expD !== null && expD > 0 && expD <= 30
-                        const isLow = s.quantity < 50
-                        const color = catColor(s.feedType?.category || 'OTHER')
-                        const value = (s.quantity * (s.cost || 0))
-                        const dailyUse = dailyConsumptionByType[s.feedTypeId] || 0
-                        const stockDaysLeft = dailyUse > 0 ? Math.floor(s.quantity / dailyUse) : null
-                        return (
-                          <TableRow key={s.id} hover sx={{ '&:hover': { bgcolor: '#f8fffe' } }}>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight="bold">{s.feedType?.nameAr || '-'}</Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Chip label={catLabel(s.feedType?.category)} size="small" sx={{ bgcolor: color, color: '#fff', fontWeight: 'bold', fontSize: 10.5, height: 22 }} />
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight="bold" color={isLow ? 'warning.main' : 'inherit'}>
-                                {s.quantity} {s.unit}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>{s.cost ? `${s.cost} د.إ` : '-'}</TableCell>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight="bold">{value.toFixed(0)} د.إ</Typography>
-                            </TableCell>
-                            <TableCell>{s.supplier || '-'}</TableCell>
-                            <TableCell>{new Date(s.purchaseDate).toLocaleDateString('ar-AE')}</TableCell>
-                            <TableCell>
-                              {s.expiryDate ? (
-                                <Typography variant="body2" color={isExpired ? 'error.main' : isExpiring ? 'warning.main' : 'inherit'} fontWeight={isExpired || isExpiring ? 'bold' : 'normal'}>
-                                  {new Date(s.expiryDate).toLocaleDateString('ar-AE')}
-                                </Typography>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {dailyUse > 0 ? (
-                                <Typography variant="body2" fontWeight="bold" color="primary.main">{dailyUse.toFixed(1)} كجم/يوم</Typography>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {(() => {
-                                const statusChip = isExpired ? { label: 'منتهي', color: '#c62828', bg: '#ffebee' }
-                                  : isExpiring ? { label: `ينتهي ${expD} يوم`, color: '#e65100', bg: '#fff8e1' }
-                                  : isLow ? { label: 'منخفض', color: '#e65100', bg: '#fff8e1' }
-                                  : { label: 'جيد', color: '#2e7d32', bg: '#e8f5e9' }
-                                return (
-                                  <Stack spacing={0.5} alignItems="flex-start">
-                                    <Chip label={statusChip.label} size="small" sx={{ bgcolor: statusChip.bg, color: statusChip.color, fontWeight: 'bold', fontSize: 10.5, height: 22 }} />
-                                    {stockDaysLeft !== null && (
-                                      <Chip
-                                        label={`يكفي ${stockDaysLeft} يوم`}
-                                        size="small"
-                                        sx={{
-                                          height: 20, fontSize: 10, fontWeight: 'bold',
-                                          bgcolor: stockDaysLeft <= 3 ? '#ffebee' : stockDaysLeft <= 7 ? '#fff8e1' : '#e8f5e9',
-                                          color: stockDaysLeft <= 3 ? '#c62828' : stockDaysLeft <= 7 ? '#e65100' : '#2e7d32',
-                                        }}
-                                      />
-                                    )}
-                                  </Stack>
-                                )
-                              })()}
-                            </TableCell>
-                            <TableCell>
-                              <Stack direction="row" spacing={0.5}>
-                                <IconButton size="small" color="primary" onClick={() => openEditStock(s)}><EditIcon fontSize="small" /></IconButton>
-                                <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'stock', item: s })}><DeleteIcon fontSize="small" /></IconButton>
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <AppDataGrid
+                  title=""
+                  showDensityToggle={false}
+                  autoHeight
+                  rows={stockRows}
+                  columns={stockColumns}
+                  initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+                />
               )}
             </Paper>
           </Box>
@@ -864,7 +844,7 @@ export default function FeedsPage() {
               <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableRow sx={{ bgcolor: 'action.hover' }}>
                       <TableCell><strong>الحظيرة</strong></TableCell>
                       <TableCell><strong>عدد الرؤوس</strong></TableCell>
                       <TableCell><strong>نوع العلف</strong></TableCell>
@@ -988,23 +968,23 @@ export default function FeedsPage() {
 
             {/* AI Suggestion Card */}
             {aiSuggestion && (
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f3e8ff', borderColor: '#c084fc' }}>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: 'secondary.light', borderColor: 'secondary.main' }}>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'secondary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1H9a1 1 0 01-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" fill="#fff"/>
                         <path d="M9 21h6M10 17v1a2 2 0 002 2h0a2 2 0 002-2v-1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
                     </Box>
-                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#7c3aed' }}>اقتراح ذكي للكمية</Typography>
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'secondary.main' }}>اقتراح ذكي للكمية</Typography>
                   </Stack>
-                  <Typography variant="body2" sx={{ color: '#5b21b6', fontSize: 12.5 }}>{aiSuggestion.reasoning}</Typography>
+                  <Typography variant="body2" sx={{ color: 'secondary.dark', fontSize: 12.5 }}>{aiSuggestion.reasoning}</Typography>
                   <Stack direction="row" spacing={1}>
                     <Button
                       size="small"
                       variant="contained"
-                      sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' }, fontSize: 12, borderRadius: 2 }}
+                      sx={{ bgcolor: 'secondary.main', '&:hover': { bgcolor: 'secondary.dark' }, fontSize: 12, borderRadius: 2 }}
                       onClick={() => setScheduleForm(f => ({ ...f, dailyAmount: aiSuggestion.amount, feedingTimes: String(aiSuggestion.meals) }))}
                     >
                       تطبيق: {aiSuggestion.amount} كجم / {aiSuggestion.meals} وجبات

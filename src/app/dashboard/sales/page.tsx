@@ -412,7 +412,7 @@ export default function SalesPage() {
       <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
               <TableCell><strong>رقم التاج</strong></TableCell>
               <TableCell><strong>التاريخ</strong></TableCell>
               <TableCell><strong>المشتري</strong></TableCell>

@@ -29,7 +29,7 @@ import {
   IconButton,
   useMediaQuery
 } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
+import { useTheme, alpha } from '@mui/material/styles'
 import {
   Add as AddIcon,
   Check as CheckIcon,
@@ -205,7 +205,7 @@ export default function HealthPage() {
     <Box>
       {/* Alerts */}
       {upcomingAlerts.length > 0 && (
-          <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', border: '1px solid #ffb74d' }}>
+          <Paper sx={{ p: 2, mb: 3, bgcolor: 'warning.light', border: '1px solid', borderColor: 'warning.main' }}>
               <Stack direction="row" spacing={2} alignItems="center">
                   <WarningIcon color="warning" />
                   <Box>
@@ -220,13 +220,31 @@ export default function HealthPage() {
 
       {/* Analytics Cards */}
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
-         <Paper sx={{ p: 2, flex: 1, bgcolor: '#e3f2fd' }}>
+         <Paper
+           sx={{
+             p: 2,
+             flex: 1,
+             borderRadius: 3,
+             border: '1px solid',
+             borderColor: alpha(theme.palette.primary.main, 0.22),
+             bgcolor: alpha(theme.palette.primary.main, 0.08)
+           }}
+         >
             <Typography variant="subtitle2" color="text.secondary">إجمالي التكاليف الطبية</Typography>
-            <Typography variant="h4" fontWeight="bold" color="primary">{formatCurrency(totalCost)}</Typography>
+            <Typography variant="h4" fontWeight="bold" color="primary.dark">{formatCurrency(totalCost)}</Typography>
          </Paper>
-         <Paper sx={{ p: 2, flex: 1, bgcolor: '#fce4ec' }}>
+         <Paper
+           sx={{
+             p: 2,
+             flex: 1,
+             borderRadius: 3,
+             border: '1px solid',
+             borderColor: alpha(theme.palette.secondary.main, 0.24),
+             bgcolor: alpha(theme.palette.secondary.main, 0.08)
+           }}
+         >
             <Typography variant="subtitle2" color="text.secondary">أكثر العلاجات شيوعاً</Typography>
-            <Typography variant="h5" fontWeight="bold" color="#c2185b">
+            <Typography variant="h5" fontWeight="bold" color="secondary.dark">
                 {topTreatment ? typeLabels[topTreatment[0]] || topTreatment[0] : '-'}
             </Typography>
             <Typography variant="caption">{topTreatment ? `${topTreatment[1]} حالة` : ''}</Typography>
@@ -265,7 +283,7 @@ export default function HealthPage() {
       <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
               <TableCell><strong>رقم التاج</strong></TableCell>
               <TableCell><strong>النوع</strong></TableCell>
               <TableCell><strong>التاريخ</strong></TableCell>

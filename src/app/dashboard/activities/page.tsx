@@ -207,7 +207,7 @@ export default function ActivitiesPage() {
       <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
               <TableCell><strong>المستخدم</strong></TableCell>
               <TableCell><strong>الإجراء</strong></TableCell>
               <TableCell><strong>الكيان</strong></TableCell>
