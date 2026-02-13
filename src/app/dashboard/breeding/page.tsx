@@ -48,12 +48,26 @@ import {
   BabyChangingStation as BirthIcon,
   CheckCircle as SuccessIcon,
   Pending as PendingIcon,
+  EmojiEvents as TrophyIcon,
+  TrendingUp as TrendIcon,
+  ChildCare as ChildIcon,
   Error as ErrorIcon,
   Favorite as PregnantIcon,
   Remove as RemoveIcon
 } from '@mui/icons-material'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
+
+interface BirthRecord {
+  id: string
+  kidTagId: string
+  kidGoatId?: string
+  gender: 'MALE' | 'FEMALE'
+  weight?: number
+  status: 'ALIVE' | 'DEAD' | 'STILLBORN'
+  notes?: string
+  createdAt: string
+}
 
 interface BreedingRecord {
   id: string
@@ -66,6 +80,7 @@ interface BreedingRecord {
   dueDate?: string
   birthDate?: string
   numberOfKids?: number
+  births?: BirthRecord[]
 }
 
 interface KidForm {
@@ -297,16 +312,45 @@ export default function BreedingPage() {
   })
 
   // Calculate statistics
+  const deliveredRecords = records.filter(r => r.pregnancyStatus === 'DELIVERED')
+  const allBirths = records.flatMap(r => r.births || [])
   const stats = {
     total: records.length,
     mated: records.filter(r => r.pregnancyStatus === 'MATED').length,
     pregnant: records.filter(r => r.pregnancyStatus === 'PREGNANT').length,
-    delivered: records.filter(r => r.pregnancyStatus === 'DELIVERED').length,
+    delivered: deliveredRecords.length,
     failed: records.filter(r => r.pregnancyStatus === 'FAILED').length,
     successRate: records.length > 0 
-      ? Math.round((records.filter(r => r.pregnancyStatus === 'DELIVERED').length / records.length) * 100) 
-      : 0
+      ? Math.round((deliveredRecords.length / records.length) * 100) 
+      : 0,
+    // Advanced stats
+    twinRate: deliveredRecords.length > 0
+      ? Math.round((deliveredRecords.filter(r => (r.numberOfKids || 0) > 1).length / deliveredRecords.length) * 100)
+      : 0,
+    avgKidsPerBirth: deliveredRecords.length > 0
+      ? (deliveredRecords.reduce((sum, r) => sum + (r.numberOfKids || r.births?.length || 0), 0) / deliveredRecords.length).toFixed(1)
+      : '0',
+    mortalityRate: allBirths.length > 0
+      ? Math.round((allBirths.filter(b => b.status === 'DEAD' || b.status === 'STILLBORN').length / allBirths.length) * 100)
+      : 0,
+    totalKids: allBirths.length,
+    aliveKids: allBirths.filter(b => b.status === 'ALIVE').length,
+    deadKids: allBirths.filter(b => b.status === 'DEAD' || b.status === 'STILLBORN').length,
   }
+
+  // Top mothers by successful births
+  const topMothers = (() => {
+    const motherMap: Record<string, { tagId: string; deliveries: number; totalKids: number; aliveKids: number }> = {}
+    deliveredRecords.forEach(r => {
+      if (!motherMap[r.motherId]) {
+        motherMap[r.motherId] = { tagId: r.mother.tagId, deliveries: 0, totalKids: 0, aliveKids: 0 }
+      }
+      motherMap[r.motherId].deliveries++
+      motherMap[r.motherId].totalKids += (r.numberOfKids || r.births?.length || 0)
+      motherMap[r.motherId].aliveKids += (r.births?.filter(b => b.status === 'ALIVE').length || 0)
+    })
+    return Object.values(motherMap).sort((a, b) => b.totalKids - a.totalKids || b.deliveries - a.deliveries).slice(0, 5)
+  })()
 
   // Filter records based on search and filters
   const filteredRecords = records.filter(record => {
@@ -414,7 +458,7 @@ export default function BreedingPage() {
       await Promise.all(
         selectedRecords.map(id =>
           fetch(`/api/breeding/${id}`, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pregnancyStatus: newStatus })
           })
@@ -479,98 +523,78 @@ export default function BreedingPage() {
          </Alert>
       )}
 
-      {/* Statistics Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography color="white" variant="body2" sx={{ opacity: 0.9 }}>
-                    إجمالي السجلات
-                  </Typography>
-                  <Typography color="white" variant="h4" fontWeight="bold">
-                    {stats.total}
-                  </Typography>
-                </Box>
-                <BreedingIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography color="white" variant="body2" sx={{ opacity: 0.9 }}>
-                    حالات تزاوج
-                  </Typography>
-                  <Typography color="white" variant="h4" fontWeight="bold">
-                    {stats.mated}
-                  </Typography>
-                </Box>
-                <PendingIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* ═══════════════════ UNIFIED STATS ═══════════════════ */}
+      <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+        {/* Row 1: Main KPIs as compact strip */}
+        <Stack direction="row" spacing={0} sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+          {[
+            { label: 'إجمالي', value: stats.total, color: '#5c6bc0' },
+            { label: 'تزاوج', value: stats.mated, color: '#ab47bc' },
+            { label: 'حامل', value: stats.pregnant, color: '#ef5350' },
+            { label: 'ولادة', value: stats.delivered, color: '#66bb6a' },
+            { label: 'فشل', value: stats.failed, color: '#bdbdbd' },
+            { label: 'نجاح', value: `${stats.successRate}%`, color: '#42a5f5' },
+          ].map((item, i) => (
+            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 5 ? '1px solid #e0e0e0' : 'none', bgcolor: '#fafafa' }}>
+              <Typography variant="h5" fontWeight="bold" sx={{ color: item.color, lineHeight: 1.2 }}>{item.value}</Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold">{item.label}</Typography>
+            </Box>
+          ))}
+        </Stack>
 
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography color="white" variant="body2" sx={{ opacity: 0.9 }}>
-                    حالات حمل
-                  </Typography>
-                  <Typography color="white" variant="h4" fontWeight="bold">
-                    {stats.pregnant}
-                  </Typography>
-                </Box>
-                <PregnantIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
+        {/* Row 2: Production Indicators */}
+        <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
+          <TrendIcon sx={{ fontSize: 20, color: '#5c6bc0' }} />
+          <Typography variant="subtitle1" fontWeight="bold">مؤشرات الإنتاج</Typography>
+        </Stack>
+        <Stack direction="row" spacing={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0', mb: 2 }}>
+          {[
+            { label: 'معدل التوائم', value: `${stats.twinRate}%`, sub: null, icon: <ChildIcon sx={{ fontSize: 18, color: '#5c6bc0' }} /> },
+            { label: 'متوسط مواليد/ولادة', value: stats.avgKidsPerBirth, sub: null, icon: <BirthIcon sx={{ fontSize: 18, color: '#5c6bc0' }} /> },
+            { label: 'معدل النفوق', value: `${stats.mortalityRate}%`, sub: `${stats.deadKids}/${stats.totalKids}`, icon: <ErrorIcon sx={{ fontSize: 18, color: stats.mortalityRate > 10 ? '#ef5350' : '#5c6bc0' }} /> },
+            { label: 'مواليد أحياء', value: stats.aliveKids, sub: `من ${stats.totalKids}`, icon: <SuccessIcon sx={{ fontSize: 18, color: '#66bb6a' }} /> },
+          ].map((item, i) => (
+            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 3 ? '1px solid #e0e0e0' : 'none', bgcolor: '#fff' }}>
+              <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" mb={0.25}>
+                {item.icon}
+                <Typography variant="h6" fontWeight="bold" sx={{ color: stats.mortalityRate > 10 && i === 2 ? '#ef5350' : '#333' }}>{item.value}</Typography>
               </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold" display="block">{item.label}</Typography>
+              {item.sub && <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>{item.sub}</Typography>}
+            </Box>
+          ))}
+        </Stack>
 
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography color="#333" variant="body2" sx={{ opacity: 0.9 }}>
-                    ولادات مكتملة
-                  </Typography>
-                  <Typography color="#333" variant="h4" fontWeight="bold">
-                    {stats.delivered}
-                  </Typography>
-                </Box>
-                <SuccessIcon sx={{ fontSize: 40, color: '#4caf50', opacity: 0.8 }} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography color="white" variant="body2" sx={{ opacity: 0.9 }}>
-                    معدل النجاح
-                  </Typography>
-                  <Typography color="white" variant="h4" fontWeight="bold">
-                    {stats.successRate}%
-                  </Typography>
-                </Box>
-                <SuccessIcon sx={{ fontSize: 40, color: 'white', opacity: 0.8 }} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+        {/* Row 3: Top Mothers */}
+        {topMothers.length > 0 && (
+          <Box>
+            <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+              <TrophyIcon sx={{ fontSize: 20, color: '#ffa000' }} />
+              <Typography variant="subtitle1" fontWeight="bold">أفضل الأمهات إنتاجاً</Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {topMothers.map((m, i) => (
+                <Chip
+                  key={m.tagId}
+                  icon={i === 0 ? <TrophyIcon sx={{ fontSize: 14 }} /> : undefined}
+                  label={`${m.tagId} — ${m.totalKids} مولود (${m.deliveries} ولادة${m.aliveKids > 0 ? ` • ${m.aliveKids} حي` : ''})`}
+                  size="small"
+                  sx={{
+                    fontWeight: 'bold',
+                    fontSize: 11,
+                    height: 28,
+                    bgcolor: i === 0 ? '#fff8e1' : '#fafafa',
+                    border: '1px solid',
+                    borderColor: i === 0 ? '#ffe082' : '#e0e0e0',
+                    color: i === 0 ? '#e65100' : '#555',
+                    '& .MuiChip-icon': { color: '#ffa000' }
+                  }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
+      </Paper>
 
       {/* Header with title and actions */}
       <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
@@ -778,15 +802,15 @@ export default function BreedingPage() {
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={0.5}>
-                        {/* Quick Birth Button for upcoming births */}
-                        {isUpcoming && (
+                        {/* Quick Birth Button for pregnant records */}
+                        {(r.pregnancyStatus === 'PREGNANT' || r.pregnancyStatus === 'MATED') && (
                           <Tooltip title="تسجيل ولادة سريع">
                             <IconButton 
                               size="small" 
                               sx={{ 
                                 color: 'white',
-                                bgcolor: '#ff9800',
-                                '&:hover': { bgcolor: '#f57c00' }
+                                bgcolor: isUpcoming ? '#ff9800' : '#66bb6a',
+                                '&:hover': { bgcolor: isUpcoming ? '#f57c00' : '#43a047' }
                               }}
                               onClick={() => handleQuickBirth(r)}
                             >
@@ -836,7 +860,7 @@ export default function BreedingPage() {
                 label="الأم"
                 onChange={(e) => setForm({ ...form, motherId: e.target.value })}
               >
-                {goats.map(g => (
+                {goats.filter(g => g.gender === 'FEMALE').map(g => (
                   <MenuItem key={g.id} value={g.id}>{g.tagId}</MenuItem>
                 ))}
               </Select>
@@ -848,7 +872,7 @@ export default function BreedingPage() {
                 label="الأب"
                 onChange={(e) => setForm({ ...form, fatherId: e.target.value })}
               >
-                {goats.map(g => (
+                {goats.filter(g => g.gender === 'MALE').map(g => (
                   <MenuItem key={g.id} value={g.id}>{g.tagId}</MenuItem>
                 ))}
               </Select>
@@ -939,6 +963,59 @@ export default function BreedingPage() {
                   )}
                 </Stack>
               </Paper>
+
+              {/* بيانات المواليد */}
+              {selectedRecord.births && selectedRecord.births.length > 0 && (
+                <Paper sx={{ p: 2 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                    <BirthIcon color="warning" />
+                    <Typography variant="h6">المواليد ({selectedRecord.births.length})</Typography>
+                  </Stack>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: '#fff8e1' }}>
+                          <TableCell sx={{ fontWeight: 'bold' }}>رقم التعريف</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>الجنس</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>الوزن (كجم)</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>الحالة</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>ملاحظات</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {selectedRecord.births.map((b: BirthRecord) => (
+                          <TableRow key={b.id} hover>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="bold">{b.kidTagId}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={b.gender === 'MALE' ? 'ذكر' : 'أنثى'}
+                                size="small"
+                                sx={{
+                                  bgcolor: b.gender === 'MALE' ? '#e3f2fd' : '#fce4ec',
+                                  color: b.gender === 'MALE' ? '#1565c0' : '#c62828',
+                                  fontWeight: 'bold', fontSize: 11
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>{b.weight ? `${b.weight} كجم` : '-'}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={b.status === 'ALIVE' ? 'حي' : b.status === 'DEAD' ? 'ميت' : 'ميت عند الولادة'}
+                                size="small"
+                                color={b.status === 'ALIVE' ? 'success' : 'error'}
+                                sx={{ fontWeight: 'bold', fontSize: 11 }}
+                              />
+                            </TableCell>
+                            <TableCell>{b.notes || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              )}
 
               <Paper sx={{ p: 2 }}>
                 <Stack direction="row" spacing={1} alignItems="center" mb={2}>
