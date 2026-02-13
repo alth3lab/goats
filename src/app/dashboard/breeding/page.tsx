@@ -531,16 +531,16 @@ export default function BreedingPage() {
       {/* ═══════════════════ UNIFIED STATS ═══════════════════ */}
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         {/* Row 1: Main KPIs as compact strip */}
-        <Stack direction="row" spacing={0} sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+        <Stack direction="row" spacing={0} sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
           {[
-            { label: 'إجمالي', value: stats.total, color: '#5c6bc0' },
-            { label: 'تزاوج', value: stats.mated, color: '#ab47bc' },
-            { label: 'حامل', value: stats.pregnant, color: '#ef5350' },
-            { label: 'ولادة', value: stats.delivered, color: '#66bb6a' },
-            { label: 'فشل', value: stats.failed, color: '#bdbdbd' },
-            { label: 'نجاح', value: `${stats.successRate}%`, color: '#42a5f5' },
+            { label: 'إجمالي', value: stats.total, color: 'primary.main' },
+            { label: 'تزاوج', value: stats.mated, color: 'secondary.main' },
+            { label: 'حامل', value: stats.pregnant, color: 'warning.main' },
+            { label: 'ولادة', value: stats.delivered, color: 'success.main' },
+            { label: 'فشل', value: stats.failed, color: 'text.disabled' },
+            { label: 'نجاح', value: `${stats.successRate}%`, color: 'info.main' },
           ].map((item, i) => (
-            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 5 ? '1px solid #e0e0e0' : 'none', bgcolor: '#fafafa' }}>
+            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 5 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: 'background.default' }}>
               <Typography variant="h5" fontWeight="bold" sx={{ color: item.color, lineHeight: 1.2 }}>{item.value}</Typography>
               <Typography variant="caption" color="text.secondary" fontWeight="bold">{item.label}</Typography>
             </Box>
@@ -549,20 +549,20 @@ export default function BreedingPage() {
 
         {/* Row 2: Production Indicators */}
         <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
-          <TrendIcon sx={{ fontSize: 20, color: '#5c6bc0' }} />
+          <TrendIcon sx={{ fontSize: 20, color: 'primary.main' }} />
           <Typography variant="subtitle1" fontWeight="bold">مؤشرات الإنتاج</Typography>
         </Stack>
-        <Stack direction="row" spacing={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0', mb: 2 }}>
+        <Stack direction="row" spacing={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', mb: 2 }}>
           {[
-            { label: 'معدل التوائم', value: `${stats.twinRate}%`, sub: null, icon: <ChildIcon sx={{ fontSize: 18, color: '#5c6bc0' }} /> },
-            { label: 'متوسط مواليد/ولادة', value: stats.avgKidsPerBirth, sub: null, icon: <BirthIcon sx={{ fontSize: 18, color: '#5c6bc0' }} /> },
-            { label: 'معدل النفوق', value: `${stats.mortalityRate}%`, sub: `${stats.deadKids}/${stats.totalKids}`, icon: <ErrorIcon sx={{ fontSize: 18, color: stats.mortalityRate > 10 ? '#ef5350' : '#5c6bc0' }} /> },
-            { label: 'مواليد أحياء', value: stats.aliveKids, sub: `من ${stats.totalKids}`, icon: <SuccessIcon sx={{ fontSize: 18, color: '#66bb6a' }} /> },
+            { label: 'معدل التوائم', value: `${stats.twinRate}%`, sub: null, icon: <ChildIcon sx={{ fontSize: 18, color: 'primary.main' }} /> },
+            { label: 'متوسط مواليد/ولادة', value: stats.avgKidsPerBirth, sub: null, icon: <BirthIcon sx={{ fontSize: 18, color: 'primary.main' }} /> },
+            { label: 'معدل النفوق', value: `${stats.mortalityRate}%`, sub: `${stats.deadKids}/${stats.totalKids}`, icon: <ErrorIcon sx={{ fontSize: 18, color: stats.mortalityRate > 10 ? 'error.main' : 'primary.main' }} /> },
+            { label: 'مواليد أحياء', value: stats.aliveKids, sub: `من ${stats.totalKids}`, icon: <SuccessIcon sx={{ fontSize: 18, color: 'success.main' }} /> },
           ].map((item, i) => (
-            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 3 ? '1px solid #e0e0e0' : 'none', bgcolor: '#fff' }}>
+            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 3 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: 'background.paper' }}>
               <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" mb={0.25}>
                 {item.icon}
-                <Typography variant="h6" fontWeight="bold" sx={{ color: stats.mortalityRate > 10 && i === 2 ? '#ef5350' : '#333' }}>{item.value}</Typography>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: stats.mortalityRate > 10 && i === 2 ? 'error.main' : 'text.primary' }}>{item.value}</Typography>
               </Stack>
               <Typography variant="caption" color="text.secondary" fontWeight="bold" display="block">{item.label}</Typography>
               {item.sub && <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>{item.sub}</Typography>}
@@ -574,7 +574,7 @@ export default function BreedingPage() {
         {topMothers.length > 0 && (
           <Box>
             <Stack direction="row" spacing={1} alignItems="center" mb={1}>
-              <TrophyIcon sx={{ fontSize: 20, color: '#ffa000' }} />
+              <TrophyIcon sx={{ fontSize: 20, color: 'warning.main' }} />
               <Typography variant="subtitle1" fontWeight="bold">أفضل الأمهات إنتاجاً</Typography>
             </Stack>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -588,11 +588,11 @@ export default function BreedingPage() {
                     fontWeight: 'bold',
                     fontSize: 11,
                     height: 28,
-                    bgcolor: i === 0 ? '#fff8e1' : '#fafafa',
+                    bgcolor: i === 0 ? 'warning.light' : 'background.default',
                     border: '1px solid',
-                    borderColor: i === 0 ? '#ffe082' : '#e0e0e0',
-                    color: i === 0 ? '#e65100' : '#555',
-                    '& .MuiChip-icon': { color: '#ffa000' }
+                    borderColor: i === 0 ? 'warning.main' : 'divider',
+                    color: i === 0 ? 'warning.dark' : 'text.primary',
+                    '& .MuiChip-icon': { color: 'warning.main' }
                   }}
                 />
               ))}
@@ -605,7 +605,7 @@ export default function BreedingPage() {
       <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
-            <BreedingIcon sx={{ color: '#e91e63', fontSize: 32 }} />
+            <BreedingIcon sx={{ color: 'secondary.main', fontSize: 32 }} />
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">سجلات التكاثر</Typography>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
@@ -707,7 +707,7 @@ export default function BreedingPage() {
       <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow>
               <TableCell padding="checkbox">
                 <Checkbox 
                   checked={selectedRecords.length === filteredRecords.length && filteredRecords.length > 0}
@@ -819,9 +819,9 @@ export default function BreedingPage() {
                             <IconButton 
                               size="small" 
                               sx={{ 
-                                color: 'white',
-                                bgcolor: isUpcoming ? '#ff9800' : '#66bb6a',
-                                '&:hover': { bgcolor: isUpcoming ? '#f57c00' : '#43a047' }
+                                color: 'common.white',
+                                bgcolor: isUpcoming ? 'warning.main' : 'success.main',
+                                '&:hover': { bgcolor: isUpcoming ? 'warning.dark' : 'success.dark' }
                               }}
                               onClick={() => handleQuickBirth(r)}
                             >
@@ -996,7 +996,7 @@ export default function BreedingPage() {
                   <TableContainer>
                     <Table size="small">
                       <TableHead>
-                        <TableRow sx={{ bgcolor: '#fff8e1' }}>
+                        <TableRow sx={{ bgcolor: 'warning.light' }}>
                           <TableCell sx={{ fontWeight: 'bold' }}>رقم التعريف</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }}>الجنس</TableCell>
                           <TableCell sx={{ fontWeight: 'bold' }}>الوزن (كجم)</TableCell>
@@ -1015,8 +1015,8 @@ export default function BreedingPage() {
                                 label={b.gender === 'MALE' ? 'ذكر' : 'أنثى'}
                                 size="small"
                                 sx={{
-                                  bgcolor: b.gender === 'MALE' ? '#e3f2fd' : '#fce4ec',
-                                  color: b.gender === 'MALE' ? '#1565c0' : '#c62828',
+                                  bgcolor: b.gender === 'MALE' ? 'info.light' : 'error.light',
+                                  color: b.gender === 'MALE' ? 'info.dark' : 'error.dark',
                                   fontWeight: 'bold', fontSize: 11
                                 }}
                               />
@@ -1075,7 +1075,7 @@ export default function BreedingPage() {
 
       {/* Quick Birth Dialog */}
       <Dialog open={quickBirthDialogOpen} onClose={() => setQuickBirthDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle sx={{ bgcolor: '#ff9800', color: 'white' }}>
+        <DialogTitle sx={{ bgcolor: 'warning.main', color: 'warning.contrastText' }}>
           <Stack direction="row" spacing={1} alignItems="center">
             <BirthIcon />
             <Typography variant="h6">تسجيل ولادة سريع 🎉</Typography>
@@ -1120,8 +1120,9 @@ export default function BreedingPage() {
                     sx={{ 
                       p: 2, 
                       mb: 2, 
-                      bgcolor: '#f9f9f9',
-                      border: '2px solid #e0e0e0',
+                      bgcolor: 'background.default',
+                      border: '2px solid',
+                      borderColor: 'divider',
                       borderRadius: 2
                     }}
                   >
@@ -1211,7 +1212,7 @@ export default function BreedingPage() {
           <Button onClick={() => setQuickBirthDialogOpen(false)}>إلغاء</Button>
           <Button 
             variant="contained" 
-            sx={{ bgcolor: '#ff9800', '&:hover': { bgcolor: '#f57c00' } }}
+            color="warning"
             onClick={handleQuickBirthSubmit}
             startIcon={<BirthIcon />}
           >

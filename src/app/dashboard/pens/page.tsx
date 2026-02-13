@@ -503,7 +503,7 @@ export default function PensPage() {
       {/* Statistics Dashboard */}
       <Grid container spacing={2} mb={4}>
         <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-          <Card sx={{ bgcolor: '#e3f2fd' }}>
+          <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Typography variant="h4" fontWeight="bold" color="primary">
                 {stats.totalPens}
@@ -515,7 +515,7 @@ export default function PensPage() {
           </Card>
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-          <Card sx={{ bgcolor: '#f3e5f5' }}>
+          <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Typography variant="h4" fontWeight="bold" color="secondary">
                 {stats.totalAnimals}
@@ -527,9 +527,9 @@ export default function PensPage() {
           </Card>
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-          <Card sx={{ bgcolor: '#e8f5e9' }}>
+          <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: '#2e7d32' }}>
+              <Typography variant="h4" fontWeight="bold" color="success.main">
                 {stats.totalCapacity > 0 ? Math.round((stats.totalAnimals / stats.totalCapacity) * 100) : 0}%
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -539,9 +539,9 @@ export default function PensPage() {
           </Card>
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-          <Card sx={{ bgcolor: stats.fullPens > 0 ? '#fff3e0' : '#f5f5f5' }}>
+          <Card sx={{ bgcolor: stats.fullPens > 0 ? 'warning.light' : 'background.paper' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: stats.fullPens > 0 ? '#f57c00' : '#666' }}>
+              <Typography variant="h4" fontWeight="bold" sx={{ color: stats.fullPens > 0 ? 'warning.main' : 'text.secondary' }}>
                 {stats.fullPens}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -551,7 +551,7 @@ export default function PensPage() {
           </Card>
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-          <Card sx={{ bgcolor: stats.overcrowdedPens > 0 ? '#ffebee' : '#f5f5f5' }}>
+          <Card sx={{ bgcolor: stats.overcrowdedPens > 0 ? 'error.light' : 'background.paper' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={0.5}>
                 {stats.overcrowdedPens > 0 && <WarningIcon color="error" fontSize="small" />}
@@ -566,7 +566,7 @@ export default function PensPage() {
           </Card>
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2 }}>
-          <Card sx={{ bgcolor: '#fafafa' }}>
+          <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Typography variant="h4" fontWeight="bold" color="text.secondary">
                 {stats.emptyPens}
@@ -581,7 +581,7 @@ export default function PensPage() {
 
       {/* Smart Notifications & Recommendations */}
       {(stats.overcrowdedPens > 0 || stats.fullPens > 2 || (stats.totalCapacity > 0 && (stats.totalAnimals / stats.totalCapacity) > 0.8)) && (
-        <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', border: '1px solid #ff9800' }}>
+        <Paper sx={{ p: 2, mb: 3, bgcolor: 'warning.light', border: '1px solid', borderColor: 'warning.main' }}>
           <Stack spacing={2}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <WarningIcon color="warning" />
@@ -591,7 +591,7 @@ export default function PensPage() {
             </Stack>
             
             {stats.overcrowdedPens > 0 && (
-              <Paper sx={{ p: 2, bgcolor: '#ffebee', border: '1px solid #ef5350' }}>
+              <Paper sx={{ p: 2, bgcolor: 'error.light', border: '1px solid', borderColor: 'error.main' }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                   <WarningIcon color="error" />
                   <Typography variant="subtitle1" fontWeight="bold" color="error">
@@ -605,7 +605,7 @@ export default function PensPage() {
             )}
 
             {stats.fullPens > 2 && (
-              <Paper sx={{ p: 2, bgcolor: '#fff3e0' }}>
+              <Paper sx={{ p: 2, bgcolor: 'warning.light' }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                   <AssessmentIcon color="warning" />
                   <Typography variant="subtitle1" fontWeight="bold" color="warning.dark">
@@ -619,7 +619,7 @@ export default function PensPage() {
             )}
 
             {stats.totalCapacity > 0 && (stats.totalAnimals / stats.totalCapacity) > 0.8 && (
-              <Paper sx={{ p: 2, bgcolor: '#e3f2fd' }}>
+              <Paper sx={{ p: 2, bgcolor: 'background.paper' }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                   <TrendingUpIcon color="info" />
                   <Typography variant="subtitle1" fontWeight="bold" color="info.main">
@@ -634,7 +634,7 @@ export default function PensPage() {
             )}
 
             {stats.emptyPens > 3 && (
-              <Paper sx={{ p: 2, bgcolor: '#f3e5f5' }}>
+              <Paper sx={{ p: 2, bgcolor: 'background.paper' }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                   <AssessmentIcon color="secondary" />
                   <Typography variant="subtitle1" fontWeight="bold" color="secondary">

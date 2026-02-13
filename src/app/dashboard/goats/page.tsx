@@ -733,7 +733,7 @@ export default function GoatsPage() {
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid xs={6} sm={4} md={2}>
-          <Card sx={{ height: '100%', bgcolor: '#e3f2fd' }}>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
                 <PetsIcon color="primary" />
@@ -748,11 +748,11 @@ export default function GoatsPage() {
           </Card>
         </Grid>
         <Grid xs={6} sm={4} md={2}>
-          <Card sx={{ height: '100%', bgcolor: '#e3f2fd' }}>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
                 <MaleIcon color="primary" />
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#2196f3' }}>
+                <Typography variant="h4" fontWeight="bold" color="primary.main">
                   {stats.males}
                 </Typography>
               </Stack>
@@ -763,11 +763,11 @@ export default function GoatsPage() {
           </Card>
         </Grid>
         <Grid xs={6} sm={4} md={2}>
-          <Card sx={{ height: '100%', bgcolor: '#fce4ec' }}>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
-                <FemaleIcon sx={{ color: '#e91e63' }} />
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#e91e63' }}>
+                <FemaleIcon color="secondary" />
+                <Typography variant="h4" fontWeight="bold" color="secondary.main">
                   {stats.females}
                 </Typography>
               </Stack>
@@ -778,10 +778,10 @@ export default function GoatsPage() {
           </Card>
         </Grid>
         <Grid xs={6} sm={4} md={2}>
-          <Card sx={{ height: '100%', bgcolor: stats.weaningReady > 0 ? '#fff3e0' : '#f5f5f5' }}>
+          <Card sx={{ height: '100%', bgcolor: stats.weaningReady > 0 ? 'warning.light' : 'background.paper' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
-                {stats.weaningReady > 0 && <WarningIcon sx={{ color: '#ff9800' }} />}
+                {stats.weaningReady > 0 && <WarningIcon color="warning" />}
                 <Typography variant="h4" fontWeight="bold" color={stats.weaningReady > 0 ? 'warning.main' : 'text.secondary'}>
                   {stats.weaningReady}
                 </Typography>
@@ -793,7 +793,7 @@ export default function GoatsPage() {
           </Card>
         </Grid>
         <Grid xs={6} sm={4} md={2}>
-          <Card sx={{ height: '100%', bgcolor: '#f3e5f5' }}>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
                 <TrendingUpIcon color="secondary" />
@@ -808,11 +808,11 @@ export default function GoatsPage() {
           </Card>
         </Grid>
         <Grid xs={6} sm={4} md={2}>
-          <Card sx={{ height: '100%', bgcolor: '#e8f5e9' }}>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
-                <ScaleIcon sx={{ color: '#4caf50' }} />
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#4caf50' }}>
+                <ScaleIcon color="success" />
+                <Typography variant="h4" fontWeight="bold" color="success.main">
                   {stats.totalWeight.toFixed(2)}
                 </Typography>
               </Stack>
@@ -826,7 +826,7 @@ export default function GoatsPage() {
 
       {/* Smart Alerts */}
       {(stats.weaningReady > 0 || stats.quarantine > 0) && (
-        <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff3e0', border: '1px solid #ff9800' }}>
+        <Paper sx={{ p: 2, mb: 3, bgcolor: 'warning.light', border: '1px solid', borderColor: 'warning.main' }}>
           <Stack spacing={2}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <WarningIcon color="warning" />
@@ -836,7 +836,7 @@ export default function GoatsPage() {
             </Stack>
             
             {stats.weaningReady > 0 && (
-              <Paper sx={{ p: 2, bgcolor: '#e3f2fd', cursor: 'pointer' }} onClick={() => setFilterStatus('WEANING_READY')}>
+              <Paper sx={{ p: 2, bgcolor: 'background.paper', cursor: 'pointer' }} onClick={() => setFilterStatus('WEANING_READY')}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                   <PetsIcon color="info" />
                   <Typography variant="subtitle1" fontWeight="bold" color="info.main">
@@ -850,7 +850,7 @@ export default function GoatsPage() {
             )}
 
             {stats.quarantine > 0 && (
-              <Paper sx={{ p: 2, bgcolor: '#ffebee' }}>
+              <Paper sx={{ p: 2, bgcolor: 'error.light' }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                   <WarningIcon color="error" />
                   <Typography variant="subtitle1" fontWeight="bold" color="error">
@@ -949,7 +949,6 @@ export default function GoatsPage() {
             <Button
                 variant="contained"
                 startIcon={<AddIcon />}
-                sx={{ bgcolor: '#2e7d32' }}
                 onClick={handleOpen}
                  fullWidth={isMobile}
             >
@@ -1205,7 +1204,7 @@ export default function GoatsPage() {
       <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2 }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow>
               <TableCell padding="checkbox">
                 <Checkbox
                   color="primary"
@@ -1590,7 +1589,7 @@ export default function GoatsPage() {
                   <Typography variant="body2" color="error">{familyError}</Typography>
                 ) : familyData ? (
                   <Stack spacing={2}>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fafafa', overflowX: 'auto' }}>
+                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', overflowX: 'auto' }}>
                       <Stack spacing={3} alignItems="center" minWidth={500}>
                         {/* الأجداد */}
                         <Stack direction="row" spacing={4} justifyContent="center">

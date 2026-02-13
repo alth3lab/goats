@@ -29,6 +29,7 @@ interface Goat {
   gender: 'MALE' | 'FEMALE'
   birthDate: string
   weight?: number
+  notes?: string | null
   status: string
   motherTagId?: string | null
   age?: {
@@ -177,7 +178,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
         motherTagId: goat.motherTagId || '',
         fatherTagId: goat.fatherTagId || '',
         penId: (goat.pen as any)?.id || (goat as any).penId || '',
-        notes: (goat as any).notes || ''
+        notes: goat.notes || ''
       })
       loadBreeds(goat.breed.type.id)
     } else {
@@ -331,14 +332,6 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
                   <Typography><strong>الحظيرة:</strong> {goat.pen ? goat.pen.nameAr : 'غير محدد'}</Typography>
                   <Typography><strong>الحالة:</strong> {getStatusLabel(goat.status)}</Typography>
                 </Box>
-                {(goat as any).notes && (
-                  <Box mt={2}>
-                    <Typography><strong>ملاحظات:</strong></Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>
-                      {(goat as any).notes}
-                    </Typography>
-                  </Box>
-                )}
               </Paper>
 
               <Paper sx={{ p: 2 }}>

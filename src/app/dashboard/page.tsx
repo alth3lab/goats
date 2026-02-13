@@ -136,17 +136,18 @@ export default function DashboardPage() {
           p: 4,
           mb: 4,
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white'
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider'
         }}
       >
         <Stack direction="row" alignItems="center" spacing={2} mb={1}>
-          <PetsIcon sx={{ fontSize: 48 }} />
+          <PetsIcon sx={{ fontSize: 48, color: 'primary.main' }} />
           <Box>
             <Typography variant="h4" fontWeight="bold">
               لوحة التحكم الرئيسية
             </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.9 }}>
+            <Typography variant="body1" color="text.secondary">
               متابعة وإدارة قطيع الماعز والخرفان
             </Typography>
           </Box>
@@ -202,7 +203,7 @@ export default function DashboardPage() {
           {stats && (
             <Grid container spacing={3} mb={4}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ height: '100%', bgcolor: '#fff' }}>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   إجمالي القطيع

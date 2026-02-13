@@ -39,7 +39,9 @@ import {
   Search as SearchIcon,
   Inventory as InventoryIcon,
   Grass as FeedsIcon,
-  CalendarMonth as CalendarIcon
+  CalendarMonth as CalendarIcon,
+  ChevronLeft as CollapseIcon,
+  ChevronRight as ExpandIcon
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -47,7 +49,8 @@ import { useAuth } from '@/lib/useAuth'
 import { menuPermissions } from '@/lib/permissionMap'
 import { useTheme } from '@mui/material/styles'
 
-const drawerWidth = 260
+const expandedDrawerWidth = 260
+const collapsedDrawerWidth = 86
 
 // تعريف المجموعات
 const menuGroups = [
@@ -91,12 +94,14 @@ const menuGroups = [
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const pathname = usePathname()
   const router = useRouter()
   const { can, loading: authLoading } = useAuth()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const drawerWidth = collapsed ? collapsedDrawerWidth : expandedDrawerWidth
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -116,27 +121,37 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const drawer = (
     <Box sx={{ 
       height: '100%', 
-      bgcolor: '#1e1e2f', 
-      color: 'white',
+      bgcolor: '#F2F4EF', 
+      color: 'text.primary',
       display: 'flex',
       flexDirection: 'column',
       overflowY: 'auto',
-      overflowX: 'hidden'
+      overflowX: 'hidden',
+      borderLeft: '1px solid',
+      borderColor: 'divider'
     }}>
       <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Avatar sx={{ bgcolor: '#2e7d32' }}>G</Avatar>
-          <Box>
-            <Typography variant="h6" fontWeight="bold">
-              إدارة الماعز
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              Goat Management
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%', justifyContent: collapsed ? 'center' : 'space-between' }}>
+          {!collapsed && (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
+              <Box>
+                <Typography variant="h6" fontWeight="bold">
+                  إدارة الماعز
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Goat Management
+                </Typography>
+              </Box>
+            </Stack>
+          )}
+          {collapsed && <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>}
+          <IconButton size="small" onClick={() => setCollapsed(prev => !prev)} sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: 'rgba(79,122,87,0.08)' }}>
+            {collapsed ? <ExpandIcon fontSize="small" /> : <CollapseIcon fontSize="small" />}
+          </IconButton>
         </Stack>
       </Toolbar>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+      <Divider />
       <List sx={{ px: 1, flexGrow: 1 }}>
         {menuGroups.map((group, index) => {
           const filteredItems = group.items.filter(
@@ -147,14 +162,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
           return (
             <Box key={group.title} sx={{ mb: 2 }}>
-              {index > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', my: 1 }} />}
+              {index > 0 && <Divider sx={{ my: 1 }} />}
               <Typography
                 variant="caption"
                 sx={{
-                  color: 'rgba(255,255,255,0.5)',
+                  display: collapsed ? 'none' : 'block',
+                  color: 'text.secondary',
                   px: 2,
                   py: 1,
-                  display: 'block',
                   fontWeight: 'bold',
                   fontSize: '0.75rem'
                 }}
@@ -169,18 +184,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     onClick={() => setMobileOpen(false)}
                     sx={{
                       borderRadius: 2,
-                      color: 'white',
-                      bgcolor: pathname === item.href ? 'rgba(255,255,255,0.15)' : 'transparent',
-                      borderRight: pathname === item.href ? '4px solid #4caf50' : '4px solid transparent',
+                      color: 'text.primary',
+                      bgcolor: pathname === item.href ? 'rgba(79,122,87,0.10)' : 'transparent',
+                      borderRight: pathname === item.href ? '4px solid #4F7A57' : '4px solid transparent',
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      px: collapsed ? 1 : 2,
                       '&:hover': {
-                        bgcolor: 'rgba(255,255,255,0.1)'
+                        bgcolor: 'rgba(79,122,87,0.07)'
                       }
                     }}
                   >
-                    <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+                    <ListItemIcon sx={{ color: pathname === item.href ? 'primary.main' : 'text.secondary', minWidth: collapsed ? 0 : 40 }}>
                       {item.icon}
                     </ListItemIcon>
-                    <ListItemText primary={item.text} />
+                    {!collapsed && <ListItemText primary={item.text} />}
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -189,21 +206,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         })}
       </List>
       <Box sx={{ p: 2 }}>
-        <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }} />
+        <Divider sx={{ mb: 2 }} />
         <ListItemButton
           onClick={handleLogout}
           sx={{
             borderRadius: 2,
-            color: 'white',
+            color: 'text.primary',
+            justifyContent: collapsed ? 'center' : 'flex-start',
             '&:hover': {
-              bgcolor: 'rgba(255,255,255,0.1)'
+              bgcolor: 'rgba(201,106,106,0.10)'
             }
           }}
         >
-          <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+          <ListItemIcon sx={{ color: 'inherit', minWidth: collapsed ? 0 : 40 }}>
             <LogoutIcon />
           </ListItemIcon>
-          <ListItemText primary="تسجيل خروج" />
+          {!collapsed && <ListItemText primary="تسجيل خروج" />}
         </ListItemButton>
       </Box>
     </Box>
@@ -217,9 +235,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          bgcolor: 'white',
+          bgcolor: 'background.paper',
           color: 'text.primary',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
+          borderBottom: '1px solid',
+          borderColor: 'divider'
         }}
       >
         <Toolbar
@@ -238,8 +258,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             sx={{ 
               mr: 2, 
               display: { sm: 'none' },
-              bgcolor: 'rgba(0,0,0,0.04)',
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.08)' }
+              bgcolor: 'rgba(79,122,87,0.08)',
+              '&:hover': { bgcolor: 'rgba(79,122,87,0.14)' }
             }}
           >
             <MenuIcon />
@@ -311,7 +331,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, transition: 'width .2s ease' }
           }}
           open
         >
@@ -325,7 +345,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           flexGrow: 1,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
-          bgcolor: '#f5f6fa',
+          bgcolor: '#F6F5F1',
           p: { xs: 1.5, sm: 3 }
         }}
       >

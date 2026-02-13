@@ -444,7 +444,7 @@ export default function FeedsPage() {
               ]
 
               return (
-                <Paper sx={{ p: 2, mb: 2, borderRadius: 3, background: 'linear-gradient(135deg, #f5f7ff 0%, #f0faf5 100%)' }}>
+                <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="center">
                     {kpis.map((k, i) => (
                       <Paper key={i} variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 0.75, borderColor: `${k.color}30` }}>
@@ -503,14 +503,14 @@ export default function FeedsPage() {
                           <Grid item xs={12} sm={6} key={p.penId}>
                             <Card sx={{
                               borderRadius: 3, height: '100%',
-                              background: 'linear-gradient(135deg, #f8fffe 0%, #f0f7ff 100%)',
+                              bgcolor: 'background.paper',
                               border: '1px solid',
                               borderColor: 'divider',
                               transition: 'box-shadow 0.2s',
                               '&:hover': { boxShadow: 4 }
                             }}>
                               {/* Card Header */}
-                              <Box sx={{ px: 2, py: 1.25, background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)', borderRadius: '12px 12px 0 0' }}>
+                              <Box sx={{ px: 2, py: 1.25, bgcolor: 'primary.light', borderRadius: '12px 12px 0 0' }}>
                                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -617,7 +617,7 @@ export default function FeedsPage() {
                           <Grid item xs={6} sm={4} md={3} lg={2} key={s.feedType.id}>
                             <Card sx={{
                               borderRadius: 3, height: '100%',
-                              background: 'linear-gradient(135deg, #f8fffe 0%, #f0f7ff 100%)',
+                              bgcolor: 'background.paper',
                               border: '1px solid',
                               borderColor: 'divider',
                               transition: 'box-shadow 0.2s',
@@ -705,7 +705,7 @@ export default function FeedsPage() {
                     <Grid item xs={12} sm={6} md={4} lg={3} key={t.id}>
                       <Card sx={{
                         borderRadius: 3, height: '100%',
-                        background: 'linear-gradient(135deg, #f8fffe 0%, #f0f7ff 100%)',
+                        bgcolor: 'background.paper',
                         border: '1px solid', borderColor: 'divider',
                         transition: 'box-shadow 0.2s',
                         '&:hover': { boxShadow: 4 }
