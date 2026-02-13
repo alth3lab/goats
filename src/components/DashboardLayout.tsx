@@ -245,9 +245,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Toolbar
           sx={{
             gap: 1,
-            alignItems: { xs: 'flex-start', sm: 'center' },
+            alignItems: 'center',
             flexWrap: { xs: 'wrap', sm: 'nowrap' },
-            py: { xs: 1, sm: 0 },
+            py: { xs: 0.75, sm: 0 },
             minHeight: { xs: 88, sm: 64 }
           }}
         >
@@ -256,8 +256,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ 
-              mr: 2, 
-              display: { sm: 'none' },
+              display: { xs: 'inline-flex', sm: 'none' },
+              flexShrink: 0,
+              alignSelf: 'center',
+              zIndex: 2,
+              mr: 1,
               bgcolor: 'rgba(79,122,87,0.08)',
               '&:hover': { bgcolor: 'rgba(79,122,87,0.14)' }
             }}
@@ -270,7 +273,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             component="div"
             sx={{
               flexGrow: { xs: 1, sm: 0 },
-              maxWidth: { xs: 'calc(100% - 56px)', sm: 'none' }
+              minWidth: 0,
+              maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
             }}
           >
             {isMobile ? 'نظام الإدارة' : 'نظام إدارة الماعز والخرفان'}
@@ -282,7 +286,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 display: 'flex',
                 justifyContent: 'flex-end',
                 width: { xs: '100%', sm: 'auto' },
-                mt: { xs: 0.5, sm: 0 }
+                mt: { xs: 0.5, sm: 0 },
+                order: { xs: 3, sm: 0 }
               }}
             >
               <TextField
