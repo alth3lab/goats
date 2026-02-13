@@ -108,6 +108,9 @@ interface FamilyMember {
   father?: FamilyMember | null
 }
 
+const maleIconColor = 'info.main'
+const femaleIconColor = '#EC4899'
+
 const GoatNode = ({ member, label, color = "default" }: { member?: FamilyMember | null | Goat, label: string, color?: "default" | "primary" | "secondary" }) => (
   <Paper 
     elevation={member ? 2 : 0} 
@@ -751,8 +754,8 @@ export default function GoatsPage() {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
-                <MaleIcon color="primary" />
-                <Typography variant="h4" fontWeight="bold" color="primary.main">
+                <MaleIcon sx={{ color: maleIconColor }} />
+                <Typography variant="h4" fontWeight="bold" sx={{ color: maleIconColor }}>
                   {stats.males}
                 </Typography>
               </Stack>
@@ -766,8 +769,8 @@ export default function GoatsPage() {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Stack direction="row" justifyContent="center" alignItems="center" spacing={1}>
-                <FemaleIcon color="secondary" />
-                <Typography variant="h4" fontWeight="bold" color="secondary.main">
+                <FemaleIcon sx={{ color: femaleIconColor }} />
+                <Typography variant="h4" fontWeight="bold" sx={{ color: femaleIconColor }}>
                   {stats.females}
                 </Typography>
               </Stack>
@@ -1123,9 +1126,9 @@ export default function GoatsPage() {
                           sx={{ fontSize: '1rem', fontWeight: 'bold' }}
                         />
                         {goat.gender === 'MALE' ? (
-                          <MaleIcon color="primary" sx={{ fontSize: 32 }} />
+                          <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
                         ) : (
-                          <FemaleIcon sx={{ color: 'secondary.main', fontSize: 32 }} />
+                          <FemaleIcon sx={{ color: femaleIconColor, fontSize: 32 }} />
                         )}
                       </Stack>
                       
@@ -1254,12 +1257,12 @@ export default function GoatsPage() {
                     <Stack direction="row" spacing={1} alignItems="center">
                       {goat.gender === 'MALE' ? (
                         <>
-                          <MaleIcon color="primary" />
+                          <MaleIcon sx={{ color: maleIconColor }} />
                           <span>ذكر</span>
                         </>
                       ) : (
                         <>
-                          <FemaleIcon sx={{ color: 'secondary.main' }} />
+                          <FemaleIcon sx={{ color: femaleIconColor }} />
                           <span>أنثى</span>
                         </>
                       )}

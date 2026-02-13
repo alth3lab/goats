@@ -85,6 +85,9 @@ interface Pen {
   goats?: Goat[]
 }
 
+const maleIconColor = 'info.main'
+const femaleIconColor = '#EC4899'
+
 export default function PensPage() {
   const [pens, setPens] = useState<Pen[]>([])
   const [loading, setLoading] = useState(true)
@@ -768,14 +771,14 @@ export default function PensPage() {
 
                         <Stack direction="row" spacing={2} mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                            <Stack direction="row" spacing={0.5} alignItems="center">
-                              <MaleIcon fontSize="small" color="primary" />
+                              <MaleIcon fontSize="small" sx={{ color: maleIconColor }} />
                               <Typography variant="body2" fontWeight="bold">
                                  {pen.goats?.filter((g: any) => g.gender === 'MALE').length || 0}
                               </Typography>
                            </Stack>
                            
                            <Stack direction="row" spacing={0.5} alignItems="center">
-                              <FemaleIcon fontSize="small" sx={{ color: 'secondary.main' }} />
+                              <FemaleIcon fontSize="small" sx={{ color: femaleIconColor }} />
                               <Typography variant="body2" fontWeight="bold">
                                  {pen.goats?.filter((g: any) => g.gender === 'FEMALE').length || 0}
                               </Typography>
@@ -925,12 +928,12 @@ export default function PensPage() {
                               <Stack direction="row" spacing={1} alignItems="center">
                                 {goat.gender === 'MALE' ? (
                                   <>
-                                    <MaleIcon color="primary" />
+                                    <MaleIcon sx={{ color: maleIconColor }} />
                                     <span>ذكر</span>
                                   </>
                                 ) : (
                                   <>
-                                    <FemaleIcon sx={{ color: 'secondary.main' }} />
+                                    <FemaleIcon sx={{ color: femaleIconColor }} />
                                     <span>أنثى</span>
                                   </>
                                 )}
@@ -1084,7 +1087,7 @@ export default function PensPage() {
                     {selectedGoatForTransfer.name || 'بدون اسم'}
                   </Typography>
                   <Chip 
-                    icon={selectedGoatForTransfer.gender === 'MALE' ? <MaleIcon /> : <FemaleIcon />}
+                    icon={selectedGoatForTransfer.gender === 'MALE' ? <MaleIcon sx={{ color: maleIconColor }} /> : <FemaleIcon sx={{ color: femaleIconColor }} />}
                     label={selectedGoatForTransfer.gender === 'MALE' ? 'ذكر' : 'أنثى'}
                     size="small"
                   />

@@ -19,7 +19,8 @@ import {
   Stack,
   TextField,
   InputAdornment,
-  useMediaQuery
+  useMediaQuery,
+  Portal
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -232,6 +233,28 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
+      <Portal>
+        <IconButton
+          color="inherit"
+          onClick={handleDrawerToggle}
+          aria-label="فتح القائمة"
+          sx={{
+            display: { xs: 'inline-flex', sm: 'none' },
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top) + 10px)',
+            right: 'calc(env(safe-area-inset-right) + 10px)',
+            zIndex: 9999,
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 4px 12px rgba(15,23,42,0.12)',
+            '&:hover': { bgcolor: 'action.hover' }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      </Portal>
       <AppBar
         position="fixed"
         sx={{
@@ -263,7 +286,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ 
-              display: { xs: 'inline-flex', sm: 'none' },
+              display: { xs: 'none', sm: 'none' },
               position: 'relative',
               flexShrink: 0,
               alignSelf: 'center',
