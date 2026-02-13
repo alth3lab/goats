@@ -80,6 +80,7 @@ interface BreedingRecord {
   dueDate?: string
   birthDate?: string
   numberOfKids?: number
+  notes?: string
   births?: BirthRecord[]
 }
 
@@ -125,7 +126,8 @@ export default function BreedingPage() {
     pregnancyStatus: 'MATED',
     dueDate: '',
     birthDate: '',
-    numberOfKids: ''
+    numberOfKids: '',
+    notes: ''
   })
   
   const [quickBirthForm, setQuickBirthForm] = useState<{
@@ -196,7 +198,8 @@ export default function BreedingPage() {
       pregnancyStatus: 'MATED',
       dueDate: '',
       birthDate: '',
-      numberOfKids: ''
+      numberOfKids: '',
+      notes: ''
     })
   }
 
@@ -252,7 +255,8 @@ export default function BreedingPage() {
       pregnancyStatus: record.pregnancyStatus,
       dueDate: record.dueDate ? record.dueDate.split('T')[0] : '',
       birthDate: record.birthDate ? record.birthDate.split('T')[0] : '',
-      numberOfKids: record.numberOfKids?.toString() || ''
+      numberOfKids: record.numberOfKids?.toString() || '',
+      notes: record.notes || ''
     })
     setOpen(true)
   }
@@ -287,7 +291,8 @@ export default function BreedingPage() {
       pregnancyStatus: form.pregnancyStatus,
       dueDate: form.dueDate ? new Date(form.dueDate) : null,
       birthDate: form.birthDate ? new Date(form.birthDate) : null,
-      numberOfKids: form.numberOfKids ? Number(form.numberOfKids) : null
+      numberOfKids: form.numberOfKids ? Number(form.numberOfKids) : null,
+      notes: form.notes.trim() || null
     }
 
     const url = editMode && selectedRecord ? `/api/breeding/${selectedRecord.id}` : '/api/breeding'
@@ -717,14 +722,15 @@ export default function BreedingPage() {
               <TableCell><strong>تاريخ الولادة المتوقع</strong></TableCell>
               <TableCell><strong>الأيام المتبقية</strong></TableCell>
               <TableCell><strong>عدد المواليد</strong></TableCell>
+              <TableCell><strong>ملاحظات</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={9} align="center">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} align="center">جاري التحميل...</TableCell></TableRow>
             ) : filteredRecords.length === 0 ? (
-              <TableRow><TableCell colSpan={9} align="center">لا توجد نتائج</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} align="center">لا توجد نتائج</TableCell></TableRow>
             ) : (
               filteredRecords.map(r => {
                 const daysRemaining = r.dueDate ? getDaysRemaining(r.dueDate) : null
@@ -798,6 +804,11 @@ export default function BreedingPage() {
                     <TableCell>
                       <Typography variant="body2" fontWeight={r.numberOfKids ? 'bold' : 'normal'}>
                         {r.numberOfKids ?? '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.notes || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -922,6 +933,14 @@ export default function BreedingPage() {
               value={form.numberOfKids}
               onChange={(e) => setForm({ ...form, numberOfKids: e.target.value })}
             />
+            <TextField
+              label="ملاحظات"
+              multiline
+              rows={3}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="مثل: تلقيح صناعي، ولادة عسرة، ..."
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -960,6 +979,9 @@ export default function BreedingPage() {
                   )}
                   {selectedRecord.numberOfKids && (
                     <Typography><strong>عدد المواليد:</strong> {selectedRecord.numberOfKids}</Typography>
+                  )}
+                  {selectedRecord.notes && (
+                    <Typography><strong>ملاحظات:</strong> {selectedRecord.notes}</Typography>
                   )}
                 </Stack>
               </Paper>

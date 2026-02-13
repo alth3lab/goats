@@ -132,7 +132,8 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
     status: 'ACTIVE',
     motherTagId: '',
     fatherTagId: '',
-    penId: ''
+    penId: '',
+    notes: ''
   })
 
   useEffect(() => {
@@ -175,7 +176,8 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
         status: goat.status,
         motherTagId: goat.motherTagId || '',
         fatherTagId: goat.fatherTagId || '',
-        penId: (goat.pen as any)?.id || (goat as any).penId || ''
+        penId: (goat.pen as any)?.id || (goat as any).penId || '',
+        notes: (goat as any).notes || ''
       })
       loadBreeds(goat.breed.type.id)
     } else {
@@ -191,7 +193,8 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
         status: 'ACTIVE',
         motherTagId: '',
         fatherTagId: '',
-        penId: ''
+        penId: '',
+        notes: ''
       })
       setBreeds([])
     }
@@ -241,7 +244,8 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
       breedId: form.breedId,
       weight: form.weight ? Number(form.weight) : null,
       status: form.status,
-      penId: form.penId || null
+      penId: form.penId || null,
+      notes: form.notes?.trim() || null
     }
 
     const url = goat ? `/api/goats/${goat.id}` : '/api/goats'
@@ -327,6 +331,14 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
                   <Typography><strong>الحظيرة:</strong> {goat.pen ? goat.pen.nameAr : 'غير محدد'}</Typography>
                   <Typography><strong>الحالة:</strong> {getStatusLabel(goat.status)}</Typography>
                 </Box>
+                {(goat as any).notes && (
+                  <Box mt={2}>
+                    <Typography><strong>ملاحظات:</strong></Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>
+                      {(goat as any).notes}
+                    </Typography>
+                  </Box>
+                )}
               </Paper>
 
               <Paper sx={{ p: 2 }}>
@@ -572,6 +584,15 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
               <MenuItem value="DECEASED">متوفى</MenuItem>
             </Select>
           </FormControl>
+          <TextField
+            label="ملاحظات"
+            multiline
+            rows={2}
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            disabled={readOnly}
+            placeholder="أي ملاحظات إضافية..."
+          />
         </Stack>
         )}
       </DialogContent>
