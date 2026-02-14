@@ -23,8 +23,10 @@ import {
   ListItemIcon,
   Checkbox,
   Alert,
-  Snackbar
+  Snackbar,
+  useMediaQuery
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -49,6 +51,8 @@ const EVENT_TYPES = [
 ]
 
 export default function CalendarPage() {
+  const theme = useTheme()
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'))
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<any[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -214,16 +218,30 @@ export default function CalendarPage() {
     return eventDate >= today && !event.isCompleted
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
+  const dayNames = isSmallScreen
+    ? ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س']
+    : ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">التقويم</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1.5, sm: 1 },
+          mb: 3
+        }}
+      >
+        <Typography variant={isSmallScreen ? 'h5' : 'h4'}>التقويم</Typography>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             startIcon={<SyncIcon />}
             onClick={handleSync}
             disabled={syncing}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             {syncing ? 'جارٍ المزامنة...' : 'مزامنة الأحداث'}
           </Button>
@@ -234,6 +252,7 @@ export default function CalendarPage() {
               setSelectedDate(null)
               setDialogOpen(true)
             }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             إضافة حدث
           </Button>
@@ -241,13 +260,21 @@ export default function CalendarPage() {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Grid item xs={12} lg={8}>
+          <Paper sx={{ p: { xs: 1.5, sm: 2.5, md: 3 } }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 2,
+                gap: 1
+              }}
+            >
               <IconButton onClick={previousMonth}>
                 <ChevronRightIcon />
               </IconButton>
-              <Typography variant="h5">
+              <Typography variant={isSmallScreen ? 'h6' : 'h5'} sx={{ textAlign: 'center' }}>
                 {currentDate.toLocaleDateString('ar-AE', { month: 'long', year: 'numeric' })}
               </Typography>
               <IconButton onClick={nextMonth}>
@@ -259,17 +286,18 @@ export default function CalendarPage() {
               sx={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: 1
+                gap: { xs: 0.5, sm: 1 }
               }}
             >
-              {['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map(day => (
+              {dayNames.map(day => (
                 <Box
                   key={day}
                   sx={{
-                    p: 1,
+                    p: { xs: 0.5, sm: 1 },
                     textAlign: 'center',
                     fontWeight: 'bold',
-                    color: 'text.secondary'
+                    color: 'text.secondary',
+                    fontSize: { xs: '0.72rem', sm: '0.85rem' }
                   }}
                 >
                   {day}
@@ -287,8 +315,8 @@ export default function CalendarPage() {
                   <Box
                     key={index}
                     sx={{
-                      minHeight: 100,
-                      p: 1,
+                      minHeight: { xs: 72, sm: 92, md: 100 },
+                      p: { xs: 0.5, sm: 1 },
                       border: '1px solid',
                       borderColor: 'divider',
                       borderRadius: 1,
@@ -328,10 +356,14 @@ export default function CalendarPage() {
                                   height: 20,
                                   mb: 0.5,
                                   width: '100%',
+                                  maxWidth: '100%',
                                   bgcolor: eventType?.color,
                                   color: 'white',
                                   '& .MuiChip-label': {
-                                    px: 0.5
+                                    px: 0.5,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
                                   }
                                 }}
                               />
@@ -352,7 +384,7 @@ export default function CalendarPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} lg={4}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               الأحداث القادمة

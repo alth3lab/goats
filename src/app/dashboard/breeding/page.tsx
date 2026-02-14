@@ -520,7 +520,7 @@ export default function BreedingPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       {upcomingBirths.length > 0 && (
          <Alert severity="warning" sx={{ mb: 3 }} icon={<BirthIcon />}>
            <AlertTitle>ولادات قريبة ⚠️</AlertTitle>
@@ -531,7 +531,7 @@ export default function BreedingPage() {
       {/* ═══════════════════ UNIFIED STATS ═══════════════════ */}
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         {/* Row 1: Main KPIs as compact strip */}
-        <Stack direction="row" spacing={0} sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+        <Stack direction="row" spacing={0} useFlexGap flexWrap="wrap" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
           {[
             { label: 'إجمالي', value: stats.total, color: 'primary.main' },
             { label: 'تزاوج', value: stats.mated, color: 'secondary.main' },
@@ -540,7 +540,7 @@ export default function BreedingPage() {
             { label: 'فشل', value: stats.failed, color: 'text.disabled' },
             { label: 'نجاح', value: `${stats.successRate}%`, color: 'info.main' },
           ].map((item, i) => (
-            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 5 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: 'background.default' }}>
+            <Box key={i} sx={{ flex: '1 1 140px', textAlign: 'center', py: 1.5, px: 1, borderRight: { lg: i < 5 ? '1px solid' : 'none' }, borderColor: 'divider', bgcolor: 'background.default' }}>
               <Typography variant="h5" fontWeight="bold" sx={{ color: item.color, lineHeight: 1.2 }}>{item.value}</Typography>
               <Typography variant="caption" color="text.secondary" fontWeight="bold">{item.label}</Typography>
             </Box>
@@ -552,14 +552,14 @@ export default function BreedingPage() {
           <TrendIcon sx={{ fontSize: 20, color: 'primary.main' }} />
           <Typography variant="subtitle1" fontWeight="bold">مؤشرات الإنتاج</Typography>
         </Stack>
-        <Stack direction="row" spacing={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', mb: 2 }}>
+        <Stack direction="row" spacing={0} useFlexGap flexWrap="wrap" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', mb: 2 }}>
           {[
             { label: 'معدل التوائم', value: `${stats.twinRate}%`, sub: null, icon: <ChildIcon sx={{ fontSize: 18, color: 'primary.main' }} /> },
             { label: 'متوسط مواليد/ولادة', value: stats.avgKidsPerBirth, sub: null, icon: <BirthIcon sx={{ fontSize: 18, color: 'primary.main' }} /> },
             { label: 'معدل النفوق', value: `${stats.mortalityRate}%`, sub: `${stats.deadKids}/${stats.totalKids}`, icon: <ErrorIcon sx={{ fontSize: 18, color: stats.mortalityRate > 10 ? 'error.main' : 'primary.main' }} /> },
             { label: 'مواليد أحياء', value: stats.aliveKids, sub: `من ${stats.totalKids}`, icon: <SuccessIcon sx={{ fontSize: 18, color: 'success.main' }} /> },
           ].map((item, i) => (
-            <Box key={i} sx={{ flex: 1, textAlign: 'center', py: 1.5, px: 1, borderRight: i < 3 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: 'background.paper' }}>
+            <Box key={i} sx={{ flex: '1 1 180px', textAlign: 'center', py: 1.5, px: 1, borderRight: { lg: i < 3 ? '1px solid' : 'none' }, borderColor: 'divider', bgcolor: 'background.paper' }}>
               <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" mb={0.25}>
                 {item.icon}
                 <Typography variant="h6" fontWeight="bold" sx={{ color: stats.mortalityRate > 10 && i === 2 ? 'error.main' : 'text.primary' }}>{item.value}</Typography>
@@ -674,7 +674,7 @@ export default function BreedingPage() {
 
         {/* Bulk Actions */}
         {selectedRecords.length > 0 && (
-          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+          <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ mt: 2 }}>
             <Typography variant="body2" sx={{ lineHeight: '36px' }}>
               محدد: <strong>{selectedRecords.length}</strong>
             </Typography>
@@ -704,7 +704,7 @@ export default function BreedingPage() {
         )}
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow>

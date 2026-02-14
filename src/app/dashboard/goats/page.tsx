@@ -732,7 +732,7 @@ export default function GoatsPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid xs={6} sm={4} md={2}>
@@ -896,7 +896,7 @@ export default function GoatsPage() {
               إجمالي: {filteredGoats.length} حيوان
             </Typography>
           </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
               <Button
                 variant="outlined"
                 size="small"
@@ -960,7 +960,7 @@ export default function GoatsPage() {
           </Stack>
         </Stack>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mt={2}>
           <TextField
             placeholder="بحث برقم التاج، الاسم، أو السلالة..."
             value={searchTerm}
@@ -974,7 +974,7 @@ export default function GoatsPage() {
               ),
             }}
           />
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 200 } }}>
             <InputLabel>الحالة</InputLabel>
             <Select
               value={filterStatus}
@@ -1204,7 +1204,7 @@ export default function GoatsPage() {
           })}
         </Grid>
       ) : (
-      <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow>
