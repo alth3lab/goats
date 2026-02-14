@@ -131,7 +131,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper
         elevation={0}
         sx={{
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           borderColor: 'divider'
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={2} mb={1}>
+        <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} mb={1}>
           <PetsIcon sx={{ fontSize: 48, color: 'primary.main' }} />
           <Box>
             <Typography variant="h4" fontWeight="bold">
@@ -274,7 +274,7 @@ export default function DashboardPage() {
           {/* Charts Section */}
           {pens.length > 0 && (
             <Box mb={4}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5} mb={2}>
                 <Typography variant="h6" fontWeight="bold">
                   التحليل البياني
                 </Typography>

@@ -34,7 +34,7 @@ import {
   Tooltip,
   useMediaQuery
 } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
+import { useTheme, alpha } from '@mui/material/styles'
 import {
   Add as AddIcon,
   FavoriteBorder as BreedingIcon,
@@ -754,8 +754,8 @@ export default function BreedingPage() {
                     hover
                     selected={selectedRecords.includes(r.id)}
                     sx={{ 
-                      bgcolor: isUpcoming ? 'rgba(255, 152, 0, 0.05)' : 'inherit',
-                      '&:hover': { bgcolor: isUpcoming ? 'rgba(255, 152, 0, 0.1)' : undefined }
+                      bgcolor: isUpcoming ? alpha(theme.palette.warning.main, 0.05) : 'inherit',
+                      '&:hover': { bgcolor: isUpcoming ? alpha(theme.palette.warning.main, 0.1) : undefined }
                     }}
                   >
                     <TableCell padding="checkbox">

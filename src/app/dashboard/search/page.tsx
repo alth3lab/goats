@@ -64,7 +64,7 @@ function SearchPageContent() {
 
   if (!authLoading && !can('view_search')) {
     return (
-      <Box>
+      <Box sx={{ width: '100%', overflowX: 'hidden' }}>
         <Paper sx={{ p: 3, borderRadius: 3 }}>
           <Typography variant="h6" fontWeight="bold">
             ليس لديك صلاحية لاستخدام البحث.
@@ -75,7 +75,7 @@ function SearchPageContent() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Stack spacing={2}>
           <Typography variant="h4" fontWeight="bold">بحث موحّد</Typography>
@@ -107,7 +107,7 @@ function SearchPageContent() {
           <Stack spacing={3}>
             {Object.entries(grouped).map(([type, items]) => (
               <Box key={type}>
-                <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+                <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap" mb={1}>
                   <Typography variant="h6" fontWeight="bold">{type}</Typography>
                   <Chip label={items.length} size="small" />
                 </Stack>

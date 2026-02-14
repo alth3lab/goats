@@ -47,10 +47,10 @@ const columns: GridColDef<DemoRow>[] = [
 
 export default function UiDemoPage() {
   return (
-    <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5} sx={{ mb: 2 }}>
         <Typography variant="h3">Farm Minimal Light</Typography>
-        <Button variant="contained" startIcon={<AddIcon />}>
+        <Button variant="contained" startIcon={<AddIcon />} sx={{ width: { xs: '100%', md: 'auto' } }}>
           إضافة سجل
         </Button>
       </Stack>

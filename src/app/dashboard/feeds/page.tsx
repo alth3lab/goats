@@ -29,16 +29,15 @@ const Grid = MuiGrid as any
 
 // ─── Constants ───
 const CATEGORIES = [
-  { value: 'HAY', label: 'تبن', color: '#8d6e63' },
-  { value: 'GRAINS', label: 'حبوب', color: '#ffa726' },
-  { value: 'CONCENTRATE', label: 'مركزات', color: '#42a5f5' },
-  { value: 'SUPPLEMENTS', label: 'مكملات', color: '#66bb6a' },
-  { value: 'MINERALS', label: 'معادن', color: '#ab47bc' },
-  { value: 'OTHER', label: 'أخرى', color: '#78909c' }
+  { value: 'HAY', label: 'تبن' },
+  { value: 'GRAINS', label: 'حبوب' },
+  { value: 'CONCENTRATE', label: 'مركزات' },
+  { value: 'SUPPLEMENTS', label: 'مكملات' },
+  { value: 'MINERALS', label: 'معادن' },
+  { value: 'OTHER', label: 'أخرى' }
 ]
 
 const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v
-const catColor = (v: string) => CATEGORIES.find(c => c.value === v)?.color ?? '#78909c'
 
 // ─── Types ───
 interface FeedType { id: string; name: string; nameAr: string; category: string; protein?: number; energy?: number; notes?: string }
@@ -144,6 +143,15 @@ type View = 'today' | 'stock' | 'schedules'
 export default function FeedsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const categoryColors = useMemo<Record<string, string>>(() => ({
+    HAY: theme.palette.warning.dark,
+    GRAINS: theme.palette.warning.main,
+    CONCENTRATE: theme.palette.info.main,
+    SUPPLEMENTS: theme.palette.success.main,
+    MINERALS: theme.palette.secondary.main,
+    OTHER: theme.palette.text.secondary
+  }), [theme])
+  const catColor = useCallback((value: string) => categoryColors[value] ?? theme.palette.text.secondary, [categoryColors, theme])
 
   // Data
   const [feedTypes, setFeedTypes] = useState<FeedType[]>([])
@@ -405,22 +413,25 @@ export default function FeedsPage() {
   const exportPDF = async () => {
     const doc = new jsPDF('p', 'pt', 'a4')
     const dateStr = new Date().toLocaleDateString('ar-AE')
+    const exportBorderColor = theme.palette.divider
+    const exportTextColor = theme.palette.text.primary
+    const exportHeaderBg = theme.palette.action.hover
     const rows = stocks.map(s => `<tr>
-      <td style="border:1px solid #ddd;padding:4px">${s.feedType?.nameAr || '-'}</td>
-      <td style="border:1px solid #ddd;padding:4px">${s.quantity} ${s.unit}</td>
-      <td style="border:1px solid #ddd;padding:4px">${s.cost || 0} درهم</td>
-      <td style="border:1px solid #ddd;padding:4px">${s.supplier || '-'}</td>
+      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.feedType?.nameAr || '-'}</td>
+      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.quantity} ${s.unit}</td>
+      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.cost || 0} درهم</td>
+      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.supplier || '-'}</td>
     </tr>`).join('')
 
-    const html = `<div style="font-family:Cairo,Arial,sans-serif;direction:rtl;padding:20px;color:#333">
+    const html = `<div style="font-family:Cairo,Arial,sans-serif;direction:rtl;padding:20px;color:${exportTextColor}">
       <h2 style="text-align:center;margin-bottom:8px">تقرير إدارة الأعلاف</h2>
       <p style="text-align:center;margin-bottom:20px">تاريخ التقرير: ${dateStr}</p>
       <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <thead><tr style="background:#f5f5f5">
-          <th style="border:1px solid #ddd;padding:6px">نوع العلف</th>
-          <th style="border:1px solid #ddd;padding:6px">الكمية</th>
-          <th style="border:1px solid #ddd;padding:6px">سعر الوحدة</th>
-          <th style="border:1px solid #ddd;padding:6px">المورد</th>
+        <thead><tr style="background:${exportHeaderBg}">
+          <th style="border:1px solid ${exportBorderColor};padding:6px">نوع العلف</th>
+          <th style="border:1px solid ${exportBorderColor};padding:6px">الكمية</th>
+          <th style="border:1px solid ${exportBorderColor};padding:6px">سعر الوحدة</th>
+          <th style="border:1px solid ${exportBorderColor};padding:6px">المورد</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -864,7 +875,7 @@ export default function FeedsPage() {
                           <TableCell><Typography fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography></TableCell>
                           <TableCell>{heads}</TableCell>
                           <TableCell>
-                            <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: '#fff' }} />
+                            <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: 'common.white' }} />
                           </TableCell>
                           <TableCell>{s.quantity} كجم</TableCell>
                           <TableCell>{s.frequency} وجبات</TableCell>
@@ -971,10 +982,10 @@ export default function FeedsPage() {
               <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: 'secondary.light', borderColor: 'secondary.main' }}>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'secondary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: 'secondary.main', color: 'common.white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1H9a1 1 0 01-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" fill="#fff"/>
-                        <path d="M9 21h6M10 17v1a2 2 0 002 2h0a2 2 0 002-2v-1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1H9a1 1 0 01-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" fill="currentColor"/>
+                        <path d="M9 21h6M10 17v1a2 2 0 002 2h0a2 2 0 002-2v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
                     </Box>
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'secondary.main' }}>اقتراح ذكي للكمية</Typography>

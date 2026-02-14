@@ -10,8 +10,11 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "نظام إدارة الماعز - Goat Management System",
+  title: "نظام إدارة الماعز والخرفان",
   description: "نظام شامل لإدارة قطيع الماعز والخرفان",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

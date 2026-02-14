@@ -49,6 +49,7 @@ import {
   TrendingUp as TrendingUpIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material'
+import { useTheme } from '@mui/material/styles'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import * as XLSX from 'xlsx'
@@ -89,6 +90,7 @@ const maleIconColor = 'info.main'
 const femaleIconColor = '#EC4899'
 
 export default function PensPage() {
+  const theme = useTheme()
   const [pens, setPens] = useState<Pen[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -304,6 +306,9 @@ export default function PensPage() {
   // Export functions
   const exportToPDF = async () => {
     const doc = new jsPDF('p', 'pt', 'a4')
+    const exportTextColor = theme.palette.text.primary
+    const exportBorderColor = theme.palette.divider
+    const exportHeaderBg = theme.palette.action.hover
     
     const rowsHtml = filteredPens.map(pen => `
       <tr>
@@ -316,11 +321,11 @@ export default function PensPage() {
     `).join('')
 
     const html = `
-      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 20px; color: #333;">
+      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 20px; color: ${exportTextColor};">
         <h2 style="text-align: center; margin-bottom: 10px;">تقرير إدارة الحظائر</h2>
         <p style="text-align: center; margin-bottom: 20px;">التاريخ: ${new Date().toLocaleDateString('ar-AE')}</p>
         
-        <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+        <div style="margin-bottom: 20px; border: 1px solid ${exportBorderColor}; padding: 10px; border-radius: 4px;">
           <h3 style="margin-top: 0; margin-bottom: 10px;">الإحصائيات</h3>
           <ul style="list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <li><strong>إجمالي الحظائر:</strong> ${stats.totalPens}</li>
@@ -334,12 +339,12 @@ export default function PensPage() {
 
         <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
           <thead>
-            <tr style="background-color: #f5f5f5;">
-              <th style="border: 1px solid #ccc; padding: 8px;">الاسم</th>
-              <th style="border: 1px solid #ccc; padding: 8px;">النوع</th>
-              <th style="border: 1px solid #ccc; padding: 8px;">العدد</th>
-              <th style="border: 1px solid #ccc; padding: 8px;">السعة</th>
-              <th style="border: 1px solid #ccc; padding: 8px;">الامتلاء</th>
+            <tr style="background-color: ${exportHeaderBg};">
+              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">الاسم</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">النوع</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">العدد</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">السعة</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">الامتلاء</th>
             </tr>
           </thead>
           <tbody>

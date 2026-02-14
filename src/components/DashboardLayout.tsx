@@ -231,14 +231,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   )
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden'
+      }}
+    >
       <CssBaseline />
       <AppBar
         position="fixed"
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          zIndex: (theme) => theme.zIndex.drawer + 2,
+          zIndex: (theme) => theme.zIndex.modal + 200,
           bgcolor: 'background.paper',
           color: 'text.primary',
           boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
@@ -265,6 +272,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             sx={{ 
               display: { xs: 'inline-flex', sm: 'none' },
               ml: 1,
+              position: 'relative',
+              zIndex: 1,
               bgcolor: 'background.paper',
               border: '1px solid',
               borderColor: 'divider'
@@ -316,6 +325,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           )}
         </Toolbar>
       </AppBar>
+
+      {!mobileOpen && (
+        <IconButton
+          color="inherit"
+          aria-label="open drawer"
+          onClick={handleDrawerToggle}
+          sx={{
+            display: { xs: 'inline-flex', sm: 'none' },
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top) + 10px)',
+            right: 'calc(env(safe-area-inset-right) + 10px)',
+            zIndex: (theme) => theme.zIndex.modal + 220,
+            bgcolor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 6px 14px rgba(0,0,0,0.12)'
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
 
       <Box
         component="nav"
@@ -378,13 +408,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           flexGrow: 1,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
+          maxWidth: '100%',
           minHeight: '100vh',
           bgcolor: '#F6F5F1',
-          p: { xs: 1.5, sm: 3 }
+          p: { xs: 1.5, sm: 3 },
+          overflowX: 'hidden'
         }}
       >
         <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px' } }} />
-        {children}
+        <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>{children}</Box>
       </Box>
     </Box>
   )

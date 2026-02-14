@@ -238,6 +238,8 @@ export default function GoatsPage() {
   const exportToPDF = async () => {
     const doc = new jsPDF('p', 'pt', 'a4')
     const dateText = new Date().toLocaleDateString('ar-EG')
+    const exportTextColor = theme.palette.text.primary
+    const exportBorderColor = theme.palette.divider
     const rowsHtml = filteredGoats.map(goat => {
       const age = calculateGoatAge(goat.birthDate)
       const status = goat.status === 'ACTIVE' ? 'نشط' : goat.status === 'QUARANTINE' ? 'حجر' : goat.status
@@ -256,7 +258,7 @@ export default function GoatsPage() {
     }).join('')
 
     const html = `
-      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 16px; color: #111;">
+      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 16px; color: ${exportTextColor};">
         <h2 style="margin: 0 0 8px; text-align: center;">تقرير قطيع الماعز</h2>
         <p style="margin: 0 0 16px; text-align: center;">التاريخ: ${dateText}</p>
 
@@ -271,14 +273,14 @@ export default function GoatsPage() {
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <thead>
             <tr>
-              <th style="border: 1px solid #ccc; padding: 6px;">الحالة</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">الوزن</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">العمر</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">السلالة</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">النوع</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">الجنس</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">الاسم</th>
-              <th style="border: 1px solid #ccc; padding: 6px;">رقم التاج</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الحالة</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الوزن</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">العمر</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">السلالة</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">النوع</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الجنس</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الاسم</th>
+              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">رقم التاج</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
