@@ -269,8 +269,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           borderColor: 'divider',
           pt: { xs: 'env(safe-area-inset-top)', sm: 0 },
           pl: { xs: 'env(safe-area-inset-left)', sm: 0 },
-          pr: { xs: 'env(safe-area-inset-right)', sm: 0 },
-          transform: 'translateZ(0)'
+          pr: { xs: 'env(safe-area-inset-right)', sm: 0 }
         }}
       >
         <Toolbar
@@ -355,20 +354,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           onClose={handleDrawerToggle}
           ModalProps={{ 
             keepMounted: true,
-            slotProps: {
-              backdrop: {
-                sx: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
-                }
-              }
-            }
+            disableScrollLock: true,
+            container: typeof window !== 'undefined' ? document.body : undefined
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
+            zIndex: (theme) => theme.zIndex.modal + 50,
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: { xs: '88vw', sm: drawerWidth },
-              maxWidth: 340
+              maxWidth: 340,
+              zIndex: (theme) => theme.zIndex.modal + 51,
+              WebkitOverflowScrolling: 'touch'
+            },
+            '& .MuiBackdrop-root': {
+              zIndex: (theme) => theme.zIndex.modal + 49,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)'
             }
           }}
         >
@@ -378,7 +379,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, transition: 'width .2s ease' }
+            zIndex: (theme) => theme.zIndex.drawer,
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerWidth,
+              transition: 'width .2s ease',
+              zIndex: (theme) => theme.zIndex.drawer
+            }
           }}
           open
         >
