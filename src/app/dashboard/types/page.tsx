@@ -231,14 +231,14 @@ export default function TypesPage() {
   )
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 2, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
           <Stack direction="row" spacing={2} alignItems="center">
             <CategoryIcon color="warning" />
             <Typography variant="h4" fontWeight="bold">الأنواع والسلالات</Typography>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
             <Chip label={`إجمالي الأنواع: ${types.length}`} color="primary" variant="outlined" />
             <Chip label={`إجمالي السلالات: ${totalBreeds}`} color="warning" variant="outlined" />
           </Stack>
@@ -260,7 +260,7 @@ export default function TypesPage() {
             }}
             fullWidth
           />
-          <FormControl sx={{ minWidth: 180 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 180 } }}>
             <InputLabel id="types-sort">الترتيب</InputLabel>
             <Select
               labelId="types-sort"

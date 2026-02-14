@@ -105,21 +105,21 @@ export default function ReportsPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 2, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between">
           <Stack direction="row" spacing={2} alignItems="center">
             <ReportsIcon color="primary" />
             <Typography variant="h4" fontWeight="bold">تقارير شهرية</Typography>
           </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
             <TextField
               type="month"
               label="الشهر"
               value={month}
               onChange={(event) => setMonth(event.target.value)}
               InputLabelProps={{ shrink: true }}
-              sx={{ minWidth: 180 }}
+              sx={{ minWidth: { xs: '100%', md: 180 } }}
             />
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportKpi}>
               تصدير KPI
@@ -229,7 +229,7 @@ export default function ReportsPage() {
             <PetsIcon color="primary" />
             <Typography variant="h6" fontWeight="bold">استيراد/تصدير البيانات</Typography>
           </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <Button variant="outlined" onClick={() => handleExport('/api/goats?format=csv', 'goats.csv')}>
               تصدير الماعز
             </Button>
@@ -242,7 +242,7 @@ export default function ReportsPage() {
           </Stack>
         </Stack>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} mt={3}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }} mt={3}>
           <Button component="label" variant="contained" startIcon={<UploadIcon />}>
             استيراد الماعز (CSV)
             <input

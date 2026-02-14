@@ -7,6 +7,7 @@ import {
   CssBaseline,
   Divider,
   Drawer,
+  SwipeableDrawer,
   IconButton,
   List,
   ListItem,
@@ -19,8 +20,7 @@ import {
   Stack,
   TextField,
   InputAdornment,
-  useMediaQuery,
-  Portal
+  useMediaQuery
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -48,7 +48,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import { menuPermissions } from '@/lib/permissionMap'
-import { useTheme } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
 
 const expandedDrawerWidth = 260
 const collapsedDrawerWidth = 86
@@ -233,29 +233,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <Portal>
-        <IconButton
-          color="inherit"
-          onClick={handleDrawerToggle}
-          aria-label="فتح القائمة"
-          sx={{
-            display: { xs: mobileOpen ? 'none' : 'inline-flex', sm: 'none' },
-            position: 'fixed',
-            top: 'calc(env(safe-area-inset-top) + 10px)',
-            right: 'calc(env(safe-area-inset-right) + 10px)',
-            zIndex: 1250,
-            bgcolor: 'background.paper',
-            color: 'text.primary',
-            border: '1px solid',
-            borderColor: 'divider',
-            boxShadow: '0 4px 12px rgba(15,23,42,0.12)',
-            transition: 'opacity 0.2s',
-            '&:hover': { bgcolor: 'action.hover' }
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-      </Portal>
       <AppBar
         position="fixed"
         sx={{
@@ -286,15 +263,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ 
-              display: { xs: 'none', sm: 'none' },
-              position: 'relative',
-              flexShrink: 0,
-              alignSelf: 'center',
-              zIndex: 2,
-              mr: 1,
-              visibility: 'visible',
-              bgcolor: 'rgba(79,122,87,0.08)',
-              '&:hover': { bgcolor: 'rgba(79,122,87,0.14)' }
+              display: { xs: 'inline-flex', sm: 'none' },
+              ml: 1,
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider'
             }}
           >
             <MenuIcon />
@@ -348,10 +321,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         component="nav"
         sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
       >
-        <Drawer
-          variant="temporary"
+        <SwipeableDrawer
+          anchor="right"
           open={mobileOpen}
-          onClose={handleDrawerToggle}
+          onClose={() => setMobileOpen(false)}
+          onOpen={() => setMobileOpen(true)}
+          disableDiscovery
+          disableSwipeToOpen
           ModalProps={{ 
             keepMounted: true,
             disableScrollLock: true,
@@ -359,22 +335,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            zIndex: (theme) => theme.zIndex.modal + 50,
+            zIndex: (t) => t.zIndex.modal + 50,
             '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: { xs: '88vw', sm: drawerWidth },
+              width: '88vw',
               maxWidth: 340,
-              zIndex: (theme) => theme.zIndex.modal + 51,
-              WebkitOverflowScrolling: 'touch'
+              boxSizing: 'border-box',
+              position: 'fixed',
+              top: 0,
+              height: '100dvh',
+              paddingTop: 'env(safe-area-inset-top)',
+              WebkitOverflowScrolling: 'touch',
+              zIndex: (t) => t.zIndex.modal + 51
             },
             '& .MuiBackdrop-root': {
-              zIndex: (theme) => theme.zIndex.modal + 49,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)'
+              zIndex: (t) => t.zIndex.modal + 49,
+              backgroundColor: (t) => alpha(t.palette.common.black, 0.35)
             }
           }}
         >
           {drawer}
-        </Drawer>
+        </SwipeableDrawer>
         <Drawer
           variant="permanent"
           sx={{

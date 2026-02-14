@@ -189,12 +189,13 @@ export default function InventoryPage() {
   const lowStockItems = items.filter(item => item.currentStock <= item.minStock)
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, flexDirection: { xs: 'column', md: 'row' }, gap: 1.5, mb: 3 }}>
         <Typography variant="h4">إدارة المخزون</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
+          sx={{ width: { xs: '100%', md: 'auto' } }}
           onClick={() => handleOpenDialog()}
         >
           إضافة صنف جديد
@@ -208,7 +209,7 @@ export default function InventoryPage() {
       )}
 
       <Paper>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} variant="scrollable" allowScrollButtonsMobile>
           <Tab label="جميع الأصناف" />
           <Tab label="أدوية" />
           <Tab label="لقاحات" />
@@ -395,7 +396,7 @@ export default function InventoryPage() {
 
 function InventoryTable({ items, onEdit, onTransaction }: any) {
   return (
-    <TableContainer>
+    <TableContainer sx={{ overflowX: 'auto' }}>
       <Table>
         <TableHead>
           <TableRow>

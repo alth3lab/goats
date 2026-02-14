@@ -455,17 +455,17 @@ export default function PensPage() {
   }
 
   return (
-    <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} mb={3} spacing={1.5}>
         <Typography variant="h4" fontWeight="bold">
           إدارة الحظائر
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
           <Button
             variant="outlined"
             size="small"
             onClick={exportToPDF}
-            sx={{ color: 'error.main', borderColor: 'error.main' }}
+            sx={{ color: 'error.main', borderColor: 'error.main', width: { xs: '100%', md: 'auto' } }}
           >
             تصدير PDF
           </Button>
@@ -473,7 +473,7 @@ export default function PensPage() {
             variant="outlined"
             size="small"
             onClick={exportToExcel}
-            sx={{ color: 'success.main', borderColor: 'success.main' }}
+            sx={{ color: 'success.main', borderColor: 'success.main', width: { xs: '100%', md: 'auto' } }}
           >
             تصدير Excel
           </Button>
@@ -482,6 +482,7 @@ export default function PensPage() {
             size="small"
             startIcon={<GridViewIcon />}
             onClick={() => setViewMode('grid')}
+            sx={{ width: { xs: '100%', md: 'auto' } }}
           >
             شبكة
           </Button>
@@ -490,6 +491,7 @@ export default function PensPage() {
             size="small"
             startIcon={<ListViewIcon />}
             onClick={() => setViewMode('list')}
+            sx={{ width: { xs: '100%', md: 'auto' } }}
           >
             قائمة
           </Button>
@@ -497,6 +499,7 @@ export default function PensPage() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setOpen(true)}
+            sx={{ width: { xs: '100%', md: 'auto' } }}
           >
             إضافة حظيرة
           </Button>
@@ -672,7 +675,7 @@ export default function PensPage() {
             label="نوع الحظيرة"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            sx={{ minWidth: 150 }}
+            sx={{ minWidth: { xs: '100%', md: 150 } }}
           >
             <MenuItem value="ALL">الكل</MenuItem>
             <MenuItem value="GENERAL">عام</MenuItem>
@@ -686,7 +689,7 @@ export default function PensPage() {
             label="حالة الحظيرة"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            sx={{ minWidth: 150 }}
+            sx={{ minWidth: { xs: '100%', md: 150 } }}
           >
             <MenuItem value="ALL">الكل</MenuItem>
             <MenuItem value="AVAILABLE">متاحة</MenuItem>
@@ -769,7 +772,7 @@ export default function PensPage() {
                             </Typography>
                         </Box>
 
-                        <Stack direction="row" spacing={2} mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                        <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                            <Stack direction="row" spacing={0.5} alignItems="center">
                               <MaleIcon fontSize="small" sx={{ color: maleIconColor }} />
                               <Typography variant="body2" fontWeight="bold">
@@ -871,7 +874,7 @@ export default function PensPage() {
               </Typography>
               
               {selectedPen.goats && selectedPen.goats.length > 0 ? (
-                <TableContainer component={Paper} variant="outlined">
+                <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'action.hover' }}>

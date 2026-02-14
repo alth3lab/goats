@@ -119,14 +119,14 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 2, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between">
           <Stack direction="row" spacing={2} alignItems="center">
             <HistoryIcon color="primary" />
             <Typography variant="h4" fontWeight="bold">سجل النشاطات</Typography>
           </Stack>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport} sx={{ width: { xs: '100%', md: 'auto' } }}>
             تصدير CSV
           </Button>
         </Stack>
@@ -147,7 +147,7 @@ export default function ActivitiesPage() {
             }}
             fullWidth
           />
-          <FormControl sx={{ minWidth: 160 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 160 } }}>
             <InputLabel id="activity-action">الإجراء</InputLabel>
             <Select
               labelId="activity-action"
@@ -163,7 +163,7 @@ export default function ActivitiesPage() {
               <MenuItem value="LOGOUT">تسجيل خروج</MenuItem>
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 160 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 160 } }}>
             <InputLabel id="activity-entity">الكيان</InputLabel>
             <Select
               labelId="activity-entity"
@@ -191,7 +191,7 @@ export default function ActivitiesPage() {
             value={from}
             onChange={(event) => setFrom(event.target.value)}
             InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 150 }}
+            sx={{ minWidth: { xs: '100%', md: 150 } }}
           />
           <TextField
             label="إلى"
@@ -199,12 +199,12 @@ export default function ActivitiesPage() {
             value={to}
             onChange={(event) => setTo(event.target.value)}
             InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 150 }}
+            sx={{ minWidth: { xs: '100%', md: 150 } }}
           />
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

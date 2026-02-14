@@ -463,10 +463,10 @@ export default function FeedsPage() {
   )
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       {/* ─── Top Bar ─── */}
       <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5}>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <GrassIcon color="success" sx={{ fontSize: 32 }} />
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">إدارة الأعلاف</Typography>
@@ -574,7 +574,7 @@ export default function FeedsPage() {
                               </Box>
 
                               <CardContent sx={{ pt: 1.5, pb: '12px !important' }}>
-                                <TableContainer>
+                                <TableContainer sx={{ overflowX: 'auto' }}>
                                   <Table size="small">
                                     <TableHead>
                                       <TableRow>
@@ -841,7 +841,7 @@ export default function FeedsPage() {
                 <Button variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إنشاء أول جدول</Button>
               </Paper>
             ) : (
-              <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+              <TableContainer component={Paper} sx={{ borderRadius: 2, overflowX: 'auto' }}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'action.hover' }}>

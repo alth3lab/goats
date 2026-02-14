@@ -101,20 +101,20 @@ export default function ExpensesPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <ExpensesIcon color="warning" />
             <Typography variant="h4" fontWeight="bold">المصروفات</Typography>
           </Stack>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)} sx={{ width: { xs: '100%', md: 'auto' } }}>
             إضافة مصروف
           </Button>
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

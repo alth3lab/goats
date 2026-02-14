@@ -58,9 +58,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
           <SettingsIcon color="primary" />
           <Typography variant="h4" fontWeight="bold">الإعدادات</Typography>
         </Stack>
@@ -155,8 +155,8 @@ export default function SettingsPage() {
           </Box>
         </Box>
 
-        <Stack direction="row" justifyContent="flex-end" mt={3}>
-          <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="flex-end" mt={3}>
+          <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving} sx={{ width: { xs: '100%', md: 'auto' } }}>
             {saving ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
           </Button>
         </Stack>

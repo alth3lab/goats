@@ -305,7 +305,7 @@ export default function SalesPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       {/* إحصائيات */}
       {stats && (
         <Grid container spacing={3} mb={3}>
@@ -369,17 +369,17 @@ export default function SalesPage() {
 
       {/* الفلاتر والبحث */}
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} mb={2} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <SalesIcon color="primary" />
             <Typography variant="h4" fontWeight="bold">المبيعات</Typography>
           </Stack>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen} sx={{ width: { xs: '100%', md: 'auto' } }}>
             إضافة بيع
           </Button>
         </Stack>
         
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
             placeholder="بحث بالمشتري أو رقم التاج..."
             value={searchTerm}
@@ -393,7 +393,7 @@ export default function SalesPage() {
             }}
             sx={{ flexGrow: 1 }}
           />
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 200 } }}>
             <InputLabel>حالة الدفع</InputLabel>
             <Select
               value={filterStatus}
@@ -409,7 +409,7 @@ export default function SalesPage() {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

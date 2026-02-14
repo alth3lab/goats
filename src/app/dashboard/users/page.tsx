@@ -160,9 +160,9 @@ export default function UsersPage() {
   }, {})
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <UsersIcon color="primary" />
             <Typography variant="h4" fontWeight="bold">المستخدمين والصلاحيات</Typography>
@@ -172,13 +172,14 @@ export default function UsersPage() {
             startIcon={<AddIcon />}
             onClick={() => setOpen(true)}
             disabled={!canAddUser}
+            sx={{ width: { xs: '100%', md: 'auto' } }}
           >
             إضافة مستخدم
           </Button>
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>
