@@ -168,6 +168,8 @@ export default function FeedsPage() {
   const [stockDialog, setStockDialog] = useState(false)
   const [scheduleDialog, setScheduleDialog] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{ type: 'stock' | 'type' | 'schedule'; item: any } | null>(null)
+  const [consumeSubmitting, setConsumeSubmitting] = useState(false)
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
 
   // Forms
   const [editingType, setEditingType] = useState<FeedType | null>(null)
@@ -179,7 +181,50 @@ export default function FeedsPage() {
   const [aiSuggestion, setAiSuggestion] = useState<FeedSuggestion | null>(null)
 
   // ─── Fetch ───
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    // تحميل البيانات فوراً أولاً
+    fetchAll().then(() => {
+      // ثم تشغيل الصرف التلقائي بالخلفية بعد التحميل
+      runAutoConsume()
+    })
+  }, [])
+
+  const runAutoConsume = async () => {
+    try {
+      const res = await fetch('/api/feeds/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto: true, date: today() })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setActionMessage({
+          type: 'error',
+          text: data.error || 'تعذر تنفيذ الصرف التلقائي'
+        })
+      } else if (Array.isArray(data.executedDates) && data.executedDates.length > 0) {
+        const skippedCount = Array.isArray(data.skippedDates) ? data.skippedDates.length : 0
+        setActionMessage({
+          type: skippedCount > 0 ? 'info' : 'success',
+          text: skippedCount > 0
+            ? `${data.message || 'تم تنفيذ جزء من الصرف التلقائي'} (تم التنفيذ ${data.executedDates.length} يوم، وتجاوز ${skippedCount} يوم بسبب نقص المخزون)`
+            : data.message || `تم تنفيذ الصرف التلقائي لـ ${data.executedDates.length} يوم`
+        })
+        // تحديث البيانات بعد الصرف الناجح
+        await fetchAll()
+      } else if (Array.isArray(data.skippedDates) && data.skippedDates.length > 0) {
+        setActionMessage({
+          type: 'error',
+          text: `تعذر التنفيذ التلقائي: نقص مخزون في ${data.skippedDates.length} يوم`
+        })
+      }
+      // لا رسالة إذا كان كل شيء محدّث - لا حاجة لعرض رسالة
+    } catch {
+      // فشل الاتصال - لا نعرقل الصفحة
+      console.warn('Auto consume failed silently')
+    }
+  }
 
   const fetchAll = async () => {
     setLoading(true)
@@ -409,6 +454,44 @@ export default function FeedsPage() {
     fetchAll(); setDeleteDialog(null)
   }
 
+  const executeTodayConsumption = async () => {
+    if (consumeSubmitting) return
+    setConsumeSubmitting(true)
+    setActionMessage(null)
+
+    try {
+      const res = await fetch('/api/feeds/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: today() })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (Array.isArray(data.shortages) && data.shortages.length > 0) {
+          const firstShortage = data.shortages[0]
+          setActionMessage({
+            type: 'error',
+            text: `${data.error || 'مخزون غير كاف'}: ${firstShortage.feedTypeName} (مطلوب ${firstShortage.required} كجم، متاح ${firstShortage.available} كجم)`
+          })
+        } else {
+          setActionMessage({ type: 'error', text: data.error || 'فشل تنفيذ صرف الأعلاف' })
+        }
+        return
+      }
+
+      setActionMessage({
+        type: 'success',
+        text: data.message || 'تم تنفيذ صرف الأعلاف اليومي'
+      })
+      await fetchAll()
+    } catch {
+      setActionMessage({ type: 'error', text: 'حدث خطأ أثناء تنفيذ صرف الأعلاف' })
+    } finally {
+      setConsumeSubmitting(false)
+    }
+  }
+
   // ─── Export ───
   const exportPDF = async () => {
     const doc = new jsPDF('p', 'pt', 'a4')
@@ -505,6 +588,12 @@ export default function FeedsPage() {
         </Stack>
       )}
 
+      {actionMessage && (
+        <Alert severity={actionMessage.type} sx={{ mb: 2 }}>
+          {actionMessage.text}
+        </Alert>
+      )}
+
       {/* ═══════════════════ VIEW: TODAY ═══════════════════ */}
       {view === 'today' && (
         <Fade in>
@@ -539,7 +628,19 @@ export default function FeedsPage() {
                       <TodayIcon color="primary" />
                       <Typography variant="h6" fontWeight="bold">خطة التغذية اليوم</Typography>
                     </Stack>
-                    <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إضافة جدول</Button>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="success"
+                        startIcon={<InventoryIcon />}
+                        onClick={executeTodayConsumption}
+                        disabled={consumeSubmitting || todayFeedings.length === 0}
+                      >
+                        {consumeSubmitting ? 'جاري التنفيذ...' : 'تنفيذ صرف اليوم'}
+                      </Button>
+                      <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إضافة جدول</Button>
+                    </Stack>
                   </Stack>
 
                   {todayFeedings.length === 0 ? (

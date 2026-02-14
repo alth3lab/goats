@@ -119,6 +119,7 @@ model Pen {
 
   goats             Goat[]
   feedingSchedules  FeedingSchedule[]
+  feedConsumptions  DailyFeedConsumption[]
 }
 
 model Goat {
@@ -412,6 +413,7 @@ model FeedType {
 
   stock         FeedStock[]
   schedules     FeedingSchedule[]
+  consumptions  DailyFeedConsumption[]
 
   @@index([category])
 }
@@ -452,6 +454,25 @@ model FeedingSchedule {
   @@index([feedTypeId])
   @@index([penId])
   @@index([isActive])
+}
+
+model DailyFeedConsumption {
+  id          String    @id @default(uuid())
+  date        DateTime  // تاريخ الصرف (يبدأ من بداية اليوم)
+  feedTypeId  String
+  feedType    FeedType  @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
+  penId       String?   // الحظيرة (اختياري - للتقارير)
+  pen         Pen?      @relation(fields: [penId], references: [id], onDelete: SetNull)
+  quantity    Float     // الكمية المصروفة بالكيلوجرام
+  cost        Float?    // التكلفة (من سعر المخزون)
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([date, feedTypeId, penId]) // منع التكرار لنفس اليوم ونوع العلف والحظيرة
+  @@index([date])
+  @@index([feedTypeId])
+  @@index([penId])
 }
 
 model CalendarEvent {
