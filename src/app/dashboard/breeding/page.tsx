@@ -603,12 +603,12 @@ export default function BreedingPage() {
 
       {/* Header with title and actions */}
       <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <BreedingIcon sx={{ color: 'secondary.main', fontSize: 32 }} />
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">سجلات التكاثر</Typography>
           </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
             <Button 
               variant="outlined" 
               startIcon={<ExportIcon />} 

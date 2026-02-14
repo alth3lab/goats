@@ -202,7 +202,7 @@ export default function HealthPage() {
   )
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       {/* Alerts */}
       {upcomingAlerts.length > 0 && (
           <Paper sx={{ p: 2, mb: 3, bgcolor: 'warning.light', border: '1px solid', borderColor: 'warning.main' }}>
@@ -252,12 +252,12 @@ export default function HealthPage() {
       </Stack>
 
       <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, borderRadius: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={2} spacing={1.5}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} mb={2} spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <HealthIcon color="error" />
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">السجلات الصحية</Typography>
           </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
             <Button variant="outlined" color="secondary" startIcon={<HealthIcon />} onClick={handleBatchOpen} fullWidth={isMobile}>
               علاج جماعي
             </Button>
@@ -267,6 +267,7 @@ export default function HealthPage() {
           </Stack>
         </Stack>
         <TextField
+          fullWidth
           placeholder="بحث برقم التاج أو الوصف..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -280,7 +281,7 @@ export default function HealthPage() {
         />
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>
