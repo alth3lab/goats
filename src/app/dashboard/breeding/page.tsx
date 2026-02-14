@@ -57,6 +57,7 @@ import {
 } from '@mui/icons-material'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
+import { useNotifier } from '@/components/AppNotifier'
 
 interface BirthRecord {
   id: string
@@ -101,6 +102,7 @@ const statusLabels: Record<string, string> = {
 
 export default function BreedingPage() {
   const theme = useTheme()
+  const { notify } = useNotifier()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [records, setRecords] = useState<BreedingRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -166,6 +168,14 @@ export default function BreedingPage() {
     const due = new Date(dueDate)
     const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     return diff
+  }
+
+  const QUICK_BIRTH_WINDOW_DAYS = 14
+
+  const canOpenQuickBirth = (record: BreedingRecord): boolean => {
+    if (record.pregnancyStatus !== 'PREGNANT' || !record.dueDate) return false
+    const daysRemaining = getDaysRemaining(record.dueDate)
+    return daysRemaining <= QUICK_BIRTH_WINDOW_DAYS
   }
 
   useEffect(() => {
@@ -284,30 +294,41 @@ export default function BreedingPage() {
   }
 
   const handleSubmit = async () => {
-    const payload = {
-      motherId: form.motherId,
-      fatherId: form.fatherId,
-      matingDate: new Date(form.matingDate),
-      pregnancyStatus: form.pregnancyStatus,
-      dueDate: form.dueDate ? new Date(form.dueDate) : null,
-      birthDate: form.birthDate ? new Date(form.birthDate) : null,
-      numberOfKids: form.numberOfKids ? Number(form.numberOfKids) : null,
-      notes: form.notes.trim() || null
+    try {
+      const payload = {
+        motherId: form.motherId,
+        fatherId: form.fatherId,
+        matingDate: new Date(form.matingDate),
+        pregnancyStatus: form.pregnancyStatus,
+        dueDate: form.dueDate ? new Date(form.dueDate) : null,
+        birthDate: form.birthDate ? new Date(form.birthDate) : null,
+        numberOfKids: form.numberOfKids ? Number(form.numberOfKids) : null,
+        notes: form.notes.trim() || null
+      }
+
+      const url = editMode && selectedRecord ? `/api/breeding/${selectedRecord.id}` : '/api/breeding'
+      const method = editMode ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'فشل في حفظ سجل التكاثر' }))
+        notify(errorData.error || 'فشل في حفظ سجل التكاثر', { severity: 'error' })
+        return
+      }
+
+      notify(editMode ? 'تم تحديث سجل التكاثر بنجاح' : 'تمت إضافة سجل التكاثر بنجاح', { severity: 'success' })
+      handleClose()
+      const res = await fetch('/api/breeding')
+      const data = await res.json()
+      setRecords(Array.isArray(data) ? data : [])
+    } catch (error) {
+      notify('حدث خطأ أثناء حفظ سجل التكاثر', { severity: 'error' })
     }
-
-    const url = editMode && selectedRecord ? `/api/breeding/${selectedRecord.id}` : '/api/breeding'
-    const method = editMode ? 'PUT' : 'POST'
-
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    handleClose()
-    const res = await fetch('/api/breeding')
-    const data = await res.json()
-    setRecords(Array.isArray(data) ? data : [])
   }
 
   const upcomingBirths = records.filter(r => {
@@ -376,6 +397,11 @@ export default function BreedingPage() {
 
   // Handle quick birth recording
   const handleQuickBirth = (record: BreedingRecord) => {
+    if (!canOpenQuickBirth(record)) {
+      notify(`زر تسجيل الولادة يتفعل قبل الولادة بـ ${QUICK_BIRTH_WINDOW_DAYS} يوم أو عند التأخير فقط`, { severity: 'info' })
+      return
+    }
+
     setSelectedRecord(record)
     const expectedKids = record.numberOfKids || 1
     setQuickBirthForm({
@@ -453,7 +479,7 @@ export default function BreedingPage() {
     } catch (error) {
       console.error('خطأ في تسجيل الولادة:', error)
       const message = error instanceof Error ? error.message : 'حدث خطأ أثناء تسجيل الولادة. يرجى المحاولة مرة أخرى.'
-      alert(message)
+      notify(message, { severity: 'error' })
     }
   }
 
@@ -735,6 +761,7 @@ export default function BreedingPage() {
               filteredRecords.map(r => {
                 const daysRemaining = r.dueDate ? getDaysRemaining(r.dueDate) : null
                 const isUpcoming = r.pregnancyStatus === 'PREGNANT' && daysRemaining !== null && daysRemaining <= 14
+                const quickBirthEnabled = canOpenQuickBirth(r)
                 const statusIcons: Record<string, any> = {
                   MATED: <PendingIcon sx={{ fontSize: 16 }} />,
                   PREGNANT: <PregnantIcon sx={{ fontSize: 16 }} />,
@@ -813,17 +840,18 @@ export default function BreedingPage() {
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={0.5}>
-                        {/* Quick Birth Button for pregnant records */}
-                        {(r.pregnancyStatus === 'PREGNANT' || r.pregnancyStatus === 'MATED') && (
-                          <Tooltip title="تسجيل ولادة سريع">
+                        {/* Quick Birth Button for eligible pregnant records */}
+                        {r.pregnancyStatus === 'PREGNANT' && (
+                          <Tooltip title={quickBirthEnabled ? 'تسجيل ولادة سريع' : `يتفعل قبل الولادة بـ ${QUICK_BIRTH_WINDOW_DAYS} يوم`}>
                             <IconButton 
                               size="small" 
                               sx={{ 
                                 color: 'common.white',
-                                bgcolor: isUpcoming ? 'warning.main' : 'success.main',
-                                '&:hover': { bgcolor: isUpcoming ? 'warning.dark' : 'success.dark' }
+                                bgcolor: quickBirthEnabled ? (isUpcoming ? 'warning.main' : 'success.main') : 'action.disabledBackground',
+                                '&:hover': { bgcolor: quickBirthEnabled ? (isUpcoming ? 'warning.dark' : 'success.dark') : 'action.disabledBackground' }
                               }}
                               onClick={() => handleQuickBirth(r)}
+                              disabled={!quickBirthEnabled}
                             >
                               <BirthIcon />
                             </IconButton>

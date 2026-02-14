@@ -32,6 +32,56 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const userId = getUserIdFromRequest(request)
+
+    if (!body?.motherId || !body?.fatherId) {
+      return NextResponse.json({ error: 'يجب اختيار الأم والأب' }, { status: 400 })
+    }
+
+    if (body.motherId === body.fatherId) {
+      return NextResponse.json({ error: 'لا يمكن أن تكون الأم والأب نفس الحيوان' }, { status: 400 })
+    }
+
+    const [mother, father] = await Promise.all([
+      prisma.goat.findUnique({ where: { id: body.motherId }, select: { id: true, tagId: true, gender: true } }),
+      prisma.goat.findUnique({ where: { id: body.fatherId }, select: { id: true, tagId: true, gender: true } })
+    ])
+
+    if (!mother || !father) {
+      return NextResponse.json({ error: 'الأم أو الأب غير موجود' }, { status: 400 })
+    }
+
+    if (mother.gender !== 'FEMALE') {
+      return NextResponse.json({ error: `الحيوان ${mother.tagId} ليس أنثى` }, { status: 400 })
+    }
+
+    if (father.gender !== 'MALE') {
+      return NextResponse.json({ error: `الحيوان ${father.tagId} ليس ذكراً` }, { status: 400 })
+    }
+
+    const nextStatus = body.pregnancyStatus || 'MATED'
+    const activeStatuses = ['MATED', 'PREGNANT'] as const
+    if (activeStatuses.includes(nextStatus)) {
+      const existingActive = await prisma.breeding.findFirst({
+        where: {
+          motherId: body.motherId,
+          pregnancyStatus: { in: [...activeStatuses] }
+        },
+        include: {
+          father: { select: { tagId: true } }
+        },
+        orderBy: { matingDate: 'desc' }
+      })
+
+      if (existingActive) {
+        return NextResponse.json(
+          {
+            error: `لا يمكن إضافة سجل جديد: الأنثى ${mother.tagId} لديها سجل نشط (${existingActive.pregnancyStatus}) مع الأب ${existingActive.father.tagId}`
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const record = await prisma.breeding.create({
       data: body,
       include: {
@@ -83,6 +133,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(record, { status: 201 })
   } catch (error) {
+    console.error('Breeding create error:', error)
     return NextResponse.json({ error: 'فشل في إضافة سجل التكاثر' }, { status: 500 })
   }
 }
