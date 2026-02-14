@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import { RTLThemeProvider } from "@/theme/RTLThemeProvider";
+import { AppNotifierProvider } from "@/components/AppNotifier";
 import { CssBaseline } from "@mui/material";
 import "./globals.css";
 
@@ -26,8 +27,10 @@ export default function RootLayout({
     <html lang="ar" dir="rtl">
       <body className={cairo.className}>
         <RTLThemeProvider>
-          <CssBaseline />
-          {children}
+          <AppNotifierProvider>
+            <CssBaseline />
+            {children}
+          </AppNotifierProvider>
         </RTLThemeProvider>
       </body>
     </html>

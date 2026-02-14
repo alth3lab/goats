@@ -38,7 +38,6 @@ import {
   ShoppingCart as SalesIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as ViewIcon,
   Payment as PaymentIcon,
   Search as SearchIcon,
   TrendingUp as TrendingUpIcon,
@@ -48,6 +47,7 @@ import {
   History as HistoryIcon
 } from '@mui/icons-material'
 import { EntityHistory } from '@/components/EntityHistory'
+import { useNotifier } from '@/components/AppNotifier'
 
 interface Payment {
   id: string
@@ -96,6 +96,7 @@ const paymentLabels: Record<string, string> = {
 }
 
 export default function SalesPage() {
+  const { notify } = useNotifier()
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -104,6 +105,7 @@ export default function SalesPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [goats, setGoats] = useState<Array<{ id: string; tagId: string }>>([])
@@ -122,8 +124,22 @@ export default function SalesPage() {
     paymentMethod: 'CASH',
     notes: ''
   })
+  const [editForm, setEditForm] = useState({
+    date: '',
+    buyerName: '',
+    buyerPhone: '',
+    salePrice: '',
+    notes: ''
+  })
   const [submitting, setSubmitting] = useState(false)
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null)
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null)
+  const [confirmCancelDialogOpen, setConfirmCancelDialogOpen] = useState(false)
+  const [saleToCancel, setSaleToCancel] = useState<Sale | null>(null)
+  const [confirmDeletePaymentDialogOpen, setConfirmDeletePaymentDialogOpen] = useState(false)
+  const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadSales()
@@ -140,7 +156,7 @@ export default function SalesPage() {
       if (!res.ok) {
         const error = await res.json().catch(() => ({ error: 'خطأ في جلب البيانات' }))
         console.error('Sales fetch error:', error)
-        alert(error.error || 'فشل في جلب المبيعات')
+        notify(error.error || 'فشل في جلب المبيعات', { severity: 'error' })
         setSales([])
         return
       }
@@ -148,7 +164,7 @@ export default function SalesPage() {
       setSales(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to load sales:', error)
-      alert('خطأ في الاتصال بالخادم')
+      notify('خطأ في الاتصال بالخادم', { severity: 'error' })
       setSales([])
     } finally {
       setLoading(false)
@@ -218,16 +234,17 @@ export default function SalesPage() {
 
       if (!res.ok) {
         const error = await res.json()
-        alert(error.error || 'فشل في إضافة البيع')
+        notify(error.error || 'فشل في إضافة البيع', { severity: 'error' })
         return
       }
 
       setForm({ goatId: '', date: '', buyerName: '', buyerPhone: '', salePrice: '', paidAmount: '', notes: '' })
       setOpen(false)
+      notify('تمت إضافة عملية البيع بنجاح', { severity: 'success' })
       loadSales()
       loadStats()
     } catch (error) {
-      alert('حدث خطأ أثناء إضافة البيع')
+      notify('حدث خطأ أثناء إضافة البيع', { severity: 'error' })
     } finally {
       setSubmitting(false)
     }
@@ -253,17 +270,18 @@ export default function SalesPage() {
 
       if (!res.ok) {
         const error = await res.json()
-        alert(error.error || 'فشل في إضافة الدفعة')
+        notify(error.error || 'فشل في إضافة الدفعة', { severity: 'error' })
         return
       }
 
       setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMethod: 'CASH', notes: '' })
       setPaymentDialogOpen(false)
       setSelectedSale(null)
+      notify('تمت إضافة الدفعة بنجاح', { severity: 'success' })
       loadSales()
       loadStats()
     } catch (error) {
-      alert('حدث خطأ أثناء إضافة الدفعة')
+      notify('حدث خطأ أثناء إضافة الدفعة', { severity: 'error' })
     } finally {
       setPaymentSubmitting(false)
     }
@@ -283,6 +301,132 @@ export default function SalesPage() {
   const openDetailsDialog = (sale: Sale) => {
     setSelectedSale(sale)
     setDetailsDialogOpen(true)
+  }
+
+  const openEditDialog = (sale: Sale) => {
+    setSelectedSale(sale)
+    setEditForm({
+      date: new Date(sale.date).toISOString().split('T')[0],
+      buyerName: sale.buyerName,
+      buyerPhone: sale.buyerPhone || '',
+      salePrice: sale.salePrice.toString(),
+      notes: sale.notes || ''
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleUpdateSale = async () => {
+    if (!selectedSale || editSubmitting) return
+    setEditSubmitting(true)
+
+    try {
+      const payload = {
+        date: editForm.date,
+        buyerName: editForm.buyerName,
+        buyerPhone: editForm.buyerPhone || null,
+        salePrice: Number(editForm.salePrice),
+        notes: editForm.notes || null
+      }
+
+      const res = await fetch(`/api/sales/${selectedSale.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في تعديل البيع' }))
+        notify(error.error || 'فشل في تعديل البيع', { severity: 'error' })
+        return
+      }
+
+      setEditDialogOpen(false)
+      setSelectedSale(null)
+      notify('تم تعديل عملية البيع بنجاح', { severity: 'success' })
+      await loadSales()
+      await loadStats()
+    } catch (error) {
+      notify('حدث خطأ أثناء تعديل البيع', { severity: 'error' })
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  const handleCancelSale = async (sale: Sale) => {
+    setSaleToCancel(sale)
+    setConfirmCancelDialogOpen(true)
+  }
+
+  const confirmCancelSale = async () => {
+    if (!saleToCancel) return
+
+    setDeletingSaleId(saleToCancel.id)
+    try {
+      const res = await fetch(`/api/sales/${saleToCancel.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في إلغاء البيع' }))
+        notify(error.error || 'فشل في إلغاء البيع', { severity: 'error' })
+        return
+      }
+
+      if (selectedSale?.id === saleToCancel.id) {
+        setSelectedSale(null)
+        setDetailsDialogOpen(false)
+      }
+
+      notify('تم إلغاء عملية البيع بنجاح', { severity: 'success' })
+      await loadSales()
+      await loadStats()
+      setConfirmCancelDialogOpen(false)
+      setSaleToCancel(null)
+    } catch (error) {
+      notify('حدث خطأ أثناء إلغاء البيع', { severity: 'error' })
+    } finally {
+      setDeletingSaleId(null)
+    }
+  }
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!selectedSale || deletingPaymentId) return
+    setPaymentToDeleteId(paymentId)
+    setConfirmDeletePaymentDialogOpen(true)
+  }
+
+  const confirmDeletePayment = async () => {
+    if (!selectedSale || deletingPaymentId || !paymentToDeleteId) return
+
+    setDeletingPaymentId(paymentToDeleteId)
+    try {
+      const res = await fetch(`/api/sales/${selectedSale.id}/payments/${paymentToDeleteId}`, {
+        method: 'DELETE'
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في حذف الدفعة' }))
+        notify(error.error || 'فشل في حذف الدفعة', { severity: 'error' })
+        return
+      }
+
+      notify('تم حذف الدفعة بنجاح', { severity: 'success' })
+      await loadSales()
+      await loadStats()
+
+      const saleRes = await fetch('/api/sales')
+      if (saleRes.ok) {
+        const refreshed = await saleRes.json()
+        const nextSelected = Array.isArray(refreshed)
+          ? refreshed.find((sale: Sale) => sale.id === selectedSale.id)
+          : null
+        setSelectedSale(nextSelected || null)
+        if (!nextSelected) setDetailsDialogOpen(false)
+      }
+      setConfirmDeletePaymentDialogOpen(false)
+      setPaymentToDeleteId(null)
+    } catch (error) {
+      notify('حدث خطأ أثناء حذف الدفعة', { severity: 'error' })
+    } finally {
+      setDeletingPaymentId(null)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -469,6 +613,14 @@ export default function SalesPage() {
                       >
                         <InfoIcon />
                       </IconButton>
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => openEditDialog(s)}
+                        title="تعديل البيع"
+                      >
+                        <EditIcon />
+                      </IconButton>
                       {s.remaining > 0 && (
                         <IconButton 
                           size="small" 
@@ -479,6 +631,15 @@ export default function SalesPage() {
                           <PaymentIcon />
                         </IconButton>
                       )}
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleCancelSale(s)}
+                        title="إلغاء البيع"
+                        disabled={deletingSaleId === s.id}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -548,6 +709,125 @@ export default function SalesPage() {
           <Button onClick={() => setOpen(false)} disabled={submitting}>إلغاء</Button>
           <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
             {submitting ? 'جاري الحفظ...' : 'حفظ'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>تعديل عملية البيع</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="تاريخ البيع"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={editForm.date}
+              onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+            />
+            <TextField
+              label="اسم المشتري"
+              value={editForm.buyerName}
+              onChange={(e) => setEditForm({ ...editForm, buyerName: e.target.value })}
+            />
+            <TextField
+              label="رقم الهاتف"
+              value={editForm.buyerPhone}
+              onChange={(e) => setEditForm({ ...editForm, buyerPhone: e.target.value })}
+            />
+            <TextField
+              label="السعر"
+              type="number"
+              value={editForm.salePrice}
+              onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
+              helperText={selectedSale ? `المدفوع حالياً: ${formatCurrency(selectedSale.totalPaid)}` : undefined}
+            />
+            <TextField
+              label="ملاحظات"
+              multiline
+              rows={2}
+              value={editForm.notes}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)} disabled={editSubmitting}>إلغاء</Button>
+          <Button variant="contained" onClick={handleUpdateSale} disabled={editSubmitting}>
+            {editSubmitting ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmCancelDialogOpen}
+        onClose={() => {
+          if (deletingSaleId) return
+          setConfirmCancelDialogOpen(false)
+          setSaleToCancel(null)
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>تأكيد إلغاء البيع</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            هل أنت متأكد من إلغاء عملية البيع؟ سيتم حذف البيع وكل الدفعات التابعة له.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setConfirmCancelDialogOpen(false)
+              setSaleToCancel(null)
+            }}
+            disabled={Boolean(deletingSaleId)}
+          >
+            تراجع
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={confirmCancelSale}
+            disabled={Boolean(deletingSaleId)}
+          >
+            {deletingSaleId ? 'جاري الإلغاء...' : 'تأكيد الإلغاء'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmDeletePaymentDialogOpen}
+        onClose={() => {
+          if (deletingPaymentId) return
+          setConfirmDeletePaymentDialogOpen(false)
+          setPaymentToDeleteId(null)
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>تأكيد حذف الدفعة</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            هل تريد حذف هذه الدفعة؟
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setConfirmDeletePaymentDialogOpen(false)
+              setPaymentToDeleteId(null)
+            }}
+            disabled={Boolean(deletingPaymentId)}
+          >
+            تراجع
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={confirmDeletePayment}
+            disabled={Boolean(deletingPaymentId)}
+          >
+            {deletingPaymentId ? 'جاري الحذف...' : 'تأكيد الحذف'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -755,6 +1035,7 @@ export default function SalesPage() {
                                 <TableCell><strong>المبلغ</strong></TableCell>
                                 <TableCell><strong>طريقة الدفع</strong></TableCell>
                                 <TableCell><strong>ملاحظات</strong></TableCell>
+                                <TableCell><strong>إجراءات</strong></TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -770,6 +1051,17 @@ export default function SalesPage() {
                                     <Chip label={getPaymentMethodLabel(payment.paymentMethod)} size="small" variant="outlined" />
                                   </TableCell>
                                   <TableCell>{payment.notes || '-'}</TableCell>
+                                  <TableCell>
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      onClick={() => handleDeletePayment(payment.id)}
+                                      disabled={deletingPaymentId === payment.id}
+                                      title="حذف الدفعة"
+                                    >
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
