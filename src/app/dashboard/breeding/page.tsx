@@ -762,6 +762,16 @@ export default function BreedingPage() {
                 const daysRemaining = r.dueDate ? getDaysRemaining(r.dueDate) : null
                 const isUpcoming = r.pregnancyStatus === 'PREGNANT' && daysRemaining !== null && daysRemaining <= 14
                 const quickBirthEnabled = canOpenQuickBirth(r)
+                const quickBirthTooltip =
+                  r.pregnancyStatus === 'DELIVERED'
+                    ? 'تم تسجيل الولادة لهذا السجل'
+                    : r.pregnancyStatus === 'FAILED'
+                      ? 'السجل بحالة فشل، لا يمكن تسجيل ولادة'
+                      : r.pregnancyStatus === 'MATED'
+                        ? 'يلزم تأكيد الحمل أولاً'
+                        : quickBirthEnabled
+                          ? 'تسجيل ولادة سريع'
+                          : `يتفعل قبل الولادة بـ ${QUICK_BIRTH_WINDOW_DAYS} يوم`
                 const statusIcons: Record<string, any> = {
                   MATED: <PendingIcon sx={{ fontSize: 16 }} />,
                   PREGNANT: <PregnantIcon sx={{ fontSize: 16 }} />,
@@ -840,9 +850,9 @@ export default function BreedingPage() {
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={0.5}>
-                        {/* Quick Birth Button for eligible pregnant records */}
-                        {r.pregnancyStatus === 'PREGNANT' && (
-                          <Tooltip title={quickBirthEnabled ? 'تسجيل ولادة سريع' : `يتفعل قبل الولادة بـ ${QUICK_BIRTH_WINDOW_DAYS} يوم`}>
+                        {/* Quick Birth Button shown for all records */}
+                        <Tooltip title={quickBirthTooltip}>
+                          <span>
                             <IconButton 
                               size="small" 
                               sx={{ 
@@ -855,8 +865,8 @@ export default function BreedingPage() {
                             >
                               <BirthIcon />
                             </IconButton>
-                          </Tooltip>
-                        )}
+                          </span>
+                        </Tooltip>
                         <Tooltip title="عرض التفاصيل">
                           <IconButton size="small" color="primary" onClick={() => handleView(r)}>
                             <ViewIcon />
