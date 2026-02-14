@@ -11,6 +11,7 @@ import {
   IconButton,
   Alert
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   Visibility,
   VisibilityOff,
@@ -22,6 +23,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
+  const theme = useTheme()
   const [showPassword, setShowPassword] = useState(false)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -60,7 +62,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.main} 100%)`,
         p: 2
       }}
     >
@@ -81,7 +83,7 @@ export default function LoginPage() {
               width: 80,
               height: 80,
               borderRadius: '50%',
-              bgcolor: '#2e7d32',
+              bgcolor: 'primary.main',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -145,10 +147,8 @@ export default function LoginPage() {
             onClick={handleLogin}
             disabled={loading}
             sx={{
-              bgcolor: '#2e7d32',
               py: 1.5,
-              fontSize: '1.1rem',
-              '&:hover': { bgcolor: '#1b5e20' }
+              fontSize: '1.1rem'
             }}
           >
             {loading ? 'جاري الدخول...' : 'دخول'}

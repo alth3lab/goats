@@ -31,8 +31,10 @@ import {
   Grid,
   InputAdornment,
   Divider,
-  Alert
+  Alert,
+  useMediaQuery
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { 
   Add as AddIcon, 
   ShoppingCart as SalesIcon,
@@ -97,6 +99,8 @@ const paymentLabels: Record<string, string> = {
 
 export default function SalesPage() {
   const { notify } = useNotifier()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -553,7 +557,125 @@ export default function SalesPage() {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {loading ? (
+          <Paper sx={{ p: 3, textAlign: 'center' }}>جاري التحميل...</Paper>
+        ) : filteredSales.length === 0 ? (
+          <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد بيانات</Paper>
+        ) : (
+          <Stack spacing={2}>
+            {filteredSales.map(s => (
+              <Card key={s.id}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Header: Tag ID & Type */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography variant="h6" fontWeight="bold">
+                          {s.goat?.tagId || 'مبيعات أخرى'}
+                        </Typography>
+                        {s.goat?.breed?.type && (
+                          <Chip label={s.goat.breed.type.nameAr} size="small" variant="outlined" sx={{ mt: 0.5 }} />
+                        )}
+                      </Box>
+                      <Chip 
+                        label={paymentLabels[s.paymentStatus] || s.paymentStatus} 
+                        color={getStatusColor(s.paymentStatus)} 
+                        size="small" 
+                      />
+                    </Stack>
+
+                    {/* Date & Buyer */}
+                    <Stack spacing={1}>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">التاريخ</Typography>
+                        <Typography variant="body2" fontWeight="bold">{formatDate(s.date)}</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">المشتري</Typography>
+                        <Typography variant="body2" fontWeight="bold">{s.buyerName}</Typography>
+                      </Stack>
+                      {s.buyerPhone && (
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="body2" color="text.secondary">الهاتف</Typography>
+                          <Typography variant="body2">{s.buyerPhone}</Typography>
+                        </Stack>
+                      )}
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Financial Details */}
+                    <Stack spacing={1}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="text.secondary">السعر</Typography>
+                        <Typography variant="body1" fontWeight="bold">{formatCurrency(s.salePrice)}</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="text.secondary">المدفوع</Typography>
+                        <Typography variant="body1" fontWeight="bold" color="success.main">
+                          {formatCurrency(s.totalPaid)}
+                        </Typography>
+                      </Stack>
+                      {s.remaining > 0 && (
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2" color="text.secondary">المتبقي</Typography>
+                          <Typography variant="body1" fontWeight="bold" color="error.main">
+                            {formatCurrency(s.remaining)}
+                          </Typography>
+                        </Stack>
+                      )}
+                    </Stack>
+
+                    {/* Actions */}
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                      <IconButton 
+                        size="small" 
+                        color="info"
+                        onClick={() => openDetailsDialog(s)}
+                        title="عرض التفاصيل"
+                      >
+                        <InfoIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => openEditDialog(s)}
+                        title="تعديل البيع"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      {s.remaining > 0 && (
+                        <IconButton 
+                          size="small" 
+                          color="primary"
+                          onClick={() => openPaymentDialog(s)}
+                          title="إضافة دفعة"
+                        >
+                          <PaymentIcon />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleCancelSale(s)}
+                        title="إلغاء البيع"
+                        disabled={deletingSaleId === s.id}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

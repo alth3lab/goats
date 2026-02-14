@@ -27,7 +27,8 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Checkbox
+  Checkbox,
+  useMediaQuery
 } from '@mui/material'
 import {
   Add as AddIcon,
@@ -91,6 +92,7 @@ const femaleIconColor = '#EC4899'
 
 export default function PensPage() {
   const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [pens, setPens] = useState<Pen[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -879,7 +881,132 @@ export default function PensPage() {
               </Typography>
               
               {selectedPen.goats && selectedPen.goats.length > 0 ? (
-                <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+                <>
+                  {/* Mobile Cards View */}
+                  <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 2 }}>
+                    <Stack spacing={2}>
+                      {selectedPen.goats.map((goat) => {
+                        const age = calculateGoatAge(goat.birthDate)
+                        return (
+                          <Card 
+                            key={goat.id}
+                            sx={{ 
+                              border: selectedGoatsForBulk.has(goat.id) ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+                              borderColor: selectedGoatsForBulk.has(goat.id) ? 'primary.main' : 'divider'
+                            }}
+                          >
+                            <CardContent>
+                              <Stack spacing={2}>
+                                {/* Header: Checkbox & Tag */}
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                  <Checkbox
+                                    checked={selectedGoatsForBulk.has(goat.id)}
+                                    onChange={() => handleSelectGoat(goat.id)}
+                                    sx={{ p: 0 }}
+                                  />
+                                  <Chip label={goat.tagId} color="primary" size="small" />
+                                  <Box flex={1}>
+                                    <Typography variant="h6" fontWeight="bold">
+                                      {goat.name || 'بدون اسم'}
+                                    </Typography>
+                                  </Box>
+                                  <Chip label={getStatusLabel(goat.status)} color={getStatusColor(goat.status)} size="small" />
+                                </Stack>
+
+                                {/* Type, Breed, Gender */}
+                                <Stack direction="row" spacing={2} flexWrap="wrap">
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">النوع</Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                      {goat.breed.type?.nameAr || '-'}
+                                    </Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">السلالة</Typography>
+                                    <Typography variant="body2" fontWeight="bold">{goat.breed.nameAr}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">الجنس</Typography>
+                                    <Stack direction="row" spacing={0.5} alignItems="center">
+                                      {goat.gender === 'MALE' ? (
+                                        <>
+                                          <MaleIcon sx={{ color: maleIconColor, fontSize: 16 }} />
+                                          <Typography variant="body2">ذكر</Typography>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FemaleIcon sx={{ color: femaleIconColor, fontSize: 16 }} />
+                                          <Typography variant="body2">أنثى</Typography>
+                                        </>
+                                      )}
+                                    </Stack>
+                                  </Box>
+                                </Stack>
+
+                                {/* Age & Weight */}
+                                <Stack direction="row" spacing={2}>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">العمر</Typography>
+                                    <Typography variant="body2" fontWeight="bold">{formatAge(age)}</Typography>
+                                    <Chip label={age.categoryAr} size="small" variant="outlined" color="secondary" sx={{ mt: 0.5 }} />
+                                  </Box>
+                                  {goat.weight && (
+                                    <Box>
+                                      <Typography variant="body2" color="text.secondary">الوزن</Typography>
+                                      <Typography variant="body2" fontWeight="bold">{goat.weight} كجم</Typography>
+                                    </Box>
+                                  )}
+                                </Stack>
+
+                                {/* Actions */}
+                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                  <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    color="success"
+                                    startIcon={<TransferIcon />}
+                                    onClick={() => {
+                                      setSelectedGoatForTransfer(goat)
+                                      setTransferDialogOpen(true)
+                                    }}
+                                  >
+                                    نقل
+                                  </Button>
+                                  <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    color="error"
+                                    onClick={() => handleRemoveGoat(goat.id)}
+                                  >
+                                    إخراج
+                                  </Button>
+                                  <Button 
+                                    size="small" 
+                                    color="info" 
+                                    startIcon={<FileIcon />}
+                                    onClick={() => handleViewGoat(goat)}
+                                  >
+                                    ملف
+                                  </Button>
+                                  <Button 
+                                    size="small" 
+                                    color="primary" 
+                                    startIcon={<EditIcon />}
+                                    onClick={() => handleEditGoat(goat)}
+                                  >
+                                    تعديل
+                                  </Button>
+                                </Stack>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </Stack>
+                  </Box>
+
+                  {/* Desktop Table View */}
+                  <TableContainer component={Paper} variant="outlined" sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'action.hover' }}>
@@ -1005,6 +1132,7 @@ export default function PensPage() {
                     </TableBody>
                   </Table>
                 </TableContainer>
+                </>
               ) : (
                 <Typography color="text.secondary" align="center" py={4} bgcolor="action.hover" borderRadius={2}>
                   هذه الحظيرة خالية حالياً

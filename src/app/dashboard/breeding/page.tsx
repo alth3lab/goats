@@ -779,7 +779,173 @@ export default function BreedingPage() {
         )}
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {loading ? (
+          <Paper sx={{ p: 3, textAlign: 'center' }}>جاري التحميل...</Paper>
+        ) : filteredRecords.length === 0 ? (
+          <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد نتائج</Paper>
+        ) : (
+          <Stack spacing={2}>
+            {filteredRecords.map(r => {
+              const daysRemaining = r.dueDate ? getDaysRemaining(r.dueDate) : null
+              const isUpcoming = r.pregnancyStatus === 'PREGNANT' && daysRemaining !== null && daysRemaining <= 14
+              const quickBirthEnabled = canOpenQuickBirth(r)
+              const quickBirthTooltip =
+                r.pregnancyStatus === 'DELIVERED'
+                  ? 'تم تسجيل الولادة لهذا السجل'
+                  : r.pregnancyStatus === 'FAILED'
+                    ? 'السجل بحالة فشل، لا يمكن تسجيل ولادة'
+                    : r.pregnancyStatus === 'MATED'
+                      ? 'يلزم تأكيد الحمل أولاً'
+                      : quickBirthEnabled
+                        ? 'تسجيل ولادة سريع'
+                        : `يتفعل قبل الولادة بـ ${QUICK_BIRTH_WINDOW_DAYS} يوم`
+              const statusIcons: Record<string, any> = {
+                MATED: <PendingIcon sx={{ fontSize: 16 }} />,
+                PREGNANT: <PregnantIcon sx={{ fontSize: 16 }} />,
+                DELIVERED: <SuccessIcon sx={{ fontSize: 16 }} />,
+                FAILED: <ErrorIcon sx={{ fontSize: 16 }} />
+              }
+              const statusColors: Record<string, any> = {
+                MATED: 'info',
+                PREGNANT: 'warning',
+                DELIVERED: 'success',
+                FAILED: 'error'
+              }
+              
+              return (
+                <Card 
+                  key={r.id}
+                  sx={{ 
+                    bgcolor: isUpcoming ? alpha(theme.palette.warning.main, 0.05) : 'inherit',
+                    border: selectedRecords.includes(r.id) ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+                    borderColor: selectedRecords.includes(r.id) ? 'primary.main' : 'divider'
+                  }}
+                >
+                  <CardContent>
+                    <Stack spacing={2}>
+                      {/* Header: Checkbox, Mother, Father */}
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Checkbox 
+                          checked={selectedRecords.includes(r.id)}
+                          onChange={() => handleToggleSelect(r.id)}
+                          sx={{ p: 0 }}
+                        />
+                        <Box flex={1}>
+                          <Typography variant="body2" color="text.secondary">الأم</Typography>
+                          <Typography variant="h6" fontWeight="bold">{r.mother.tagId}</Typography>
+                        </Box>
+                        <Box flex={1}>
+                          <Typography variant="body2" color="text.secondary">الأب</Typography>
+                          <Typography variant="h6" fontWeight="bold">{r.father.tagId}</Typography>
+                        </Box>
+                      </Stack>
+
+                      {/* Status & Date */}
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                        <Chip 
+                          icon={statusIcons[r.pregnancyStatus]}
+                          label={statusLabels[r.pregnancyStatus] || r.pregnancyStatus} 
+                          color={statusColors[r.pregnancyStatus] || 'default'}
+                          size="small"
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          التزاوج: {formatDate(r.matingDate)}
+                        </Typography>
+                      </Stack>
+
+                      {/* Due Date & Days Remaining */}
+                      {r.dueDate && (
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">الولادة المتوقعة</Typography>
+                            <Typography variant="body2" fontWeight="bold">{formatDate(r.dueDate)}</Typography>
+                          </Box>
+                          {daysRemaining !== null && (
+                            <Chip 
+                              label={
+                                daysRemaining > 0 
+                                  ? `${daysRemaining} يوم` 
+                                  : daysRemaining === 0 
+                                    ? '🎯 اليوم' 
+                                    : `⚠️ متأخر ${Math.abs(daysRemaining)} يوم`
+                              }
+                              color={daysRemaining > 7 ? 'success' : daysRemaining >= 0 ? 'warning' : 'error'}
+                              size="small"
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                          )}
+                        </Stack>
+                      )}
+
+                      {/* Kids & Notes */}
+                      <Stack direction="row" spacing={2}>
+                        {r.numberOfKids !== null && r.numberOfKids !== undefined && (
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">عدد المواليد</Typography>
+                            <Typography variant="body2" fontWeight="bold">{r.numberOfKids}</Typography>
+                          </Box>
+                        )}
+                        {r.notes && (
+                          <Box flex={1}>
+                            <Typography variant="body2" color="text.secondary">ملاحظات</Typography>
+                            <Typography variant="body2">{r.notes}</Typography>
+                          </Box>
+                        )}
+                      </Stack>
+
+                      {/* Actions */}
+                      <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                        <Tooltip title={quickBirthTooltip}>
+                          <span>
+                            <IconButton 
+                              size="small" 
+                              sx={{ 
+                                color: 'common.white',
+                                bgcolor: quickBirthEnabled ? (isUpcoming ? 'warning.main' : 'success.main') : 'action.disabledBackground',
+                                '&:hover': { bgcolor: quickBirthEnabled ? (isUpcoming ? 'warning.dark' : 'success.dark') : 'action.disabledBackground' }
+                              }}
+                              onClick={() => handleQuickBirth(r)}
+                              disabled={!quickBirthEnabled}
+                            >
+                              <BirthIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="عرض التفاصيل">
+                          <IconButton size="small" color="primary" onClick={() => handleView(r)}>
+                            <ViewIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="تعديل">
+                          <IconButton size="small" color="success" onClick={() => handleEdit(r)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="نقل الأم">
+                          <IconButton size="small" color="secondary" onClick={() => openTransferMotherDialog(r)}>
+                            <TransferIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="حذف">
+                          <IconButton size="small" color="error" onClick={() => handleDeleteClick(r)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow>
