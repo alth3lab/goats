@@ -239,16 +239,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           onClick={handleDrawerToggle}
           aria-label="فتح القائمة"
           sx={{
-            display: { xs: 'inline-flex', sm: 'none' },
+            display: { xs: mobileOpen ? 'none' : 'inline-flex', sm: 'none' },
             position: 'fixed',
             top: 'calc(env(safe-area-inset-top) + 10px)',
             right: 'calc(env(safe-area-inset-right) + 10px)',
-            zIndex: 9999,
+            zIndex: 1250,
             bgcolor: 'background.paper',
             color: 'text.primary',
             border: '1px solid',
             borderColor: 'divider',
             boxShadow: '0 4px 12px rgba(15,23,42,0.12)',
+            transition: 'opacity 0.2s',
             '&:hover': { bgcolor: 'action.hover' }
           }}
         >
@@ -352,7 +353,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
+          ModalProps={{ 
+            keepMounted: true,
+            slotProps: {
+              backdrop: {
+                sx: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                }
+              }
+            }
+          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
