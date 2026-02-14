@@ -23,16 +23,22 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  IconButton
+  IconButton,
+  Tooltip,
+  InputAdornment
 } from '@mui/material'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import {
   Add as AddIcon,
   Receipt as ExpensesIcon,
   Visibility as ViewIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon
 } from '@mui/icons-material'
 import { EntityHistory } from '@/components/EntityHistory'
+import { useNotifier } from '@/components/AppNotifier'
 
 interface Expense {
   id: string
@@ -55,10 +61,18 @@ const categoryLabels: Record<string, string> = {
 }
 
 export default function ExpensesPage() {
+  const { notify } = useNotifier()
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
   const [form, setForm] = useState({
     date: '',
@@ -67,37 +81,161 @@ export default function ExpensesPage() {
     amount: '',
     paymentMethod: ''
   })
+  const [editForm, setEditForm] = useState({
+    date: '',
+    category: 'FEED',
+    description: '',
+    amount: '',
+    paymentMethod: ''
+  })
 
   useEffect(() => {
-    fetch('/api/expenses')
-      .then(res => res.json())
-      .then(data => setExpenses(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false))
+    loadExpenses()
   }, [])
 
-  const handleSubmit = async () => {
-    await fetch('/api/expenses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: new Date(form.date),
-        category: form.category,
-        description: form.description,
-        amount: Number(form.amount),
-        paymentMethod: form.paymentMethod || null
-      })
-    })
+  useEffect(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) {
+      setFilteredExpenses(expenses)
+      return
+    }
 
-    setForm({ date: '', category: 'FEED', description: '', amount: '', paymentMethod: '' })
-    setOpen(false)
-    const res = await fetch('/api/expenses')
-    const data = await res.json()
-    setExpenses(Array.isArray(data) ? data : [])
+    setFilteredExpenses(
+      expenses.filter((expense) =>
+        expense.description.toLowerCase().includes(query) ||
+        (expense.paymentMethod || '').toLowerCase().includes(query) ||
+        (categoryLabels[expense.category] || expense.category).toLowerCase().includes(query)
+      )
+    )
+  }, [expenses, searchQuery])
+
+  const loadExpenses = async () => {
+    try {
+      const res = await fetch('/api/expenses')
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في جلب المصروفات' }))
+        notify(error.error || 'فشل في جلب المصروفات', { severity: 'error' })
+        setExpenses([])
+        return
+      }
+      const data = await res.json()
+      setExpenses(Array.isArray(data) ? data : [])
+    } catch {
+      notify('حدث خطأ في الاتصال بالخادم', { severity: 'error' })
+      setExpenses([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: new Date(form.date),
+          category: form.category,
+          description: form.description,
+          amount: Number(form.amount),
+          paymentMethod: form.paymentMethod || null
+        })
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في إضافة المصروف' }))
+        notify(error.error || 'فشل في إضافة المصروف', { severity: 'error' })
+        return
+      }
+
+      setForm({ date: '', category: 'FEED', description: '', amount: '', paymentMethod: '' })
+      setOpen(false)
+      notify('تمت إضافة المصروف بنجاح', { severity: 'success' })
+      await loadExpenses()
+    } catch {
+      notify('حدث خطأ أثناء إضافة المصروف', { severity: 'error' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleView = (expense: Expense) => {
     setSelectedExpense(expense)
     setViewOpen(true)
+  }
+
+  const handleEditOpen = (expense: Expense) => {
+    setSelectedExpense(expense)
+    setEditForm({
+      date: new Date(expense.date).toISOString().split('T')[0],
+      category: expense.category,
+      description: expense.description,
+      amount: expense.amount.toString(),
+      paymentMethod: expense.paymentMethod || ''
+    })
+    setEditOpen(true)
+  }
+
+  const handleEditSubmit = async () => {
+    if (!selectedExpense || editSubmitting) return
+    setEditSubmitting(true)
+    try {
+      const res = await fetch(`/api/expenses/${selectedExpense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: new Date(editForm.date),
+          category: editForm.category,
+          description: editForm.description,
+          amount: Number(editForm.amount),
+          paymentMethod: editForm.paymentMethod || null
+        })
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في تعديل المصروف' }))
+        notify(error.error || 'فشل في تعديل المصروف', { severity: 'error' })
+        return
+      }
+
+      setEditOpen(false)
+      setSelectedExpense(null)
+      notify('تم تعديل المصروف بنجاح', { severity: 'success' })
+      await loadExpenses()
+    } catch {
+      notify('حدث خطأ أثناء تعديل المصروف', { severity: 'error' })
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  const handleDeleteClick = (expense: Expense) => {
+    setSelectedExpense(expense)
+    setConfirmDeleteOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!selectedExpense || deletingId) return
+    setDeletingId(selectedExpense.id)
+    try {
+      const res = await fetch(`/api/expenses/${selectedExpense.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'فشل في حذف المصروف' }))
+        notify(error.error || 'فشل في حذف المصروف', { severity: 'error' })
+        return
+      }
+
+      setConfirmDeleteOpen(false)
+      setSelectedExpense(null)
+      notify('تم حذف المصروف بنجاح', { severity: 'success' })
+      await loadExpenses()
+    } catch {
+      notify('حدث خطأ أثناء حذف المصروف', { severity: 'error' })
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
@@ -112,6 +250,20 @@ export default function ExpensesPage() {
             إضافة مصروف
           </Button>
         </Stack>
+        <TextField
+          sx={{ mt: 2 }}
+          fullWidth
+          placeholder="بحث بالوصف أو الفئة أو طريقة الدفع..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            )
+          }}
+        />
       </Paper>
 
       <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
@@ -123,16 +275,16 @@ export default function ExpensesPage() {
               <TableCell><strong>الوصف</strong></TableCell>
               <TableCell><strong>المبلغ</strong></TableCell>
               <TableCell><strong>طريقة الدفع</strong></TableCell>
-              <TableCell><strong>التفاصيل</strong></TableCell>
+              <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={6} align="center">جاري التحميل...</TableCell></TableRow>
-            ) : expenses.length === 0 ? (
+            ) : filteredExpenses.length === 0 ? (
               <TableRow><TableCell colSpan={6} align="center">لا توجد بيانات</TableCell></TableRow>
             ) : (
-              expenses.map(e => (
+              filteredExpenses.map(e => (
                 <TableRow key={e.id} hover>
                   <TableCell>{formatDate(e.date)}</TableCell>
                   <TableCell>
@@ -142,9 +294,23 @@ export default function ExpensesPage() {
                   <TableCell>{formatCurrency(e.amount)}</TableCell>
                   <TableCell>{e.paymentMethod || '-'}</TableCell>
                   <TableCell>
-                    <IconButton color="primary" onClick={() => handleView(e)}>
-                      <ViewIcon />
-                    </IconButton>
+                    <Stack direction="row" spacing={0.5}>
+                      <Tooltip title="عرض">
+                        <IconButton color="primary" onClick={() => handleView(e)}>
+                          <ViewIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="تعديل">
+                        <IconButton color="success" onClick={() => handleEditOpen(e)}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="حذف">
+                        <IconButton color="error" onClick={() => handleDeleteClick(e)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))
@@ -201,7 +367,83 @@ export default function ExpensesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>إلغاء</Button>
-          <Button variant="contained" onClick={handleSubmit}>حفظ</Button>
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'جاري الحفظ...' : 'حفظ'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>تعديل مصروف</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="التاريخ"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={editForm.date}
+              onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+            />
+            <FormControl>
+              <InputLabel>الفئة</InputLabel>
+              <Select
+                value={editForm.category}
+                label="الفئة"
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+              >
+                <MenuItem value="FEED">علف</MenuItem>
+                <MenuItem value="MEDICINE">دواء</MenuItem>
+                <MenuItem value="VETERINARY">بيطري</MenuItem>
+                <MenuItem value="EQUIPMENT">معدات</MenuItem>
+                <MenuItem value="LABOR">عمالة</MenuItem>
+                <MenuItem value="UTILITIES">مرافق</MenuItem>
+                <MenuItem value="MAINTENANCE">صيانة</MenuItem>
+                <MenuItem value="OTHER">أخرى</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="الوصف"
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+            />
+            <TextField
+              label="المبلغ"
+              type="number"
+              value={editForm.amount}
+              onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+            />
+            <TextField
+              label="طريقة الدفع"
+              value={editForm.paymentMethod}
+              onChange={(e) => setEditForm({ ...editForm, paymentMethod: e.target.value })}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>إلغاء</Button>
+          <Button variant="contained" onClick={handleEditSubmit} disabled={editSubmitting}>
+            {editSubmitting ? 'جاري الحفظ...' : 'حفظ التعديل'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>تأكيد حذف المصروف</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mt: 1 }}>
+            هل أنت متأكد من حذف هذا المصروف؟
+          </Typography>
+          {selectedExpense && (
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
+              {selectedExpense.description} - {formatCurrency(selectedExpense.amount)}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDeleteOpen(false)}>إلغاء</Button>
+          <Button color="error" variant="contained" onClick={handleDelete} disabled={Boolean(deletingId)}>
+            {deletingId ? 'جاري الحذف...' : 'حذف'}
+          </Button>
         </DialogActions>
       </Dialog>
 

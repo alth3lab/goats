@@ -53,7 +53,8 @@ import {
   ChildCare as ChildIcon,
   Error as ErrorIcon,
   Favorite as PregnantIcon,
-  Remove as RemoveIcon
+  Remove as RemoveIcon,
+  CompareArrows as TransferIcon
 } from '@mui/icons-material'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
@@ -110,9 +111,14 @@ export default function BreedingPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [quickBirthDialogOpen, setQuickBirthDialogOpen] = useState(false)
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [transferSubmitting, setTransferSubmitting] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<BreedingRecord | null>(null)
+  const [transferMotherRecord, setTransferMotherRecord] = useState<BreedingRecord | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [goats, setGoats] = useState<any[]>([]) // Using any to access full goat object properties
+  const [pens, setPens] = useState<any[]>([])
+  const [targetPenId, setTargetPenId] = useState('')
   const [inbreedingWarning, setInbreedingWarning] = useState<string | null>(null)
   
   // Search & Filter states
@@ -189,6 +195,12 @@ export default function BreedingPage() {
     const res = await fetch('/api/goats')
     const data = await res.json()
     setGoats(Array.isArray(data) ? data : [])
+  }
+
+  const loadPens = async () => {
+    const res = await fetch('/api/pens')
+    const data = await res.json()
+    setPens(Array.isArray(data) ? data : [])
   }
 
   const handleOpen = () => {
@@ -415,6 +427,43 @@ export default function BreedingPage() {
       }))
     })
     setQuickBirthDialogOpen(true)
+  }
+
+  const openTransferMotherDialog = async (record: BreedingRecord) => {
+    setTransferMotherRecord(record)
+    setTargetPenId('')
+    setTransferDialogOpen(true)
+    if (pens.length === 0) {
+      await loadPens()
+    }
+  }
+
+  const handleTransferMother = async () => {
+    if (!transferMotherRecord || !targetPenId || transferSubmitting) return
+
+    setTransferSubmitting(true)
+    try {
+      const response = await fetch(`/api/goats/${transferMotherRecord.motherId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ penId: targetPenId })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'فشل في نقل الأم إلى الحظيرة' }))
+        notify(errorData.error || 'فشل في نقل الأم إلى الحظيرة', { severity: 'error' })
+        return
+      }
+
+      notify('تم نقل الأم إلى الحظيرة بنجاح', { severity: 'success' })
+      setTransferDialogOpen(false)
+      setTransferMotherRecord(null)
+      setTargetPenId('')
+    } catch (error) {
+      notify('حدث خطأ أثناء نقل الأم', { severity: 'error' })
+    } finally {
+      setTransferSubmitting(false)
+    }
   }
 
   const handleAddKid = () => {
@@ -877,6 +926,11 @@ export default function BreedingPage() {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="نقل الأم إلى حظيرة أخرى">
+                          <IconButton size="small" color="secondary" onClick={() => openTransferMotherDialog(r)}>
+                            <TransferIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="حذف">
                           <IconButton size="small" color="error" onClick={() => handleDeleteClick(r)}>
                             <DeleteIcon />
@@ -1107,6 +1161,41 @@ export default function BreedingPage() {
           <Button onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
           <Button variant="contained" color="error" onClick={handleDelete}>
             حذف
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={transferDialogOpen} onClose={() => setTransferDialogOpen(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
+        <DialogTitle>نقل الأم إلى حظيرة</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2} mt={1}>
+            <Alert severity="info">
+              سيتم نقل الأم {transferMotherRecord?.mother.tagId || '-'} فقط.
+            </Alert>
+            <FormControl fullWidth>
+              <InputLabel>الحظيرة المستهدفة</InputLabel>
+              <Select
+                value={targetPenId}
+                label="الحظيرة المستهدفة"
+                onChange={(e) => setTargetPenId(e.target.value)}
+              >
+                {pens.map((pen) => {
+                  const capacityText = pen.capacity ? `${pen._count?.goats || 0}/${pen.capacity}` : `${pen._count?.goats || 0}/∞`
+                  const isFull = pen.capacity ? (pen._count?.goats || 0) >= pen.capacity : false
+                  return (
+                    <MenuItem key={pen.id} value={pen.id} disabled={isFull}>
+                      {pen.nameAr} ({capacityText})
+                    </MenuItem>
+                  )
+                })}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTransferDialogOpen(false)}>إلغاء</Button>
+          <Button variant="contained" onClick={handleTransferMother} disabled={!targetPenId || transferSubmitting}>
+            {transferSubmitting ? 'جاري النقل...' : 'نقل الأم'}
           </Button>
         </DialogActions>
       </Dialog>
