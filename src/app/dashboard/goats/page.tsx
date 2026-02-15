@@ -1098,8 +1098,122 @@ export default function GoatsPage() {
         </Box>
       </Paper>
 
-      {/* Grid or Table View */}
-      {isMobile || viewMode === 'grid' ? (
+      {/* Mobile Cards View */}
+      {isMobile ? (
+        <Box sx={{ mt: 2 }}>
+          <Stack spacing={2}>
+            {paginatedGoats.map((goat) => {
+              const age = calculateGoatAge(goat.birthDate)
+              const isSelected = selectedGoatIds.indexOf(goat.id) !== -1
+              return (
+                <Card 
+                  key={goat.id}
+                  sx={{ 
+                    borderRadius: 3,
+                    border: isSelected ? 2 : 1,
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    position: 'relative'
+                  }}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onChange={(event) => handleSelectOne(event, goat.id)}
+                    sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
+                  />
+                  <CardContent>
+                    <Stack spacing={2}>
+                      {/* Header */}
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pr: 5 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Chip 
+                            label={goat.tagId} 
+                            color="primary" 
+                            sx={{ fontSize: '1.1rem', fontWeight: 'bold', px: 2 }}
+                          />
+                          {goat.gender === 'MALE' ? (
+                            <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
+                          ) : (
+                            <FemaleIcon sx={{ color: femaleIconColor, fontSize: 32 }} />
+                          )}
+                        </Stack>
+                        <Chip 
+                          label={getStatusLabel(goat.status)} 
+                          color={getStatusColor(goat.status)} 
+                          size="small"
+                        />
+                      </Stack>
+
+                      {goat.name && (
+                        <Typography variant="h6" fontWeight="bold">{goat.name}</Typography>
+                      )}
+
+                      <Divider />
+
+                      {/* Details Grid */}
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">النوع</Typography>
+                          <Typography variant="body1" fontWeight="bold">{goat.breed.type.nameAr}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">السلالة</Typography>
+                          <Typography variant="body1">{goat.breed.nameAr}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">العمر</Typography>
+                          <Typography variant="body1">{age.years}س {age.months}ش {age.days}ي</Typography>
+                        </Grid>
+                        {goat.weight && (
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="text.secondary">الوزن</Typography>
+                            <Typography variant="body1" fontWeight="bold" color="primary.main">
+                              {goat.weight} كجم
+                            </Typography>
+                          </Grid>
+                        )}
+                        {goat.pen && (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" color="text.secondary">الحظيرة</Typography>
+                            <Chip label={goat.pen.nameAr} size="small" color="default" sx={{ mt: 0.5 }} />
+                          </Grid>
+                        )}
+                      </Grid>
+
+                      {age.totalMonths >= 3 && age.totalMonths < 5 && goat.status === 'ACTIVE' && (
+                        <Box>
+                          <Chip 
+                            label="🍼 جاهز للفطام" 
+                            color="warning" 
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        </Box>
+                      )}
+                    </Stack>
+                  </CardContent>
+                  <CardActions sx={{ justifyContent: 'flex-end', px: 2, gap: 0.5 }}>
+                    <IconButton size="small" color="info" onClick={() => handleView(goat)} title="عرض">
+                      <ViewIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="primary" onClick={() => handleEdit(goat)} title="تعديل">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    {goat.status === 'ACTIVE' && (
+                      <IconButton size="small" color="error" onClick={() => handleOpenDeathDialog(goat)} title="وفاة">
+                        <DeathIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    <IconButton size="small" color="warning" onClick={() => handleDeleteClick(goat)} title="حذف">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </CardActions>
+                </Card>
+              )
+            })}
+          </Stack>
+        </Box>
+      ) : viewMode === 'grid' ? (
+        /* Desktop Grid View */
         <Grid container spacing={3} sx={{ mt: 1 }}>
           {paginatedGoats.map((goat) => {
             const age = calculateGoatAge(goat.birthDate)
