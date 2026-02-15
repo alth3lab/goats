@@ -25,8 +25,14 @@ import {
   MenuItem,
   IconButton,
   Divider,
-  Checkbox
+  Checkbox,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Grid
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   Add as AddIcon,
   People as UsersIcon,
@@ -61,6 +67,8 @@ const roleLabels: Record<string, string> = {
 }
 
 export default function UsersPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { can } = useAuth()
   const canAddUser = can(actionPermissions.addUser)
   const canManagePermissions = can(actionPermissions.manageUserPermissions)
@@ -179,7 +187,61 @@ export default function UsersPage() {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <Stack spacing={2}>
+          {loading ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>جاري التحميل...</Paper>
+          ) : users.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد بيانات</Paper>
+          ) : (
+            users.map(u => (
+              <Card key={u.id} sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Header */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="h6" fontWeight="bold">{u.fullName}</Typography>
+                      <Chip label={u.isActive ? 'نشط' : 'معطل'} color={u.isActive ? 'success' : 'default'} size="small" />
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Details Grid */}
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">اسم المستخدم</Typography>
+                        <Typography variant="body1">{u.username}</Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">البريد الإلكتروني</Typography>
+                        <Typography variant="body1">{u.email}</Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">الدور</Typography>
+                        <Chip label={roleLabels[u.role] || u.role} color="secondary" size="small" sx={{ mt: 0.5 }} />
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end', px: 2 }}>
+                  <Button
+                    size="small"
+                    startIcon={<SecurityIcon />}
+                    onClick={() => handleOpenPermissions(u)}
+                    disabled={!canManagePermissions}
+                  >
+                    الصلاحيات
+                  </Button>
+                </CardActions>
+              </Card>
+            ))
+          )}
+        </Stack>
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

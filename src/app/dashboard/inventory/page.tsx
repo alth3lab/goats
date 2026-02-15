@@ -23,8 +23,15 @@ import {
   Grid,
   Alert,
   Tabs,
-  Tab
+  Tab,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Divider,
+  Stack
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -63,6 +70,8 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function InventoryPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [tabValue, setTabValue] = useState(0)
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -395,8 +404,89 @@ export default function InventoryPage() {
 }
 
 function InventoryTable({ items, onEdit, onTransaction }: any) {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  
   return (
-    <TableContainer sx={{ overflowX: 'auto' }}>
+    <>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <Stack spacing={2}>
+          {items.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد عناصر</Paper>
+          ) : (
+            items.map((item: any) => (
+              <Card key={item.id} sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Header */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Box>
+                        <Typography variant="h6" fontWeight="bold">{item.nameAr}</Typography>
+                        <Typography variant="caption" color="text.secondary">{item.nameEn}</Typography>
+                      </Box>
+                      <Chip
+                        label={CATEGORIES.find(c => c.value === item.category)?.label}
+                        size="small"
+                        color={
+                          item.category === 'MEDICINE' ? 'error' :
+                          item.category === 'VACCINE' ? 'warning' :
+                          item.category === 'EQUIPMENT' ? 'info' : 'default'
+                        }
+                      />
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Details Grid */}
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">الكمية الحالية</Typography>
+                        <Typography variant="h6" fontWeight="bold" color="primary.main">
+                          {item.currentStock} {item.unit}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">الحد الأدنى</Typography>
+                        <Typography variant="body1">{item.minStock} {item.unit}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">سعر الوحدة</Typography>
+                        <Typography variant="body1">{item.unitPrice || 0} درهم</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">الحالة</Typography>
+                        {item.currentStock <= item.minStock ? (
+                          <Chip
+                            icon={<WarningIcon />}
+                            label="نقص مخزون"
+                            color="error"
+                            size="small"
+                            sx={{ mt: 0.5 }}
+                          />
+                        ) : (
+                          <Chip label="جيد" color="success" size="small" sx={{ mt: 0.5 }} />
+                        )}
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end', px: 2 }}>
+                  <IconButton onClick={() => onTransaction(item)} color="primary" size="small">
+                    <SwapHorizIcon />
+                  </IconButton>
+                  <IconButton onClick={() => onEdit(item)} size="small">
+                    <EditIcon />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            ))
+          )}
+        </Stack>
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
       <Table>
         <TableHead>
           <TableRow>

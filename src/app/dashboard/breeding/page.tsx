@@ -104,7 +104,7 @@ const statusLabels: Record<string, string> = {
 export default function BreedingPage() {
   const theme = useTheme()
   const { notify } = useNotifier()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [records, setRecords] = useState<BreedingRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)

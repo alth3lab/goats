@@ -19,8 +19,14 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  useMediaQuery,
+  Card,
+  CardContent,
+  Grid,
+  Divider
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   History as HistoryIcon,
   Search as SearchIcon,
@@ -51,6 +57,8 @@ const actionColors: Record<string, 'default' | 'primary' | 'success' | 'warning'
 }
 
 export default function ActivitiesPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { can, loading: authLoading } = useAuth()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
@@ -204,7 +212,58 @@ export default function ActivitiesPage() {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <Stack spacing={2}>
+          {loading ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>جاري التحميل...</Paper>
+          ) : logs.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد سجلات</Paper>
+          ) : (
+            logs.map(log => (
+              <Card key={log.id} sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Header */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {log.user?.fullName || 'غير معروف'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {log.user?.username || '-'}
+                        </Typography>
+                      </Box>
+                      <Chip label={log.action} size="small" color={actionColors[log.action] || 'default'} />
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Details */}
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">الكيان</Typography>
+                        <Typography variant="body1">{log.entity}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">التاريخ</Typography>
+                        <Typography variant="body1">{formatDate(log.createdAt)}</Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">الوصف</Typography>
+                        <Typography variant="body1">{log.description}</Typography>
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </Stack>
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

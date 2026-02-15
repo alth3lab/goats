@@ -27,7 +27,12 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
-  useMediaQuery
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Grid,
+  Divider
 } from '@mui/material'
 import { useTheme, alpha } from '@mui/material/styles'
 import {
@@ -63,7 +68,7 @@ const typeLabels: Record<string, string> = {
 
 export default function HealthPage() {
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [records, setRecords] = useState<HealthRecord[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -281,7 +286,80 @@ export default function HealthPage() {
         />
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <Stack spacing={2}>
+          {loading ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>جاري التحميل...</Paper>
+          ) : filtered.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد بيانات</Paper>
+          ) : (
+            filtered.map(r => (
+              <Card key={r.id} sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Tag & Type */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="h6" fontWeight="bold">{r.goat.tagId}</Typography>
+                      <Chip label={typeLabels[r.type] || r.type} color="error" size="small" />
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Details Grid */}
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">التاريخ</Typography>
+                        <Typography variant="body1">{formatDate(r.date)}</Typography>
+                      </Grid>
+                      {r.nextDueDate && (
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">المستحق القادم</Typography>
+                          <Chip 
+                            label={formatDate(r.nextDueDate)} 
+                            size="small" 
+                            color={new Date(r.nextDueDate) <= new Date() ? 'warning' : 'default'} 
+                            variant="outlined"
+                            sx={{ mt: 0.5 }}
+                          />
+                        </Grid>
+                      )}
+                      {r.description && (
+                        <Grid item xs={12}>
+                          <Typography variant="body2" color="text.secondary">الوصف</Typography>
+                          <Typography variant="body1">{r.description}</Typography>
+                        </Grid>
+                      )}
+                      {r.veterinarian && (
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">الطبيب</Typography>
+                          <Typography variant="body1">{r.veterinarian}</Typography>
+                        </Grid>
+                      )}
+                      {r.cost && (
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">التكلفة</Typography>
+                          <Typography variant="body1" fontWeight="bold" color="primary.main">
+                            {r.cost.toFixed(2)} ريال
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Stack>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end', px: 2 }}>
+                  <Button size="small" onClick={() => { setSelectedRecord(r); setViewOpen(true); }}>
+                    التفاصيل
+                  </Button>
+                </CardActions>
+              </Card>
+            ))
+          )}
+        </Stack>
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

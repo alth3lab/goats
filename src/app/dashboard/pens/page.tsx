@@ -112,7 +112,7 @@ export default function PensPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState('ALL')
   const [filterStatus, setFilterStatus] = useState('ALL')
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(isMobile ? 'grid' : 'list')
   const [selectedGoatsForBulk, setSelectedGoatsForBulk] = useState<Set<string>>(new Set())
   const [bulkTransferDialogOpen, setBulkTransferDialogOpen] = useState(false)
   const [bulkTargetPenId, setBulkTargetPenId] = useState('')

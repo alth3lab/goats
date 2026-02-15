@@ -25,8 +25,15 @@ import {
   MenuItem,
   IconButton,
   Tooltip,
-  InputAdornment
+  InputAdornment,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Grid,
+  Divider
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import {
   Add as AddIcon,
@@ -61,6 +68,8 @@ const categoryLabels: Record<string, string> = {
 }
 
 export default function ExpensesPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { notify } = useNotifier()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
@@ -266,7 +275,67 @@ export default function ExpensesPage() {
         />
       </Paper>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+      {/* Mobile Cards View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        <Stack spacing={2}>
+          {loading ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>جاري التحميل...</Paper>
+          ) : filteredExpenses.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>لا توجد بيانات</Paper>
+          ) : (
+            filteredExpenses.map(e => (
+              <Card key={e.id} sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    {/* Header */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Chip label={categoryLabels[e.category] || e.category} size="small" color="warning" />
+                      <Typography variant="body2" color="text.secondary">{formatDate(e.date)}</Typography>
+                    </Stack>
+
+                    <Divider />
+
+                    {/* Details */}
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">الوصف</Typography>
+                      <Typography variant="body1">{e.description}</Typography>
+                    </Box>
+
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">المبلغ</Typography>
+                        <Typography variant="h6" fontWeight="bold" color="error.main">
+                          {formatCurrency(e.amount)}
+                        </Typography>
+                      </Grid>
+                      {e.paymentMethod && (
+                        <Grid item xs={6}>
+                          <Typography variant="body2" color="text.secondary">طريقة الدفع</Typography>
+                          <Typography variant="body1">{e.paymentMethod}</Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Stack>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end', px: 2 }}>
+                  <IconButton size="small" color="primary" onClick={() => handleView(e)}>
+                    <ViewIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" color="success" onClick={() => handleEditOpen(e)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" color="error" onClick={() => handleDeleteClick(e)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            ))
+          )}
+        </Stack>
+      </Box>
+
+      {/* Desktop Table View */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 3, overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

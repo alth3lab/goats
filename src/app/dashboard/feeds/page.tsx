@@ -142,7 +142,7 @@ type View = 'today' | 'stock' | 'schedules'
 
 export default function FeedsPage() {
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const categoryColors = useMemo<Record<string, string>>(() => ({
     HAY: theme.palette.warning.dark,
     GRAINS: theme.palette.warning.main,
