@@ -919,24 +919,26 @@ export default function GoatsPage() {
               >
                 Excel
               </Button>
-              <Button
-                variant={viewMode === 'table' ? 'contained' : 'outlined'}
-                size="small"
-                startIcon={<ListViewIcon />}
-                onClick={() => setViewMode('table')}
-                fullWidth={isMobile}
-              >
-                جدول
-              </Button>
-              <Button
-                variant={viewMode === 'grid' ? 'contained' : 'outlined'}
-                size="small"
-                startIcon={<GridViewIcon />}
-                onClick={() => setViewMode('grid')}
-                fullWidth={isMobile}
-              >
-                شبكة
-              </Button>
+              {!isMobile && (
+                <>
+                  <Button
+                    variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                    size="small"
+                    startIcon={<ListViewIcon />}
+                    onClick={() => setViewMode('table')}
+                  >
+                    جدول
+                  </Button>
+                  <Button
+                    variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+                    size="small"
+                    startIcon={<GridViewIcon />}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    شبكة
+                  </Button>
+                </>
+              )}
               {selectedGoatIds.length > 0 && (
                 <Button 
                    variant="contained" 
@@ -1097,7 +1099,7 @@ export default function GoatsPage() {
       </Paper>
 
       {/* Grid or Table View */}
-      {viewMode === 'grid' ? (
+      {isMobile || viewMode === 'grid' ? (
         <Grid container spacing={3} sx={{ mt: 1 }}>
           {paginatedGoats.map((goat) => {
             const age = calculateGoatAge(goat.birthDate)
