@@ -114,6 +114,120 @@ export async function PUT(
       where: { id },
       data: body
     })
+    
+    // مزامنة تلقائية مع التقويم
+    const prismaAny = prisma as any
+    try {
+      // 1. إذا تغير dueDate أو تمت إضافته
+      if (body.dueDate !== undefined && body.dueDate !== existing.dueDate) {
+        // البحث عن حدث الولادة المتوقعة الموجود باستخدام breedingId
+        const existingBirthEvent = await prismaAny.calendarEvent.findFirst({
+          where: {
+            breedingId: id,
+            eventType: 'BIRTH'
+          }
+        })
+        
+        if (body.dueDate) {
+          // إذا كان هناك dueDate جديد
+          if (existingBirthEvent) {
+            // تحديث الحدث الموجود
+            await prismaAny.calendarEvent.update({
+              where: { id: existingBirthEvent.id },
+              data: {
+                date: body.dueDate,
+                title: `ولادة متوقعة: ${existing.mother.tagId}`,
+                description: `ولادة متوقعة من سجل التكاثر رقم ${record.id}`,
+                isCompleted: false
+              }
+            })
+          } else {
+            // إنشاء حدث جديد
+            await prismaAny.calendarEvent.create({
+              data: {
+                eventType: 'BIRTH',
+                title: `ولادة متوقعة: ${existing.mother.tagId}`,
+                description: `ولادة متوقعة من سجل التكاثر رقم ${record.id}`,
+                date: body.dueDate,
+                goatId: existing.motherId,
+                breedingId: id,
+                reminder: true,
+                createdBy: userId
+              }
+            })
+          }
+        } else if (existingBirthEvent) {
+          // إذا تم حذف dueDate، احذف الحدث
+          await prismaAny.calendarEvent.delete({
+            where: { id: existingBirthEvent.id }
+          })
+        }
+      }
+      
+      // 2. إذا تغيرت الحالة إلى DELIVERED
+      if (body.pregnancyStatus === 'DELIVERED' && existing.pregnancyStatus !== 'DELIVERED') {
+        // البحث عن حدث الولادة المتوقعة باستخدام breedingId
+        const birthEvent = await prismaAny.calendarEvent.findFirst({
+          where: {
+            breedingId: id,
+            eventType: 'BIRTH'
+          }
+        })
+        
+        if (birthEvent) {
+          // تحديث الحدث ليكون مكتمل بدلاً من حذفه
+          await prismaAny.calendarEvent.update({
+            where: { id: birthEvent.id },
+            data: {
+              isCompleted: true,
+              title: `ولادة: ${existing.mother.tagId}`,
+              date: body.birthDate || birthEvent.date,
+              description: `ولادة فعلية من سجل التكاثر رقم ${record.id}`
+            }
+          })
+        } else if (body.birthDate) {
+          // إنشاء حدث ولادة فعلية إذا لم يكن هناك حدث متوقع
+          await prismaAny.calendarEvent.create({
+            data: {
+              eventType: 'BIRTH',
+              title: `ولادة: ${existing.mother.tagId}`,
+              description: `ولادة فعلية من سجل التكاثر رقم ${record.id}`,
+              date: body.birthDate,
+              goatId: existing.motherId,
+              breedingId: id,
+              isCompleted: true,
+              createdBy: userId
+            }
+          })
+        }
+      }
+      
+      // 3. إذا تغيرت الحالة من DELIVERED إلى شيء آخر (إعادة فتح السجل)
+      if (existing.pregnancyStatus === 'DELIVERED' && body.pregnancyStatus !== 'DELIVERED') {
+        const birthEvent = await prismaAny.calendarEvent.findFirst({
+          where: {
+            breedingId: id,
+            eventType: 'BIRTH'
+          }
+        })
+        
+        if (birthEvent && birthEvent.isCompleted) {
+          // إرجاع الحدث لحالة غير مكتمل
+          await prismaAny.calendarEvent.update({
+            where: { id: birthEvent.id },
+            data: {
+              isCompleted: false,
+              title: `ولادة متوقعة: ${existing.mother.tagId}`,
+              date: body.dueDate || birthEvent.date
+            }
+          })
+        }
+      }
+    } catch (calendarError) {
+      console.error('Failed to sync calendar:', calendarError)
+      // لا نفشل العملية الأساسية إذا فشلت مزامنة التقويم
+    }
+    
     await logActivity({
       userId: userId || undefined,
       action: 'UPDATE',
@@ -140,6 +254,18 @@ export async function DELETE(
 
     const { id } = await params
     const userId = getUserIdFromRequest(request)
+    
+    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل
+    const prismaAny = prisma as any
+    try {
+      await prismaAny.calendarEvent.deleteMany({
+        where: { breedingId: id }
+      })
+    } catch (calendarError) {
+      console.error('Failed to delete calendar events:', calendarError)
+      // نكمل عملية الحذف حتى لو فشل حذف أحداث التقويم
+    }
+    
     const record = await prisma.breeding.delete({
       where: { id }
     })

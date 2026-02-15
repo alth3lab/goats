@@ -100,23 +100,35 @@ export async function POST(request: NextRequest) {
           description: `سجل تكاثر رقم ${record.id}`,
           date: record.matingDate,
           goatId: record.motherId,
+          breedingId: record.id,
           createdBy: userId
         }
       })
 
       // إنشاء حدث ولادة متوقعة إذا كان هناك تاريخ استحقاق
       if (record.dueDate) {
-        await prismaAny.calendarEvent.create({
-          data: {
-            eventType: 'BIRTH',
-            title: `ولادة متوقعة: ${record.mother.tagId}`,
-            description: `ولادة متوقعة من سجل التكاثر رقم ${record.id}`,
-            date: record.dueDate,
-            goatId: record.motherId,
-            reminder: true,
-            createdBy: userId
+        // التحقق من عدم وجود حدث ولادة مسبق لنفس سجل التكاثر
+        const existingBirthEvent = await prismaAny.calendarEvent.findFirst({
+          where: {
+            breedingId: record.id,
+            eventType: 'BIRTH'
           }
         })
+        
+        if (!existingBirthEvent) {
+          await prismaAny.calendarEvent.create({
+            data: {
+              eventType: 'BIRTH',
+              title: `ولادة متوقعة: ${record.mother.tagId}`,
+              description: `ولادة متوقعة من سجل التكاثر رقم ${record.id}`,
+              date: record.dueDate,
+              goatId: record.motherId,
+              breedingId: record.id,
+              reminder: true,
+              createdBy: userId
+            }
+          })
+        }
       }
     } catch (calendarError) {
       console.error('Failed to create calendar event:', calendarError)
