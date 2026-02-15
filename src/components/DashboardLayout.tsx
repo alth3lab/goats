@@ -326,27 +326,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Toolbar>
       </AppBar>
 
-      {!mobileOpen && (
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          onClick={handleDrawerToggle}
-          sx={{
-            display: { xs: 'inline-flex', sm: 'none' },
-            position: 'fixed',
-            top: 'calc(env(safe-area-inset-top) + 10px)',
-            right: 'calc(env(safe-area-inset-right) + 10px)',
-            zIndex: (theme) => theme.zIndex.modal + 220,
-            bgcolor: 'background.paper',
-            border: '1px solid',
-            borderColor: 'divider',
-            boxShadow: '0 6px 14px rgba(0,0,0,0.12)'
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-      )}
-
       <Box
         component="nav"
         sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
