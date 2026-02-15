@@ -58,7 +58,8 @@ import {
   Warning as WarningIcon,
   TrendingUp as TrendingUpIcon,
   Scale as ScaleIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  BabyChangingStation as PregnantIcon
 } from '@mui/icons-material'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -94,6 +95,8 @@ interface Goat {
     category: string
     formatted: string
   }
+  pregnancyStatus?: 'PREGNANT' | 'CONFIRMED' | null
+  dueDate?: string | null
 }
 
 interface FamilyMember {
@@ -605,6 +608,14 @@ export default function GoatsPage() {
     const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
 
     return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen
+  }).sort((a, b) => {
+    // ترتيب تنازلي حسب تاريخ الولادة المتوقع (الماعز الحوامل أولاً)
+    if (a.dueDate && b.dueDate) {
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    }
+    if (a.dueDate && !b.dueDate) return -1
+    if (!a.dueDate && b.dueDate) return 1
+    return 0
   })
 
   const paginatedGoats = filteredGoats.slice(
@@ -1179,6 +1190,24 @@ export default function GoatsPage() {
                         )}
                       </Grid>
 
+                      {/* حالة الحمل للإناث */}
+                      {goat.gender === 'FEMALE' && goat.pregnancyStatus && (
+                        <Box>
+                          <Chip 
+                            icon={<PregnantIcon />}
+                            label={goat.pregnancyStatus === 'PREGNANT' || goat.pregnancyStatus === 'CONFIRMED' ? '🤰 حامل' : ''}
+                            color="secondary" 
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                          {goat.dueDate && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              موعد الولادة: {new Date(goat.dueDate).toLocaleDateString('en-GB')}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+
                       {age.totalMonths >= 3 && age.totalMonths < 5 && goat.status === 'ACTIVE' && (
                         <Box>
                           <Chip 
@@ -1283,21 +1312,34 @@ export default function GoatsPage() {
                         )}
                       </Stack>
                       
-                      <Stack direction="row" justifyContent="center">
+                      <Stack direction="row" justifyContent="center" flexWrap="wrap" gap={0.5}>
                         <Chip 
                           label={getStatusLabel(goat.status)} 
                           color={getStatusColor(goat.status)} 
                           size="small"
                         />
+                        {goat.gender === 'FEMALE' && goat.pregnancyStatus && (
+                          <Chip 
+                            icon={<PregnantIcon />}
+                            label="حامل"
+                            color="secondary" 
+                            size="small"
+                          />
+                        )}
                         {age.totalMonths >= 3 && age.totalMonths < 5 && goat.status === 'ACTIVE' && (
                           <Chip 
                             label="جاهز للفطام" 
                             color="warning" 
                             size="small"
-                            sx={{ ml: 1 }}
                           />
                         )}
                       </Stack>
+                      
+                      {goat.gender === 'FEMALE' && goat.dueDate && (
+                        <Typography variant="caption" color="text.secondary" align="center">
+                          موعد الولادة: {new Date(goat.dueDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+                        </Typography>
+                      )}
                     </Stack>
                   </CardContent>
                   <CardActions sx={{ justifyContent: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -1335,12 +1377,10 @@ export default function GoatsPage() {
                 />
               </TableCell>
               <TableCell><strong>رقم التاج</strong></TableCell>
-              <TableCell><strong>الاسم</strong></TableCell>
-              <TableCell><strong>النوع</strong></TableCell>
               <TableCell><strong>السلالة</strong></TableCell>
               <TableCell><strong>الجنس</strong></TableCell>
+              <TableCell><strong>الحمل</strong></TableCell>
               <TableCell><strong>العمر</strong></TableCell>
-              <TableCell><strong>الوزن</strong></TableCell>
               <TableCell><strong>الحظيرة</strong></TableCell>
               <TableCell><strong>الحالة</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
@@ -1349,11 +1389,11 @@ export default function GoatsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} align="center">جاري التحميل...</TableCell>
+                <TableCell colSpan={9} align="center">جاري التحميل...</TableCell>
               </TableRow>
             ) : filteredGoats.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} align="center">لا توجد بيانات</TableCell>
+                <TableCell colSpan={9} align="center">لا توجد بيانات</TableCell>
               </TableRow>
             ) : (
               paginatedGoats.map((goat) => (
@@ -1368,8 +1408,6 @@ export default function GoatsPage() {
                   <TableCell>
                     <Chip label={goat.tagId} color="primary" size="small" />
                   </TableCell>
-                  <TableCell>{goat.name || '-'}</TableCell>
-                  <TableCell>{goat.breed.type.nameAr}</TableCell>
                   <TableCell>{goat.breed.nameAr}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -1387,6 +1425,23 @@ export default function GoatsPage() {
                     </Stack>
                   </TableCell>
                   <TableCell>
+                    {goat.gender === 'FEMALE' && goat.pregnancyStatus ? (
+                      <Stack spacing={0.5} alignItems="center">
+                        <Chip 
+                          icon={<PregnantIcon />}
+                          label="🤰 حامل"
+                          color="secondary"
+                          size="small"
+                        />
+                        {goat.dueDate && (
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(goat.dueDate).toLocaleDateString('en-GB')}
+                          </Typography>
+                        )}
+                      </Stack>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell>
                     {goat.age ? (
                       <Stack>
                         <Typography variant="body2" fontWeight="bold">
@@ -1401,7 +1456,6 @@ export default function GoatsPage() {
                       </Stack>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>{goat.weight ? `${goat.weight} كجم` : '-'}</TableCell>
                   <TableCell>
                     {goat.pen ? (
                       <Chip label={goat.pen.nameAr} size="small" variant="outlined" />

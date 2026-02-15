@@ -27,14 +27,24 @@ export async function GET(request: NextRequest) {
         healthRecords: {
           take: 5,
           orderBy: { date: 'desc' }
+        },
+        // إضافة سجلات التكاثر للأمهات
+        breedingAsMother: {
+          where: {
+            pregnancyStatus: 'PREGNANT'
+          },
+          orderBy: { matingDate: 'desc' },
+          take: 1
         }
       },
       orderBy: { createdAt: 'desc' }
     })
     
-    // إضافة معلومات العمر لكل ماعز
+    // إضافة معلومات العمر وحالة الحمل لكل ماعز
     const goatsWithAge = goats.map(goat => {
       const age = calculateGoatAge(goat.birthDate)
+      const currentBreeding = goat.breedingAsMother && goat.breedingAsMother.length > 0 ? goat.breedingAsMother[0] : null
+      
       return {
         ...goat,
         age: {
@@ -44,7 +54,9 @@ export async function GET(request: NextRequest) {
           totalMonths: age.totalMonths,
           category: age.categoryAr,
           formatted: formatAge(age)
-        }
+        },
+        pregnancyStatus: currentBreeding ? currentBreeding.pregnancyStatus : null,
+        dueDate: currentBreeding ? currentBreeding.dueDate : null
       }
     })
     
