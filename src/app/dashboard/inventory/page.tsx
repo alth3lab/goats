@@ -549,5 +549,6 @@ function InventoryTable({ items, onEdit, onTransaction }: any) {
         </TableBody>
       </Table>
     </TableContainer>
+    </>
   )
 }
