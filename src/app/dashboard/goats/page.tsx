@@ -114,6 +114,37 @@ interface FamilyMember {
 const maleIconColor = 'info.main'
 const femaleIconColor = '#EC4899'
 
+// دالة لحساب الأيام المتبقية للولادة
+const getDaysRemaining = (dueDate: string | null) => {
+  if (!dueDate) return null
+  const today = new Date()
+  const due = new Date(dueDate)
+  const diffTime = due.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays
+}
+
+// دالة لتحديد لون chip الحمل حسب القرب من الموعد
+const getPregnancyColor = (daysRemaining: number | null): 'success' | 'warning' | 'error' | 'secondary' => {
+  if (daysRemaining === null) return 'secondary'
+  if (daysRemaining < 0) return 'error' // متأخرة
+  if (daysRemaining <= 7) return 'error' // أقل من أسبوع
+  if (daysRemaining <= 30) return 'warning' // أقل من شهر
+  return 'success' // أكثر من شهر
+}
+
+// دالة لصياغة رسالة الأيام المتبقية
+const formatDaysRemaining = (days: number | null): string => {
+  if (days === null) return ''
+  if (days < 0) return `متأخرة ${Math.abs(days)} يوم`
+  if (days === 0) return 'اليوم!'
+  if (days === 1) return 'غداً'
+  if (days <= 7) return `${days} أيام متبقية`
+  if (days <= 30) return `${days} يوم متبقي`
+  const weeks = Math.floor(days / 7)
+  return `${weeks} أسبوع متبقي`
+}
+
 const GoatNode = ({ member, label, color = "default" }: { member?: FamilyMember | null | Goat, label: string, color?: "default" | "primary" | "secondary" }) => (
   <Paper 
     elevation={member ? 2 : 0} 
@@ -191,6 +222,7 @@ export default function GoatsPage() {
   const [filterType, setFilterType] = useState('ALL')
   const [filterBreed, setFilterBreed] = useState('ALL')
   const [filterPen, setFilterPen] = useState('ALL')
+  const [filterPregnant, setFilterPregnant] = useState(false)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [form, setForm] = useState({
@@ -215,7 +247,7 @@ export default function GoatsPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen])
+  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant])
 
   // Calculate statistics
   const activeGoats = goats.filter(g => ['ACTIVE', 'QUARANTINE'].includes(g.status))
@@ -606,8 +638,11 @@ export default function GoatsPage() {
     const matchesType = filterType === 'ALL' || goat.breed.type.id === filterType
     const matchesBreed = filterBreed === 'ALL' || goat.breed.id === filterBreed
     const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
+    
+    // Pregnancy filter
+    const matchesPregnancy = !filterPregnant || (goat.gender === 'FEMALE' && goat.pregnancyStatus)
 
-    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen
+    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesPregnancy
   }).sort((a, b) => {
     // ترتيب تنازلي حسب تاريخ الولادة المتوقع (الماعز الحوامل أولاً)
     if (a.dueDate && b.dueDate) {
@@ -627,6 +662,18 @@ export default function GoatsPage() {
   const weaningCandidates = goats.filter(g => {
     const age = calculateGoatAge(g.birthDate)
     return g.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
+  }).length
+  
+  const pregnantGoats = goats.filter(g => g.gender === 'FEMALE' && g.pregnancyStatus).length
+  const upcomingBirths = goats.filter(g => {
+    if (!g.dueDate || g.gender !== 'FEMALE') return false
+    const days = getDaysRemaining(g.dueDate)
+    return days !== null && days >= 0 && days <= 7
+  }).length
+  const overdueBirths = goats.filter(g => {
+    if (!g.dueDate || g.gender !== 'FEMALE') return false
+    const days = getDaysRemaining(g.dueDate)
+    return days !== null && days < 0
   }).length
 
   const handleOpenDeathDialog = (goat: Goat) => {
@@ -864,6 +911,34 @@ export default function GoatsPage() {
                 </Typography>
               </Paper>
             )}
+            
+            {upcomingBirths > 0 && (
+              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'warning.main', cursor: 'pointer' }} onClick={() => setFilterPregnant(true)}>
+                <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                  <PregnantIcon sx={{ color: 'warning.main' }} />
+                  <Typography variant="subtitle1" fontWeight="bold" color="warning.dark">
+                    ولادات قريبة
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  يوجد {upcomingBirths} ماعز متوقع ولادتها خلال 7 أيام. انقر للعرض.
+                </Typography>
+              </Paper>
+            )}
+            
+            {overdueBirths > 0 && (
+              <Paper sx={{ p: 2, bgcolor: 'error.light', border: '1px solid', borderColor: 'error.main', cursor: 'pointer' }} onClick={() => setFilterPregnant(true)}>
+                <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                  <WarningIcon color="error" />
+                  <Typography variant="subtitle1" fontWeight="bold" color="error.main">
+                    ولادات متأخرة
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  يوجد {overdueBirths} ماعز تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
+                </Typography>
+              </Paper>
+            )}
 
             {stats.quarantine > 0 && (
               <Paper sx={{ p: 2, bgcolor: 'error.light' }}>
@@ -896,6 +971,23 @@ export default function GoatsPage() {
          >
            <AlertTitle>تنبيه الفطام</AlertTitle>
            يوجد <strong>{weaningCandidates}</strong> مواليد جاهزون للفطام (عمر 3-5 أشهر).
+         </Alert>
+      )}
+      
+      {pregnantGoats > 0 && (
+         <Alert 
+           severity="success" 
+           sx={{ mb: 2, cursor: 'pointer' }}
+           onClick={() => setFilterPregnant(true)}
+           action={
+             <Button color="inherit" size="small" onClick={() => setFilterPregnant(true)}>
+               عرض الحوامل ({pregnantGoats})
+             </Button>
+           }
+         >
+           <AlertTitle>الماعز الحوامل</AlertTitle>
+           يوجد <strong>{pregnantGoats}</strong> ماعز حامل 
+           {upcomingBirths > 0 && <>, منها <strong>{upcomingBirths}</strong> متوقع ولادتها خلال أسبوع</>}.
          </Alert>
       )}
 
@@ -1011,14 +1103,27 @@ export default function GoatsPage() {
 
         {/* Advanced Filters */}
         <Box mt={2}>
-          <Button
-            size="small"
-            variant="text"
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            startIcon={<FilterIcon />}
-          >
-            {showAdvancedFilters ? 'إخفاء' : 'عرض'} الفلاتر المتقدمة
-          </Button>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              startIcon={<FilterIcon />}
+            >
+              {showAdvancedFilters ? 'إخفاء' : 'عرض'} الفلاتر المتقدمة
+            </Button>
+            
+            {pregnantGoats > 0 && (
+              <Chip 
+                icon={<PregnantIcon />}
+                label={`الحوامل فقط (${pregnantGoats})`}
+                color={filterPregnant ? 'secondary' : 'default'}
+                onClick={() => setFilterPregnant(!filterPregnant)}
+                onDelete={filterPregnant ? () => setFilterPregnant(false) : undefined}
+                sx={{ cursor: 'pointer' }}
+              />
+            )}
+          </Stack>
           
           {showAdvancedFilters && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -1191,20 +1296,26 @@ export default function GoatsPage() {
                       </Grid>
 
                       {/* حالة الحمل للإناث */}
-                      {goat.gender === 'FEMALE' && goat.pregnancyStatus && (
+                      {goat.gender === 'FEMALE' && goat.pregnancyStatus && goat.dueDate && (
                         <Box>
-                          <Chip 
-                            icon={<PregnantIcon />}
-                            label={goat.pregnancyStatus === 'PREGNANT' || goat.pregnancyStatus === 'CONFIRMED' ? '🤰 حامل' : ''}
-                            color="secondary" 
-                            size="small"
-                            sx={{ fontWeight: 'bold' }}
-                          />
-                          {goat.dueDate && (
-                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                              موعد الولادة: {new Date(goat.dueDate).toLocaleDateString('en-GB')}
-                            </Typography>
-                          )}
+                          {(() => {
+                            const daysRemaining = getDaysRemaining(goat.dueDate)
+                            const chipColor = getPregnancyColor(daysRemaining)
+                            return (
+                              <>
+                                <Chip 
+                                  icon={<PregnantIcon />}
+                                  label={'🤰 حامل'}
+                                  color={chipColor}
+                                  size="small"
+                                  sx={{ fontWeight: 'bold' }}
+                                />
+                                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                  {formatDaysRemaining(daysRemaining)} • {new Date(goat.dueDate).toLocaleDateString('en-GB')}
+                                </Typography>
+                              </>
+                            )
+                          })()}
                         </Box>
                       )}
 
@@ -1318,14 +1429,18 @@ export default function GoatsPage() {
                           color={getStatusColor(goat.status)} 
                           size="small"
                         />
-                        {goat.gender === 'FEMALE' && goat.pregnancyStatus && (
-                          <Chip 
-                            icon={<PregnantIcon />}
-                            label="حامل"
-                            color="secondary" 
-                            size="small"
-                          />
-                        )}
+                        {goat.gender === 'FEMALE' && goat.pregnancyStatus && goat.dueDate && (() => {
+                          const daysRemaining = getDaysRemaining(goat.dueDate)
+                          const chipColor = getPregnancyColor(daysRemaining)
+                          return (
+                            <Chip 
+                              icon={<PregnantIcon />}
+                              label="حامل"
+                              color={chipColor}
+                              size="small"
+                            />
+                          )
+                        })()}
                         {age.totalMonths >= 3 && age.totalMonths < 5 && goat.status === 'ACTIVE' && (
                           <Chip 
                             label="جاهز للفطام" 
@@ -1335,11 +1450,14 @@ export default function GoatsPage() {
                         )}
                       </Stack>
                       
-                      {goat.gender === 'FEMALE' && goat.dueDate && (
-                        <Typography variant="caption" color="text.secondary" align="center">
-                          موعد الولادة: {new Date(goat.dueDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
-                        </Typography>
-                      )}
+                      {goat.gender === 'FEMALE' && goat.dueDate && (() => {
+                        const daysRemaining = getDaysRemaining(goat.dueDate)
+                        return (
+                          <Typography variant="caption" color="text.secondary" align="center">
+                            {formatDaysRemaining(daysRemaining)} • {new Date(goat.dueDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+                          </Typography>
+                        )
+                      })()}
                     </Stack>
                   </CardContent>
                   <CardActions sx={{ justifyContent: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -1425,19 +1543,28 @@ export default function GoatsPage() {
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    {goat.gender === 'FEMALE' && goat.pregnancyStatus ? (
+                    {goat.gender === 'FEMALE' && goat.pregnancyStatus && goat.dueDate ? (
                       <Stack spacing={0.5} alignItems="center">
-                        <Chip 
-                          icon={<PregnantIcon />}
-                          label="🤰 حامل"
-                          color="secondary"
-                          size="small"
-                        />
-                        {goat.dueDate && (
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(goat.dueDate).toLocaleDateString('en-GB')}
-                          </Typography>
-                        )}
+                        {(() => {
+                          const daysRemaining = getDaysRemaining(goat.dueDate)
+                          const chipColor = getPregnancyColor(daysRemaining)
+                          return (
+                            <>
+                              <Chip 
+                                icon={<PregnantIcon />}
+                                label="🤰 حامل"
+                                color={chipColor}
+                                size="small"
+                              />
+                              <Typography variant="caption" color="text.secondary">
+                                {formatDaysRemaining(daysRemaining)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                {new Date(goat.dueDate).toLocaleDateString('en-GB')}
+                              </Typography>
+                            </>
+                          )
+                        })()}
                       </Stack>
                     ) : '-'}
                   </TableCell>
