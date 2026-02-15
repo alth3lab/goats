@@ -245,7 +245,7 @@ export default function FeedsPage() {
   const todayFeedings = useMemo(() => {
     const byPen: Record<string, {
       pen: string; penId: string; heads: number;
-      items: { feed: string; amount: number; meals: number; category: string; unitCost: number; stockQty: number }[]
+      items: { scheduleId: string; feed: string; amount: number; meals: number; category: string; unitCost: number; stockQty: number }[]
     }> = {}
     activeSchedules.forEach(s => {
       const penId = s.penId || 'none'
@@ -255,6 +255,7 @@ export default function FeedsPage() {
       const stock = stocks.find(st => st.feedTypeId === s.feedTypeId)
       const totalStockForType = stocks.filter(st => st.feedTypeId === s.feedTypeId).reduce((sum, st) => sum + st.quantity, 0)
       byPen[penId].items.push({
+        scheduleId: s.id,
         feed: s.feedType?.nameAr || '-',
         amount: s.quantity,
         meals: s.frequency,
@@ -694,12 +695,14 @@ export default function FeedsPage() {
                                         <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>كجم/رأس</TableCell>
                                         <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>وجبات</TableCell>
                                         <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>الإجمالي</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 11, py: 0.4, borderBottom: '2px solid', borderColor: 'divider' }}>إجراءات</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
                                       {p.items.map((item, i) => {
                                         const totalForItem = item.amount * p.heads
                                         const daysRemaining = item.stockQty > 0 ? Math.floor(item.stockQty / totalForItem) : 0
+                                        const schedule = schedules.find(s => s.id === item.scheduleId)
                                         return (
                                           <TableRow key={i} sx={{ '&:last-child td': { borderBottom: 0 } }}>
                                             <TableCell sx={{ py: 0.5, fontSize: 12 }}>
@@ -722,6 +725,24 @@ export default function FeedsPage() {
                                                   }}
                                                 />
                                               </Tooltip>
+                                            </TableCell>
+                                            <TableCell align="center" sx={{ py: 0.5 }}>
+                                              <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                {schedule && (
+                                                  <>
+                                                    <Tooltip title="تعديل">
+                                                      <IconButton size="small" color="primary" onClick={() => openEditSchedule(schedule)} sx={{ p: 0.25 }}>
+                                                        <EditIcon sx={{ fontSize: 14 }} />
+                                                      </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="حذف">
+                                                      <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'schedule', item: schedule })} sx={{ p: 0.25 }}>
+                                                        <DeleteIcon sx={{ fontSize: 14 }} />
+                                                      </IconButton>
+                                                    </Tooltip>
+                                                  </>
+                                                )}
+                                              </Stack>
                                             </TableCell>
                                           </TableRow>
                                         )
@@ -953,54 +974,123 @@ export default function FeedsPage() {
                 <Button variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إنشاء أول جدول</Button>
               </Paper>
             ) : (
-              <TableContainer component={Paper} sx={{ borderRadius: 2, overflowX: 'auto' }}>
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: 'action.hover' }}>
-                      <TableCell><strong>الحظيرة</strong></TableCell>
-                      <TableCell><strong>عدد الرؤوس</strong></TableCell>
-                      <TableCell><strong>نوع العلف</strong></TableCell>
-                      <TableCell><strong>كجم / رأس / يوم</strong></TableCell>
-                      <TableCell><strong>الوجبات</strong></TableCell>
-                      <TableCell><strong>الإجمالي اليومي</strong></TableCell>
-                      <TableCell><strong>تاريخ البدء</strong></TableCell>
-                      <TableCell><strong>الحالة</strong></TableCell>
-                      <TableCell align="center"><strong>إجراءات</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+              <>
+                {/* Mobile Cards View */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
                     {schedules.map(s => {
                       const heads = s.pen?._count?.goats || 0
                       return (
-                        <TableRow key={s.id} hover sx={{ opacity: s.isActive ? 1 : 0.6 }}>
-                          <TableCell><Typography fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography></TableCell>
-                          <TableCell>{heads}</TableCell>
-                          <TableCell>
-                            <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: 'common.white' }} />
-                          </TableCell>
-                          <TableCell>{s.quantity} كجم</TableCell>
-                          <TableCell>{s.frequency} وجبات</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>{(s.quantity * heads).toFixed(1)} كجم</TableCell>
-                          <TableCell>{new Date(s.startDate).toLocaleDateString('ar-AE')}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={s.isActive ? 'نشط' : 'متوقف'}
-                              size="small"
-                              color={s.isActive ? 'success' : 'default'}
-                              onClick={() => toggleScheduleActive(s)}
-                              sx={{ cursor: 'pointer' }}
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <IconButton size="small" color="primary" onClick={() => openEditSchedule(s)}><EditIcon fontSize="small" /></IconButton>
-                            <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'schedule', item: s })}><DeleteIcon fontSize="small" /></IconButton>
-                          </TableCell>
-                        </TableRow>
+                        <Card key={s.id} sx={{ opacity: s.isActive ? 1 : 0.6, borderRadius: 3 }}>
+                          <CardContent>
+                            <Stack spacing={2}>
+                              {/* Header */}
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Typography variant="h6" fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography>
+                                <Chip
+                                  label={s.isActive ? 'نشط' : 'متوقف'}
+                                  size="small"
+                                  color={s.isActive ? 'success' : 'default'}
+                                  onClick={() => toggleScheduleActive(s)}
+                                  sx={{ cursor: 'pointer' }}
+                                />
+                              </Stack>
+
+                              {/* Feed Type */}
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">نوع العلف</Typography>
+                                <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: 'common.white', mt: 0.5 }} />
+                              </Box>
+
+                              {/* Details Grid */}
+                              <Grid container spacing={2}>
+                                <Grid item xs={6}>
+                                  <Typography variant="body2" color="text.secondary">عدد الرؤوس</Typography>
+                                  <Typography variant="body1" fontWeight="bold">{heads}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="body2" color="text.secondary">كجم / رأس / يوم</Typography>
+                                  <Typography variant="body1" fontWeight="bold">{s.quantity} كجم</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="body2" color="text.secondary">الوجبات</Typography>
+                                  <Typography variant="body1" fontWeight="bold">{s.frequency} وجبات</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="body2" color="text.secondary">الإجمالي اليومي</Typography>
+                                  <Typography variant="body1" fontWeight="bold" color="primary.main">{(s.quantity * heads).toFixed(1)} كجم</Typography>
+                                </Grid>
+                              </Grid>
+
+                              {/* Date */}
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">تاريخ البدء</Typography>
+                                <Typography variant="body2">{new Date(s.startDate).toLocaleDateString('ar-AE')}</Typography>
+                              </Box>
+
+                              {/* Actions */}
+                              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                <IconButton size="small" color="primary" onClick={() => openEditSchedule(s)}><EditIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'schedule', item: s })}><DeleteIcon fontSize="small" /></IconButton>
+                              </Stack>
+                            </Stack>
+                          </CardContent>
+                        </Card>
                       )
                     })}
+                  </Stack>
+                </Box>
+
+                {/* Desktop Table View */}
+                <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 2, overflowX: 'auto' }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'action.hover' }}>
+                        <TableCell><strong>الحظيرة</strong></TableCell>
+                        <TableCell><strong>عدد الرؤوس</strong></TableCell>
+                        <TableCell><strong>نوع العلف</strong></TableCell>
+                        <TableCell><strong>كجم / رأس / يوم</strong></TableCell>
+                        <TableCell><strong>الوجبات</strong></TableCell>
+                        <TableCell><strong>الإجمالي اليومي</strong></TableCell>
+                        <TableCell><strong>تاريخ البدء</strong></TableCell>
+                        <TableCell><strong>الحالة</strong></TableCell>
+                        <TableCell align="center"><strong>إجراءات</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {schedules.map(s => {
+                        const heads = s.pen?._count?.goats || 0
+                        return (
+                          <TableRow key={s.id} hover sx={{ opacity: s.isActive ? 1 : 0.6 }}>
+                            <TableCell><Typography fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography></TableCell>
+                            <TableCell>{heads}</TableCell>
+                            <TableCell>
+                              <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: 'common.white' }} />
+                            </TableCell>
+                            <TableCell>{s.quantity} كجم</TableCell>
+                            <TableCell>{s.frequency} وجبات</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>{(s.quantity * heads).toFixed(1)} كجم</TableCell>
+                            <TableCell>{new Date(s.startDate).toLocaleDateString('ar-AE')}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={s.isActive ? 'نشط' : 'متوقف'}
+                                size="small"
+                                color={s.isActive ? 'success' : 'default'}
+                                onClick={() => toggleScheduleActive(s)}
+                                sx={{ cursor: 'pointer' }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <IconButton size="small" color="primary" onClick={() => openEditSchedule(s)}><EditIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'schedule', item: s })}><DeleteIcon fontSize="small" /></IconButton>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                   </TableBody>
                 </Table>
               </TableContainer>
+              </>
             )}
           </Box>
         </Fade>

@@ -96,6 +96,8 @@ export default function PensPage() {
   const [pens, setPens] = useState<Pen[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editingPen, setEditingPen] = useState<Pen | null>(null)
   const [viewOpen, setViewOpen] = useState(false)
   const [selectedPen, setSelectedPen] = useState<Pen | null>(null)
   const [penLoading, setPenLoading] = useState(false)
@@ -442,13 +444,18 @@ export default function PensPage() {
 
   const handleSubmit = async () => {
     try {
-      const res = await fetch('/api/pens', {
-        method: 'POST',
+      const url = editMode && editingPen ? `/api/pens/${editingPen.id}` : '/api/pens'
+      const method = editMode ? 'PUT' : 'POST'
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       })
       if (res.ok) {
         setOpen(false)
+        setEditMode(false)
+        setEditingPen(null)
         setForm({ name: '', nameAr: '', type: 'GENERAL', capacity: '', notes: '' })
         loadPens()
       } else {
@@ -458,6 +465,46 @@ export default function PensPage() {
     } catch (error) {
       console.error('Error saving pen', error)
       alert('حدث خطأ أثناء الاتصال بالخادم')
+    }
+  }
+
+  const handleEditPen = (pen: Pen) => {
+    setEditMode(true)
+    setEditingPen(pen)
+    setForm({
+      name: pen.name,
+      nameAr: pen.nameAr,
+      type: pen.type,
+      capacity: pen.capacity?.toString() || '',
+      notes: pen.notes || ''
+    })
+    setOpen(true)
+  }
+
+  const handleDeletePen = async (pen: Pen) => {
+    const hasGoats = pen._count?.goats && pen._count.goats > 0
+    
+    if (hasGoats) {
+      alert('لا يمكن حذف حظيرة تحتوي على حيوانات. يجب نقل جميع الحيوانات أولاً.')
+      return
+    }
+
+    if (!confirm(`هل أنت متأكد من حذف الحظيرة "${pen.nameAr}"؟`)) return
+
+    try {
+      const res = await fetch(`/api/pens/${pen.id}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        loadPens()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'فشل حذف الحظيرة')
+      }
+    } catch (error) {
+      console.error('Error deleting pen', error)
+      alert('حدث خطأ أثناء حذف الحظيرة')
     }
   }
 
@@ -505,7 +552,12 @@ export default function PensPage() {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setEditMode(false)
+              setEditingPen(null)
+              setForm({ name: '', nameAr: '', type: 'GENERAL', capacity: '', notes: '' })
+              setOpen(true)
+            }}
             sx={{ width: { xs: '100%', md: 'auto' } }}
           >
             إضافة حظيرة
@@ -707,95 +759,97 @@ export default function PensPage() {
       </Paper>
 
       {/* Pen Sections */}
-      {['BREEDING', 'ISOLATION', 'FATTENING', 'GENERAL'].map((type) => {
-        const typePens = filteredPens.filter(p => (p.type || 'GENERAL') === type || (type === 'GENERAL' && !p.type))
-        if (typePens.length === 0) return null
+      {viewMode === 'grid' ? (
+        // Grid View (Cards)
+        ['BREEDING', 'ISOLATION', 'FATTENING', 'GENERAL'].map((type) => {
+          const typePens = filteredPens.filter(p => (p.type || 'GENERAL') === type || (type === 'GENERAL' && !p.type))
+          if (typePens.length === 0) return null
 
-        return (
-          <Box key={type} mb={4}>
-            <Typography variant="h6" color="primary" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-              {type === 'BREEDING' && '🍼 قسم الولادة والرضاعة'}
-              {type === 'ISOLATION' && '🏥 قسم العزل والحجر الصحي'}
-              {type === 'FATTENING' && '🥩 قسم التسمين'}
-              {type === 'GENERAL' && '🏠 الحظائر العامة'}
-              <Chip label={typePens.length} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
-            </Typography>
-            
-            <Grid container spacing={3}>
-              {typePens.map((pen) => {
-                const capacity = pen.capacity || 0
-                const count = pen._count.goats || 0
-                const usagePercentage = capacity > 0 ? (count / capacity) * 100 : 0
-                const isFull = capacity > 0 && count >= capacity
-                const isOvercrowded = capacity > 0 && count > capacity
-                
-                return (
-                  <Grid size={{ xs: 12, sm: 6, md: viewMode === 'grid' ? 6 : 4, lg: viewMode === 'grid' ? 4 : 4 }} key={pen.id}>
-                    <Card sx={{ height: '100%', position: 'relative', border: isOvercrowded ? '2px solid' : 'none', borderColor: isOvercrowded ? 'error.main' : 'transparent' }}>
-                      {isFull && (
-                        <Chip 
-                          label={isOvercrowded ? 'تجاوز السعة !' : 'ممتلئة'} 
-                          color={isOvercrowded ? 'error' : 'warning'}
-                          size="small"
-                          sx={{ position: 'absolute', top: 10, left: 10 }} 
-                        />
-                      )}
-                      <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                          <Box>
-                            <Typography variant="h6" fontWeight="bold">
-                              {pen.nameAr}
-                            </Typography>
-                            {!pen.name.startsWith('PEN-') && (
-                              <Typography variant="caption" color="text.secondary">
-                                {pen.name}
-                              </Typography>
-                            )}
-                          </Box>
-                          <PenIcon color={isOvercrowded ? 'error' : isFull ? 'warning' : 'primary'} />
-                        </Stack>
-                        
-                        <Stack direction="row" spacing={1} mt={2} mb={2}>
+          return (
+            <Box key={type} mb={4}>
+              <Typography variant="h6" color="primary" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                {type === 'BREEDING' && '🍼 قسم الولادة والرضاعة'}
+                {type === 'ISOLATION' && '🏥 قسم العزل والحجر الصحي'}
+                {type === 'FATTENING' && '🥩 قسم التسمين'}
+                {type === 'GENERAL' && '🏠 الحظائر العامة'}
+                <Chip label={typePens.length} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
+              </Typography>
+              
+              <Grid container spacing={3}>
+                {typePens.map((pen) => {
+                  const capacity = pen.capacity || 0
+                  const count = pen._count.goats || 0
+                  const usagePercentage = capacity > 0 ? (count / capacity) * 100 : 0
+                  const isFull = capacity > 0 && count >= capacity
+                  const isOvercrowded = capacity > 0 && count > capacity
+                  
+                  return (
+                    <Grid size={{ xs: 12, sm: 6, md: 6, lg: 4 }} key={pen.id}>
+                      <Card sx={{ height: '100%', position: 'relative', border: isOvercrowded ? '2px solid' : 'none', borderColor: isOvercrowded ? 'error.main' : 'transparent' }}>
+                        {isFull && (
                           <Chip 
-                            label={
-                              pen.type === 'ISOLATION' ? 'عزل' :
-                              pen.type === 'BREEDING' ? 'ولادة' :
-                              pen.type === 'FATTENING' ? 'تسمين' : 'عام'
-                            } 
-                            size="small" 
-                            color={pen.type === 'ISOLATION' ? 'error' : 'default'}
+                            label={isOvercrowded ? 'تجاوز السعة !' : 'ممتلئة'} 
+                            color={isOvercrowded ? 'error' : 'warning'}
+                            size="small"
+                            sx={{ position: 'absolute', top: 10, left: 10 }} 
                           />
-                          {pen.capacity && (
-                            <Chip label={`السعة: ${pen.capacity}`} size="small" variant="outlined" />
-                          )}
-                        </Stack>
-
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="h3" color="primary.main" fontWeight="bold">
-                            {pen._count.goats}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mx: 1 }}>
-                            من {capacity > 0 ? capacity : '∞'} رأس
-                            </Typography>
-                        </Box>
-
-                        <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                           <Stack direction="row" spacing={0.5} alignItems="center">
-                              <MaleIcon fontSize="small" sx={{ color: maleIconColor }} />
-                              <Typography variant="body2" fontWeight="bold">
-                                 {pen.goats?.filter((g: any) => g.gender === 'MALE').length || 0}
+                        )}
+                        <CardContent>
+                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                            <Box>
+                              <Typography variant="h6" fontWeight="bold">
+                                {pen.nameAr}
                               </Typography>
-                           </Stack>
-                           
-                           <Stack direction="row" spacing={0.5} alignItems="center">
-                              <FemaleIcon fontSize="small" sx={{ color: femaleIconColor }} />
-                              <Typography variant="body2" fontWeight="bold">
-                                 {pen.goats?.filter((g: any) => g.gender === 'FEMALE').length || 0}
+                              {!pen.name.startsWith('PEN-') && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {pen.name}
+                                </Typography>
+                              )}
+                            </Box>
+                            <PenIcon color={isOvercrowded ? 'error' : isFull ? 'warning' : 'primary'} />
+                          </Stack>
+                          
+                          <Stack direction="row" spacing={1} mt={2} mb={2}>
+                            <Chip 
+                              label={
+                                pen.type === 'ISOLATION' ? 'عزل' :
+                                pen.type === 'BREEDING' ? 'ولادة' :
+                                pen.type === 'FATTENING' ? 'تسمين' : 'عام'
+                              } 
+                              size="small" 
+                              color={pen.type === 'ISOLATION' ? 'error' : 'default'}
+                            />
+                            {pen.capacity && (
+                              <Chip label={`السعة: ${pen.capacity}`} size="small" variant="outlined" />
+                            )}
+                          </Stack>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Typography variant="h3" color="primary.main" fontWeight="bold">
+                              {pen._count.goats}
                               </Typography>
-                           </Stack>
-                        </Stack>
-                        
-                        {capacity > 0 && (
+                              <Typography variant="body2" color="text.secondary" sx={{ mx: 1 }}>
+                              من {capacity > 0 ? capacity : '∞'} رأس
+                              </Typography>
+                          </Box>
+
+                          <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" mb={2} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                             <Stack direction="row" spacing={0.5} alignItems="center">
+                                <MaleIcon fontSize="small" sx={{ color: maleIconColor }} />
+                                <Typography variant="body2" fontWeight="bold">
+                                   {pen.goats?.filter((g: any) => g.gender === 'MALE').length || 0}
+                                </Typography>
+                             </Stack>
+                             
+                             <Stack direction="row" spacing={0.5} alignItems="center">
+                                <FemaleIcon fontSize="small" sx={{ color: femaleIconColor }} />
+                                <Typography variant="body2" fontWeight="bold">
+                                   {pen.goats?.filter((g: any) => g.gender === 'FEMALE').length || 0}
+                                </Typography>
+                             </Stack>
+                          </Stack>
+                          
+                          {capacity > 0 && (
                             <Box sx={{ width: '100%' }}>
                                 <LinearProgress 
                                     variant="determinate" 
@@ -809,10 +863,18 @@ export default function PensPage() {
                             </Box>
                         )}
                       </CardContent>
-                      <CardActions>
+                      <CardActions sx={{ justifyContent: 'space-between', px: 2 }}>
                         <Button size="small" startIcon={<ViewIcon />} onClick={() => handleViewPen(pen.id)}>
-                          عرض التفاصيل
+                          عرض
                         </Button>
+                        <Stack direction="row" spacing={0.5}>
+                          <IconButton size="small" color="primary" onClick={() => handleEditPen(pen)} title="تعديل">
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDeletePen(pen)} title="حذف">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
                       </CardActions>
                     </Card>
                   </Grid>
@@ -821,7 +883,73 @@ export default function PensPage() {
             </Grid>
           </Box>
         )
-      })}
+      })
+    ) : (
+      // List View (Table)
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>الاسم</TableCell>
+              <TableCell>النوع</TableCell>
+              <TableCell align="center">العدد</TableCell>
+              <TableCell align="center">السعة</TableCell>
+              <TableCell align="center">الحالة</TableCell>
+              <TableCell align="center">إجراءات</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredPens.map((pen) => {
+              const capacity = pen.capacity || 0
+              const count = pen._count.goats || 0
+              const usagePercentage = capacity > 0 ? (count / capacity) * 100 : 0
+              const isFull = capacity > 0 && count >= capacity
+              const isOvercrowded = capacity > 0 && count > capacity
+              
+              return (
+                <TableRow key={pen.id}>
+                  <TableCell>{pen.nameAr}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={
+                        pen.type === 'ISOLATION' ? 'عزل' :
+                        pen.type === 'BREEDING' ? 'ولادة' :
+                        pen.type === 'FATTENING' ? 'تسمين' : 'عام'
+                      }
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell align="center">{count}</TableCell>
+                  <TableCell align="center">{capacity > 0 ? capacity : '-'}</TableCell>
+                  <TableCell align="center">
+                    {isOvercrowded ? (
+                      <Chip label="مكتظة" size="small" color="error" />
+                    ) : isFull ? (
+                      <Chip label="ممتلئة" size="small" color="warning" />
+                    ) : count > 0 ? (
+                      <Chip label="مشغولة" size="small" color="success" />
+                    ) : (
+                      <Chip label="فارغة" size="small" color="default" />
+                    )}
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton size="small" onClick={() => handleViewPen(pen.id)} title="عرض">
+                      <ViewIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="primary" onClick={() => handleEditPen(pen)} title="تعديل">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDeletePen(pen)} title="حذف">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    )}
 
       {/* Dialog View Pen */}
       <Dialog 
@@ -1156,8 +1284,13 @@ export default function PensPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>إضافة حظيرة جديدة</DialogTitle>
+      <Dialog open={open} onClose={() => {
+        setOpen(false)
+        setEditMode(false)
+        setEditingPen(null)
+        setForm({ name: '', nameAr: '', type: 'GENERAL', capacity: '', notes: '' })
+      }} maxWidth="sm" fullWidth>
+        <DialogTitle>{editMode ? 'تعديل الحظيرة' : 'إضافة حظيرة جديدة'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <TextField
