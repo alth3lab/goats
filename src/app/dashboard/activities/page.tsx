@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material'
 import { formatDate } from '@/lib/formatters'
 import { useAuth } from '@/lib/useAuth'
+import * as XLSX from 'xlsx'
 
 interface ActivityLog {
   id: string
@@ -99,19 +100,18 @@ export default function ActivitiesPage() {
       .finally(() => setLoading(false))
   }, [queryParams, page])
 
-  const handleExport = async () => {
-    const params = new URLSearchParams(queryParams)
-    params.set('format', 'csv')
-    const res = await fetch(`/api/activities?${params.toString()}`)
-    const blob = await res.blob()
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `activity-log-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+  const handleExport = () => {
+    const activityData = logs.map(log => ({
+      'الإجراء': log.action,
+      'الكيان': log.entity,
+      'الوصف': log.description,
+      'المستخدم': log.user?.fullName || log.user?.username || '-',
+      'التاريخ': formatDate(log.createdAt)
+    }))
+    const sheet = XLSX.utils.json_to_sheet(activityData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, sheet, 'سجل النشاطات')
+    XLSX.writeFile(wb, `activity-log-${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   if (!authLoading && !can('view_activities')) {
@@ -134,8 +134,8 @@ export default function ActivitiesPage() {
             <HistoryIcon color="primary" />
             <Typography variant="h4" fontWeight="bold">سجل النشاطات</Typography>
           </Stack>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport} sx={{ width: { xs: '100%', md: 'auto' } }}>
-            تصدير CSV
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport} sx={{ color: 'success.main', borderColor: 'success.main', width: { xs: '100%', md: 'auto' } }}>
+            تصدير Excel
           </Button>
         </Stack>
       </Paper>

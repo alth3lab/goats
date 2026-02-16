@@ -1,0 +1,3 @@
+Font placeholder - Amiri Regular
+This is a placeholder file for the Amiri font.
+The actual font will be loaded from Google Fonts CDN.

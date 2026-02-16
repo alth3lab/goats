@@ -58,6 +58,8 @@ import {
 } from '@mui/icons-material'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
+import { generateArabicPDF } from '@/lib/pdfHelper'
+import * as XLSX from 'xlsx'
 import { useNotifier } from '@/components/AppNotifier'
 
 interface BirthRecord {
@@ -554,29 +556,67 @@ export default function BreedingPage() {
     }
   }
 
-  // Export to CSV
-  const handleExport = () => {
-    const headers = ['رقم الأم', 'رقم الأب', 'تاريخ التزاوج', 'الحالة', 'تاريخ الولادة المتوقع', 'تاريخ الولادة الفعلي', 'عدد المواليد']
-    const rows = filteredRecords.map(r => [
-      r.mother.tagId,
-      r.father.tagId,
-      formatDate(r.matingDate),
-      statusLabels[r.pregnancyStatus],
-      r.dueDate ? formatDate(r.dueDate) : '-',
-      r.birthDate ? formatDate(r.birthDate) : '-',
-      r.numberOfKids ?? '-'
+  // Export to Excel
+  const exportToExcel = () => {
+    const statsSheet = XLSX.utils.json_to_sheet([
+      { 'المؤشر': 'إجمالي', 'القيمة': stats.total },
+      { 'المؤشر': 'تزاوج', 'القيمة': stats.mated },
+      { 'المؤشر': 'حامل', 'القيمة': stats.pregnant },
+      { 'المؤشر': 'ولادة', 'القيمة': stats.delivered },
+      { 'المؤشر': 'فشل', 'القيمة': stats.failed },
+      { 'المؤشر': 'نسبة النجاح', 'القيمة': `${stats.successRate}%` },
+      { 'المؤشر': 'مواليد أحياء', 'القيمة': stats.aliveKids }
     ])
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n')
-    
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `breeding-records-${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
+    const breedingData = filteredRecords.map(r => ({
+      'رقم الأم': r.mother.tagId,
+      'رقم الأب': r.father.tagId,
+      'تاريخ التزاوج': formatDate(r.matingDate),
+      'الحالة': statusLabels[r.pregnancyStatus] || r.pregnancyStatus,
+      'تاريخ الولادة المتوقع': r.dueDate ? formatDate(r.dueDate) : '-',
+      'تاريخ الولادة الفعلي': r.birthDate ? formatDate(r.birthDate) : '-',
+      'عدد المواليد': r.numberOfKids ?? '-'
+    }))
+    const breedingSheet = XLSX.utils.json_to_sheet(breedingData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
+    XLSX.utils.book_append_sheet(wb, breedingSheet, 'سجلات التكاثر')
+    XLSX.writeFile(wb, `breeding-report-${new Date().toISOString().split('T')[0]}.xlsx`)
+  }
+
+  // Export to PDF
+  const exportToPDF = async () => {
+    const pData = filteredRecords.map(r => ({
+      motherTag: r.mother.tagId,
+      fatherTag: r.father.tagId,
+      matingDate: formatDate(r.matingDate),
+      status: statusLabels[r.pregnancyStatus] || r.pregnancyStatus,
+      dueDate: r.dueDate ? formatDate(r.dueDate) : '-',
+      birthDate: r.birthDate ? formatDate(r.birthDate) : '-',
+      kids: r.numberOfKids != null ? String(r.numberOfKids) : '-'
+    }))
+    await generateArabicPDF({
+      title: 'تقرير سجلات التكاثر',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: 'إجمالي', value: stats.total },
+        { label: 'تزاوج', value: stats.mated },
+        { label: 'حامل', value: stats.pregnant },
+        { label: 'ولادة', value: stats.delivered },
+        { label: 'نسبة النجاح', value: `${stats.successRate}%` },
+        { label: 'مواليد أحياء', value: stats.aliveKids }
+      ],
+      columns: [
+        { header: 'المواليد', dataKey: 'kids' },
+        { header: 'تاريخ الولادة', dataKey: 'birthDate' },
+        { header: 'المتوقع', dataKey: 'dueDate' },
+        { header: 'الحالة', dataKey: 'status', colorMap: { 'حامل': '#ed6c02', 'ولادة': '#2e7d32', 'فشل': '#d32f2f', 'تزاوج': '#0288d1' } },
+        { header: 'تاريخ التزاوج', dataKey: 'matingDate' },
+        { header: 'رقم الأب', dataKey: 'fatherTag' },
+        { header: 'رقم الأم', dataKey: 'motherTag' }
+      ],
+      data: pData,
+      filename: `breeding-report-${new Date().toISOString().split('T')[0]}.pdf`
+    })
   }
 
   // Toggle record selection
@@ -687,11 +727,22 @@ export default function BreedingPage() {
             <Button 
               variant="outlined" 
               startIcon={<ExportIcon />} 
-              onClick={handleExport}
+              onClick={exportToPDF}
               disabled={filteredRecords.length === 0}
               fullWidth={isMobile}
+              sx={{ color: 'error.main', borderColor: 'error.main' }}
             >
-              تصدير
+              تصدير PDF
+            </Button>
+            <Button 
+              variant="outlined" 
+              startIcon={<ExportIcon />} 
+              onClick={exportToExcel}
+              disabled={filteredRecords.length === 0}
+              fullWidth={isMobile}
+              sx={{ color: 'success.main', borderColor: 'success.main' }}
+            >
+              تصدير Excel
             </Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen} fullWidth={isMobile}>
               إضافة سجل

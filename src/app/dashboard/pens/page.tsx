@@ -51,9 +51,8 @@ import {
   Assessment as AssessmentIcon
 } from '@mui/icons-material'
 import { useTheme } from '@mui/material/styles'
-import jsPDF from 'jspdf'
-import 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { generateArabicPDF } from '@/lib/pdfHelper'
 import { EntityHistory } from '@/components/EntityHistory'
 import Link from 'next/link'
 import GoatFormDialog from '@/components/GoatFormDialog'
@@ -309,66 +308,43 @@ export default function PensPage() {
 
   // Export functions
   const exportToPDF = async () => {
-    const doc = new jsPDF('p', 'pt', 'a4')
-    const exportTextColor = theme.palette.text.primary
-    const exportBorderColor = theme.palette.divider
-    const exportHeaderBg = theme.palette.action.hover
+    const typeLabels: Record<string, string> = {
+      'BREEDING': 'ولادة',
+      'ISOLATION': 'عزل',
+      'FATTENING': 'تسمين',
+      'GENERAL': 'عام'
+    }
     
-    const rowsHtml = filteredPens.map(pen => `
-      <tr>
-        <td>${pen.nameAr}</td>
-        <td>${pen.type === 'BREEDING' ? 'ولادة' : pen.type === 'ISOLATION' ? 'عزل' : pen.type === 'FATTENING' ? 'تسمين' : 'عام'}</td>
-        <td>${pen._count.goats}</td>
-        <td>${pen.capacity || '-'}</td>
-        <td>${pen.capacity ? Math.round((pen._count.goats / pen.capacity) * 100) + '%' : '-'}</td>
-      </tr>
-    `).join('')
-
-    const html = `
-      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 20px; color: ${exportTextColor};">
-        <h2 style="text-align: center; margin-bottom: 10px;">تقرير إدارة الحظائر</h2>
-        <p style="text-align: center; margin-bottom: 20px;">التاريخ: ${new Date().toLocaleDateString('ar-AE')}</p>
-        
-        <div style="margin-bottom: 20px; border: 1px solid ${exportBorderColor}; padding: 10px; border-radius: 4px;">
-          <h3 style="margin-top: 0; margin-bottom: 10px;">الإحصائيات</h3>
-          <ul style="list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <li><strong>إجمالي الحظائر:</strong> ${stats.totalPens}</li>
-            <li><strong>إجمالي الحيوانات:</strong> ${stats.totalAnimals}</li>
-            <li><strong>نسبة الامتلاء:</strong> ${stats.totalCapacity > 0 ? Math.round((stats.totalAnimals / stats.totalCapacity) * 100) : 0}%</li>
-            <li><strong>حظائر ممتلئة:</strong> ${stats.fullPens}</li>
-            <li><strong>حظائر مكتظة:</strong> ${stats.overcrowdedPens}</li>
-            <li><strong>حظائر فارغة:</strong> ${stats.emptyPens}</li>
-          </ul>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
-          <thead>
-            <tr style="background-color: ${exportHeaderBg};">
-              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">الاسم</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">النوع</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">العدد</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">السعة</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 8px;">الامتلاء</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-      </div>
-    `
-
-    await new Promise<void>((resolve) => {
-      ;(doc as any).html(html, {
-        x: 15,
-        y: 15,
-        width: 565,
-        windowWidth: 1000,
-        callback: () => resolve()
-      })
+    const data = filteredPens.map(pen => ({
+      nameAr: pen.nameAr,
+      type: typeLabels[pen.type] || 'عام',
+      count: String(pen._count.goats),
+      capacity: pen.capacity ? String(pen.capacity) : '-',
+      occupancy: pen.capacity ? `${Math.round((pen._count.goats / pen.capacity) * 100)}%` : '-'
+    }))
+    
+    await generateArabicPDF({
+      title: 'تقرير إدارة الحظائر',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: 'إجمالي الحظائر', value: stats.totalPens },
+        { label: 'إجمالي الحيوانات', value: stats.totalAnimals },
+        { label: 'السعة الكلية', value: stats.totalCapacity },
+        { label: 'نسبة الامتلاء', value: `${stats.totalCapacity > 0 ? Math.round((stats.totalAnimals / stats.totalCapacity) * 100) : 0}%` },
+        { label: 'حظائر ممتلئة', value: stats.fullPens },
+        { label: 'حظائر فارغة', value: stats.emptyPens }
+      ],
+      columns: [
+        { header: 'الامتلاء', dataKey: 'occupancy' },
+        { header: 'السعة', dataKey: 'capacity' },
+        { header: 'العدد', dataKey: 'count' },
+        { header: 'النوع', dataKey: 'type', colorMap: { 'ولادة': '#e91e63', 'عزل': '#d32f2f', 'تسمين': '#ed6c02', 'عام': '#0288d1' } },
+        { header: 'الاسم', dataKey: 'nameAr' }
+      ],
+      data,
+      totals: { nameAr: 'الإجمالي', count: String(stats.totalAnimals), capacity: String(stats.totalCapacity) },
+      filename: `pens-report-${new Date().toISOString().split('T')[0]}.pdf`
     })
-    
-    doc.save(`pens-report-${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
   const exportToExcel = () => {

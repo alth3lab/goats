@@ -1,7 +1,8 @@
 'use client'
 
 import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
-
+import { generateArabicPDF } from '@/lib/pdfHelper'
+import * as XLSX from 'xlsx'
 import { useEffect, useState } from 'react'
 import {
   Box,
@@ -213,6 +214,74 @@ export default function SalesPage() {
     setForm({ goatId: '', date: new Date().toISOString().split('T')[0], buyerName: '', buyerPhone: '', salePrice: '', paidAmount: '', notes: '' })
     setOpen(true)
     if (goats.length === 0) loadGoats()
+  }
+
+  const exportToPDF = async () => {
+    const pData = filteredSales.map(s => ({
+      tagId: s.goat?.tagId || '-',
+      buyerName: s.buyerName,
+      date: formatDate(s.date),
+      salePrice: formatCurrency(s.salePrice),
+      totalPaid: formatCurrency(s.totalPaid),
+      remaining: formatCurrency(s.remaining),
+      status: paymentLabels[s.paymentStatus] || s.paymentStatus
+    }))
+    await generateArabicPDF({
+      title: 'تقرير المبيعات',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: stats ? [
+        { label: 'إجمالي المبيعات', value: stats.totalSales },
+        { label: 'إجمالي الإيرادات', value: formatCurrency(stats.totalRevenue) },
+        { label: 'المدفوع', value: formatCurrency(stats.totalPaidAmount) },
+        { label: 'المتبقي', value: formatCurrency(stats.totalRemaining) },
+        { label: 'مدفوع بالكامل', value: stats.paidSales },
+        { label: 'معلق', value: stats.pendingSales }
+      ] : [],
+      columns: [
+        { header: 'الحالة', dataKey: 'status', colorMap: { 'مدفوع': '#2e7d32', 'جزئي': '#ed6c02', 'معلق': '#d32f2f' } },
+        { header: 'المتبقي', dataKey: 'remaining' },
+        { header: 'المدفوع', dataKey: 'totalPaid' },
+        { header: 'السعر', dataKey: 'salePrice' },
+        { header: 'التاريخ', dataKey: 'date' },
+        { header: 'المشتري', dataKey: 'buyerName' },
+        { header: 'رقم التاج', dataKey: 'tagId' }
+      ],
+      data: pData,
+      totals: {
+        tagId: 'الإجمالي',
+        salePrice: stats ? formatCurrency(stats.totalRevenue) : '',
+        totalPaid: stats ? formatCurrency(stats.totalPaidAmount) : '',
+        remaining: stats ? formatCurrency(stats.totalRemaining) : ''
+      },
+      filename: `sales-report-${new Date().toISOString().split('T')[0]}.pdf`
+    })
+  }
+
+  const exportToExcel = () => {
+    const statsSheet = XLSX.utils.json_to_sheet([
+      { 'المؤشر': 'إجمالي المبيعات', 'القيمة': stats?.totalSales ?? 0 },
+      { 'المؤشر': 'إجمالي الإيرادات', 'القيمة': stats?.totalRevenue ?? 0 },
+      { 'المؤشر': 'المدفوع', 'القيمة': stats?.totalPaidAmount ?? 0 },
+      { 'المؤشر': 'المتبقي', 'القيمة': stats?.totalRemaining ?? 0 },
+      { 'المؤشر': 'مدفوع بالكامل', 'القيمة': stats?.paidSales ?? 0 },
+      { 'المؤشر': 'معلق', 'القيمة': stats?.pendingSales ?? 0 }
+    ])
+    const salesData = filteredSales.map(s => ({
+      'رقم التاج': s.goat?.tagId || '-',
+      'المشتري': s.buyerName,
+      'الهاتف': s.buyerPhone || '-',
+      'التاريخ': formatDate(s.date),
+      'السعر': s.salePrice,
+      'المدفوع': s.totalPaid,
+      'المتبقي': s.remaining,
+      'الحالة': paymentLabels[s.paymentStatus] || s.paymentStatus,
+      'ملاحظات': s.notes || '-'
+    }))
+    const salesSheet = XLSX.utils.json_to_sheet(salesData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
+    XLSX.utils.book_append_sheet(wb, salesSheet, 'المبيعات')
+    XLSX.writeFile(wb, `sales-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const handleSubmit = async () => {
@@ -522,9 +591,17 @@ export default function SalesPage() {
             <SalesIcon color="primary" />
             <Typography variant="h4" fontWeight="bold">المبيعات</Typography>
           </Stack>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen} sx={{ width: { xs: '100%', md: 'auto' } }}>
-            إضافة بيع
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" startIcon={<SalesIcon />} onClick={exportToPDF} sx={{ color: 'error.main', borderColor: 'error.main', width: { xs: '100%', md: 'auto' } }}>
+              تصدير PDF
+            </Button>
+            <Button variant="outlined" startIcon={<SalesIcon />} onClick={exportToExcel} sx={{ color: 'success.main', borderColor: 'success.main', width: { xs: '100%', md: 'auto' } }}>
+              تصدير Excel
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen} sx={{ width: { xs: '100%', md: 'auto' } }}>
+              إضافة بيع
+            </Button>
+          </Stack>
         </Stack>
         
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>

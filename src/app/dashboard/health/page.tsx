@@ -45,6 +45,8 @@ import {
   History as HistoryIcon
 } from '@mui/icons-material'
 import { formatCurrency, formatDate } from '@/lib/formatters'
+import { generateArabicPDF } from '@/lib/pdfHelper'
+import * as XLSX from 'xlsx'
 import { EntityHistory } from '@/components/EntityHistory'
 
 interface HealthRecord {
@@ -134,6 +136,63 @@ export default function HealthPage() {
   const handleOpen = () => {
     setOpen(true)
     if (goats.length === 0) loadGoats()
+  }
+
+  const exportToPDF = async () => {
+    const pData = filtered.map(r => ({
+      tagId: r.goat.tagId,
+      type: typeLabels[r.type] || r.type,
+      date: formatDate(r.date),
+      nextDueDate: r.nextDueDate ? formatDate(r.nextDueDate) : '-',
+      description: r.description,
+      veterinarian: r.veterinarian || '-',
+      cost: r.cost ? formatCurrency(r.cost) : '-'
+    }))
+    await generateArabicPDF({
+      title: 'التقرير الصحي',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: 'إجمالي السجلات', value: records.length },
+        { label: 'إجمالي التكاليف', value: formatCurrency(totalCost) },
+        { label: 'أكثر علاج شيوعاً', value: topTreatment ? `${typeLabels[topTreatment[0]] || topTreatment[0]} (${topTreatment[1]})` : '-' },
+        { label: 'تنبيهات قادمة', value: upcomingAlerts.length }
+      ],
+      columns: [
+        { header: 'التكلفة', dataKey: 'cost' },
+        { header: 'الطبيب', dataKey: 'veterinarian' },
+        { header: 'الوصف', dataKey: 'description' },
+        { header: 'المستحق القادم', dataKey: 'nextDueDate' },
+        { header: 'التاريخ', dataKey: 'date' },
+        { header: 'النوع', dataKey: 'type' },
+        { header: 'رقم التاج', dataKey: 'tagId' }
+      ],
+      data: pData,
+      totals: { tagId: 'الإجمالي', cost: formatCurrency(totalCost) },
+      filename: `health-report-${new Date().toISOString().split('T')[0]}.pdf`
+    })
+  }
+
+  const exportToExcel = () => {
+    const statsSheet = XLSX.utils.json_to_sheet([
+      { 'المؤشر': 'إجمالي السجلات', 'القيمة': records.length },
+      { 'المؤشر': 'إجمالي التكاليف', 'القيمة': totalCost },
+      { 'المؤشر': 'أكثر علاج شيوعاً', 'القيمة': topTreatment ? `${typeLabels[topTreatment[0]] || topTreatment[0]} (${topTreatment[1]})` : '-' },
+      { 'المؤشر': 'تنبيهات قادمة', 'القيمة': upcomingAlerts.length }
+    ])
+    const healthData = filtered.map(r => ({
+      'رقم التاج': r.goat.tagId,
+      'النوع': typeLabels[r.type] || r.type,
+      'التاريخ': formatDate(r.date),
+      'المستحق القادم': r.nextDueDate ? formatDate(r.nextDueDate) : '-',
+      'الوصف': r.description,
+      'الطبيب': r.veterinarian || '-',
+      'التكلفة': r.cost || 0
+    }))
+    const healthSheet = XLSX.utils.json_to_sheet(healthData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
+    XLSX.utils.book_append_sheet(wb, healthSheet, 'السجلات الصحية')
+    XLSX.writeFile(wb, `health-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const handleBatchOpen = () => {
@@ -263,6 +322,12 @@ export default function HealthPage() {
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">السجلات الصحية</Typography>
           </Stack>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+            <Button variant="outlined" startIcon={<HealthIcon />} onClick={exportToPDF} fullWidth={isMobile} sx={{ color: 'error.main', borderColor: 'error.main' }}>
+              تصدير PDF
+            </Button>
+            <Button variant="outlined" startIcon={<HealthIcon />} onClick={exportToExcel} fullWidth={isMobile} sx={{ color: 'success.main', borderColor: 'success.main' }}>
+              تصدير Excel
+            </Button>
             <Button variant="outlined" color="secondary" startIcon={<HealthIcon />} onClick={handleBatchOpen} fullWidth={isMobile}>
               علاج جماعي
             </Button>

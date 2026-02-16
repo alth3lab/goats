@@ -35,6 +35,8 @@ import {
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { formatCurrency, formatDate } from '@/lib/formatters'
+import { generateArabicPDF } from '@/lib/pdfHelper'
+import * as XLSX from 'xlsx'
 import {
   Add as AddIcon,
   Receipt as ExpensesIcon,
@@ -247,6 +249,55 @@ export default function ExpensesPage() {
     }
   }
 
+  const exportToPDF = async () => {
+    const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
+    const pData = filteredExpenses.map(e => ({
+      date: formatDate(e.date),
+      category: categoryLabels[e.category] || e.category,
+      description: e.description,
+      amount: formatCurrency(e.amount),
+      paymentMethod: e.paymentMethod || '-'
+    }))
+    await generateArabicPDF({
+      title: '\u062a\u0642\u0631\u064a\u0631 \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a', value: formatCurrency(totalAmount) },
+        { label: '\u0639\u062f\u062f \u0627\u0644\u0633\u062c\u0644\u0627\u062a', value: filteredExpenses.length }
+      ],
+      columns: [
+        { header: '\u0637\u0631\u064a\u0642\u0629 \u0627\u0644\u062f\u0641\u0639', dataKey: 'paymentMethod' },
+        { header: '\u0627\u0644\u0645\u0628\u0644\u063a', dataKey: 'amount' },
+        { header: '\u0627\u0644\u0648\u0635\u0641', dataKey: 'description' },
+        { header: '\u0627\u0644\u0641\u0626\u0629', dataKey: 'category' },
+        { header: '\u0627\u0644\u062a\u0627\u0631\u064a\u062e', dataKey: 'date' }
+      ],
+      data: pData,
+      totals: { date: '\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a', amount: formatCurrency(totalAmount) },
+      filename: `expenses-report-${new Date().toISOString().split('T')[0]}.pdf`
+    })
+  }
+
+  const exportToExcel = () => {
+    const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
+    const statsSheet = XLSX.utils.json_to_sheet([
+      { 'المؤشر': 'إجمالي المصروفات', 'القيمة': totalAmount },
+      { 'المؤشر': 'عدد السجلات', 'القيمة': filteredExpenses.length }
+    ])
+    const expensesData = filteredExpenses.map(e => ({
+      'التاريخ': formatDate(e.date),
+      'الفئة': categoryLabels[e.category] || e.category,
+      'الوصف': e.description,
+      'المبلغ': e.amount,
+      'طريقة الدفع': e.paymentMethod || '-'
+    }))
+    const expensesSheet = XLSX.utils.json_to_sheet(expensesData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
+    XLSX.utils.book_append_sheet(wb, expensesSheet, 'المصروفات')
+    XLSX.writeFile(wb, `expenses-report-${new Date().toISOString().split('T')[0]}.xlsx`)
+  }
+
   return (
     <Box sx={{ width: '100%', overflowX: 'hidden' }}>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
@@ -255,9 +306,17 @@ export default function ExpensesPage() {
             <ExpensesIcon color="warning" />
             <Typography variant="h4" fontWeight="bold">المصروفات</Typography>
           </Stack>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)} sx={{ width: { xs: '100%', md: 'auto' } }}>
-            إضافة مصروف
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" startIcon={<ExpensesIcon />} onClick={exportToPDF} sx={{ color: 'error.main', borderColor: 'error.main', width: { xs: '100%', md: 'auto' } }}>
+              تصدير PDF
+            </Button>
+            <Button variant="outlined" startIcon={<ExpensesIcon />} onClick={exportToExcel} sx={{ color: 'success.main', borderColor: 'success.main', width: { xs: '100%', md: 'auto' } }}>
+              تصدير Excel
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)} sx={{ width: { xs: '100%', md: 'auto' } }}>
+              إضافة مصروف
+            </Button>
+          </Stack>
         </Stack>
         <TextField
           sx={{ mt: 2 }}

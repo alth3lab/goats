@@ -61,9 +61,8 @@ import {
   FilterList as FilterIcon,
   BabyChangingStation as PregnantIcon
 } from '@mui/icons-material'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { generateArabicPDF } from '@/lib/pdfHelper'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
 
@@ -271,69 +270,46 @@ export default function GoatsPage() {
 
   // Export functions
   const exportToPDF = async () => {
-    const doc = new jsPDF('p', 'pt', 'a4')
-    const dateText = new Date().toLocaleDateString('ar-EG')
-    const exportTextColor = theme.palette.text.primary
-    const exportBorderColor = theme.palette.divider
-    const rowsHtml = filteredGoats.map(goat => {
+    const data = filteredGoats.map(goat => {
       const age = calculateGoatAge(goat.birthDate)
       const status = goat.status === 'ACTIVE' ? 'نشط' : goat.status === 'QUARANTINE' ? 'حجر' : goat.status
-      return `
-        <tr>
-          <td>${status}</td>
-          <td>${goat.weight ? `${goat.weight} كجم` : '-'}</td>
-          <td>${age.years}س ${age.months}ش</td>
-          <td>${goat.breed.nameAr}</td>
-          <td>${goat.breed.type.nameAr}</td>
-          <td>${goat.gender === 'MALE' ? 'ذكر' : 'أنثى'}</td>
-          <td>${goat.name || '-'}</td>
-          <td>${goat.tagId}</td>
-        </tr>
-      `
-    }).join('')
-
-    const html = `
-      <div style="font-family: Cairo, Arial, sans-serif; direction: rtl; padding: 16px; color: ${exportTextColor};">
-        <h2 style="margin: 0 0 8px; text-align: center;">تقرير قطيع الماعز</h2>
-        <p style="margin: 0 0 16px; text-align: center;">التاريخ: ${dateText}</p>
-
-        <h3 style="margin: 0 0 8px;">الإحصائيات</h3>
-        <ul style="margin: 0 0 16px; padding-right: 18px;">
-          <li>إجمالي القطيع: ${stats.total}</li>
-          <li>الذكور: ${stats.males} | الإناث: ${stats.females}</li>
-          <li>جاهز للفطام: ${stats.weaningReady}</li>
-          <li>متوسط العمر: ${stats.avgAge} شهر</li>
-        </ul>
-
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الحالة</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الوزن</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">العمر</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">السلالة</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">النوع</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الجنس</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">الاسم</th>
-              <th style="border: 1px solid ${exportBorderColor}; padding: 6px;">رقم التاج</th>
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `
-
-    await new Promise<void>((resolve) => {
-      ;(doc as any).html(html, {
-        x: 16,
-        y: 16,
-        width: 560,
-        windowWidth: 1024,
-        callback: () => resolve()
-      })
+      return {
+        tagId: goat.tagId,
+        name: goat.name || '-',
+        gender: goat.gender === 'MALE' ? '♂' : '♀',
+        typeNameAr: goat.breed.type.nameAr,
+        breedNameAr: goat.breed.nameAr,
+        age: `${age.years}س ${age.months}ش`,
+        weight: goat.weight ? `${goat.weight} كجم` : '-',
+        status
+      }
     })
-
-    doc.save(`goats-report-${new Date().toISOString().split('T')[0]}.pdf`)
+    
+    await generateArabicPDF({
+      title: 'تقرير قطيع الماعز',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: 'إجمالي القطيع', value: stats.total },
+        { label: 'الذكور', value: stats.males },
+        { label: 'الإناث', value: stats.females },
+        { label: 'في الحجر', value: stats.quarantine },
+        { label: 'جاهز للفطام', value: stats.weaningReady },
+        { label: 'متوسط العمر', value: `${stats.avgAge} شهر` }
+      ],
+      columns: [
+        { header: 'الحالة', dataKey: 'status', colorMap: { 'نشط': '#2e7d32', 'حجر': '#d32f2f' } },
+        { header: 'الوزن', dataKey: 'weight' },
+        { header: 'العمر', dataKey: 'age' },
+        { header: 'السلالة', dataKey: 'breedNameAr' },
+        { header: 'النوع', dataKey: 'typeNameAr' },
+        { header: 'الجنس', dataKey: 'gender', colorMap: { '♂': '#0288d1', '♀': '#e91e63' } },
+        { header: 'الاسم', dataKey: 'name' },
+        { header: 'رقم التاج', dataKey: 'tagId' }
+      ],
+      data,
+      totals: { tagId: 'الإجمالي', gender: `♂${stats.males} ♀${stats.females}` },
+      filename: `goats-report-${new Date().toISOString().split('T')[0]}.pdf`
+    })
   }
 
   const exportToExcel = () => {

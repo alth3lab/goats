@@ -22,8 +22,8 @@ import {
   CalendarMonth as CalendarIcon, PictureAsPdf as PdfIcon,
   Description as ExcelIcon
 } from '@mui/icons-material'
-import jsPDF from 'jspdf'
 import * as XLSX from 'xlsx'
+import { generateArabicPDF } from '@/lib/pdfHelper'
 
 const Grid = MuiGrid as any
 
@@ -495,34 +495,33 @@ export default function FeedsPage() {
 
   // ─── Export ───
   const exportPDF = async () => {
-    const doc = new jsPDF('p', 'pt', 'a4')
-    const dateStr = new Date().toLocaleDateString('ar-AE')
-    const exportBorderColor = theme.palette.divider
-    const exportTextColor = theme.palette.text.primary
-    const exportHeaderBg = theme.palette.action.hover
-    const rows = stocks.map(s => `<tr>
-      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.feedType?.nameAr || '-'}</td>
-      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.quantity} ${s.unit}</td>
-      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.cost || 0} درهم</td>
-      <td style="border:1px solid ${exportBorderColor};padding:4px">${s.supplier || '-'}</td>
-    </tr>`).join('')
-
-    const html = `<div style="font-family:Cairo,Arial,sans-serif;direction:rtl;padding:20px;color:${exportTextColor}">
-      <h2 style="text-align:center;margin-bottom:8px">تقرير إدارة الأعلاف</h2>
-      <p style="text-align:center;margin-bottom:20px">تاريخ التقرير: ${dateStr}</p>
-      <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <thead><tr style="background:${exportHeaderBg}">
-          <th style="border:1px solid ${exportBorderColor};padding:6px">نوع العلف</th>
-          <th style="border:1px solid ${exportBorderColor};padding:6px">الكمية</th>
-          <th style="border:1px solid ${exportBorderColor};padding:6px">سعر الوحدة</th>
-          <th style="border:1px solid ${exportBorderColor};padding:6px">المورد</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`
-
-    await new Promise<void>(resolve => { (doc as any).html(html, { x: 15, y: 15, width: 565, windowWidth: 1000, callback: () => resolve() }) })
-    doc.save(`feeds-${today()}.pdf`)
+    const totalValue = stocks.reduce((sum, s) => sum + (s.cost || 0) * s.quantity, 0)
+    const totalQty = stocks.reduce((sum, s) => sum + s.quantity, 0)
+    const data = stocks.map(s => ({
+      feedType: s.feedType?.nameAr || '-',
+      quantity: `${s.quantity} ${s.unit}`,
+      cost: `${s.cost || 0} درهم`,
+      supplier: s.supplier || '-'
+    }))
+    
+    await generateArabicPDF({
+      title: 'تقرير إدارة الأعلاف',
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: 'عدد الأصناف', value: stocks.length },
+        { label: 'إجمالي الكمية', value: totalQty },
+        { label: 'إجمالي القيمة', value: `${totalValue} درهم` }
+      ],
+      columns: [
+        { header: 'المورد', dataKey: 'supplier' },
+        { header: 'سعر الوحدة', dataKey: 'cost' },
+        { header: 'الكمية', dataKey: 'quantity' },
+        { header: 'نوع العلف', dataKey: 'feedType' }
+      ],
+      data,
+      totals: { feedType: 'الإجمالي', quantity: String(totalQty), cost: `${totalValue} درهم` },
+      filename: `feeds-${today()}.pdf`
+    })
   }
 
   const exportExcel = () => {

@@ -26,6 +26,8 @@ import {
   Pets as PetsIcon
 } from '@mui/icons-material'
 import { formatCurrency, formatNumber } from '@/lib/formatters'
+import { generateArabicPDF } from '@/lib/pdfHelper'
+import * as XLSX from 'xlsx'
 
 interface AnalyticsData {
   period: { year: number; month: number }
@@ -61,30 +63,98 @@ export default function ReportsPage() {
       .finally(() => setLoading(false))
   }, [year, monthNumber])
 
-  const handleExportKpi = async () => {
-    const res = await fetch(`/api/analytics?year=${year}&month=${monthNumber}&format=csv`)
-    const blob = await res.blob()
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `kpi-${year}-${monthNumber}.csv`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+  const exportKpiToExcel = () => {
+    if (!data) return
+    const categoryLabels: Record<string, string> = {
+      FEED: 'علف', MEDICINE: 'دواء', EQUIPMENT: 'معدات', LABOR: 'عمالة',
+      UTILITIES: 'مرافق', MAINTENANCE: 'صيانة', TRANSPORT: 'نقل', OTHER: 'أخرى'
+    }
+    const kpiSheet = XLSX.utils.json_to_sheet([
+      { 'البيان': 'إجمالي المبيعات', 'القيمة': data.totalSales },
+      { 'البيان': 'عدد عمليات البيع', 'القيمة': data.salesCount },
+      { 'البيان': 'متوسط البيع', 'القيمة': data.averageSale },
+      { 'البيان': 'إجمالي المصروفات', 'القيمة': data.totalExpenses },
+      { 'البيان': 'صافي الربح', 'القيمة': data.netProfit },
+      { 'البيان': 'عدد المواليد', 'القيمة': data.birthsCount },
+      { 'البيان': 'عدد النفوق', 'القيمة': data.deathsCount },
+      { 'البيان': 'القطيع النشط', 'القيمة': data.activeGoats },
+      { 'البيان': 'نمو القطيع', 'القيمة': data.herdGrowth },
+      { 'البيان': 'نسبة النفوق', 'القيمة': `${data.mortalityRate.toFixed(1)}%` }
+    ])
+    const expensesByCatData = data.expensesByCategory.map(item => ({
+      'الفئة': categoryLabels[item.category] || item.category,
+      'المبلغ': item.amount
+    }))
+    const catSheet = XLSX.utils.json_to_sheet(expensesByCatData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, kpiSheet, 'مؤشرات الأداء')
+    XLSX.utils.book_append_sheet(wb, catSheet, 'المصروفات حسب الفئة')
+    XLSX.writeFile(wb, `monthly-report-${year}-${monthNumber}.xlsx`)
   }
 
-  const handleExport = async (endpoint: string, filename: string) => {
-    const res = await fetch(endpoint)
-    const blob = await res.blob()
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+  const exportKpiToPDF = async () => {
+    if (!data) return
+    const categoryLabels: Record<string, string> = {
+      FEED: 'علف', MEDICINE: 'دواء', EQUIPMENT: 'معدات', LABOR: 'عمالة',
+      UTILITIES: 'مرافق', MAINTENANCE: 'صيانة', TRANSPORT: 'نقل', OTHER: 'أخرى'
+    }
+    const pData = data.expensesByCategory.map(item => ({
+      category: categoryLabels[item.category] || item.category,
+      amount: formatCurrency(item.amount)
+    }))
+    // KPI summary rows
+    const kpiRows = [
+      { category: 'إجمالي المبيعات', amount: formatCurrency(data.totalSales) },
+      { category: 'عدد عمليات البيع', amount: formatNumber(data.salesCount) },
+      { category: 'متوسط البيع', amount: formatCurrency(data.averageSale) },
+      { category: 'إجمالي المصروفات', amount: formatCurrency(data.totalExpenses) },
+      { category: 'صافي الربح', amount: formatCurrency(data.netProfit) },
+      { category: 'عدد المواليد', amount: formatNumber(data.birthsCount) },
+      { category: 'عدد النفوق', amount: formatNumber(data.deathsCount) },
+      { category: 'القطيع النشط', amount: formatNumber(data.activeGoats) },
+      { category: 'نمو القطيع', amount: formatNumber(data.herdGrowth) },
+      { category: 'نسبة النفوق', amount: `${data.mortalityRate.toFixed(1)}%` }
+    ]
+    await generateArabicPDF({
+      title: `تقرير شهري - ${monthNumber}/${year}`,
+      date: new Date().toLocaleDateString('en-GB'),
+      stats: [
+        { label: 'إجمالي المبيعات', value: formatCurrency(data.totalSales) },
+        { label: 'المصروفات', value: formatCurrency(data.totalExpenses) },
+        { label: 'صافي الربح', value: formatCurrency(data.netProfit) },
+        { label: 'القطيع النشط', value: data.activeGoats },
+        { label: 'المواليد', value: data.birthsCount },
+        { label: 'نسبة النفوق', value: `${data.mortalityRate.toFixed(1)}%` }
+      ],
+      columns: [
+        { header: 'القيمة', dataKey: 'amount' },
+        { header: 'البيان', dataKey: 'category' }
+      ],
+      data: [...kpiRows, { category: '', amount: '' }, { category: '--- المصروفات حسب الفئة ---', amount: '' }, ...pData],
+      totals: { category: 'إجمالي المصروفات', amount: formatCurrency(data.totalExpenses) },
+      filename: `monthly-report-${year}-${monthNumber}.pdf`
+    })
+  }
+
+  const handleExportData = async (type: 'goats' | 'sales' | 'expenses') => {
+    const endpoints: Record<string, string> = {
+      goats: '/api/goats',
+      sales: '/api/sales',
+      expenses: '/api/expenses'
+    }
+    const labels: Record<string, string> = {
+      goats: 'الماعز',
+      sales: 'المبيعات',
+      expenses: 'المصروفات'
+    }
+    const res = await fetch(endpoints[type])
+    const json = await res.json()
+    const rows = Array.isArray(json) ? json : json.data || []
+    if (rows.length === 0) return
+    const sheet = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, sheet, labels[type])
+    XLSX.writeFile(wb, `${type}-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const handleImport = async (file: File) => {
@@ -121,8 +191,11 @@ export default function ReportsPage() {
               InputLabelProps={{ shrink: true }}
               sx={{ minWidth: { xs: '100%', md: 180 } }}
             />
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportKpi}>
-              تصدير KPI
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportKpiToExcel} disabled={!data} sx={{ color: 'success.main', borderColor: 'success.main' }}>
+              تصدير Excel
+            </Button>
+            <Button variant="contained" startIcon={<DownloadIcon />} onClick={exportKpiToPDF} disabled={!data}>
+              تصدير PDF
             </Button>
           </Stack>
         </Stack>
@@ -230,13 +303,13 @@ export default function ReportsPage() {
             <Typography variant="h6" fontWeight="bold">استيراد/تصدير البيانات</Typography>
           </Stack>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <Button variant="outlined" onClick={() => handleExport('/api/goats?format=csv', 'goats.csv')}>
+            <Button variant="outlined" onClick={() => handleExportData('goats')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
               تصدير الماعز
             </Button>
-            <Button variant="outlined" onClick={() => handleExport('/api/sales?format=csv', 'sales.csv')}>
+            <Button variant="outlined" onClick={() => handleExportData('sales')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
               تصدير المبيعات
             </Button>
-            <Button variant="outlined" onClick={() => handleExport('/api/expenses?format=csv', 'expenses.csv')}>
+            <Button variant="outlined" onClick={() => handleExportData('expenses')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
               تصدير المصروفات
             </Button>
           </Stack>
