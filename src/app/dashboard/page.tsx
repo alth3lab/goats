@@ -6,30 +6,53 @@ import {
   Card, 
   CardContent, 
   Typography, 
-  Button,
   Paper,
   Stack,
   Alert,
   AlertTitle,
-  Chip
+  Chip,
+  Avatar,
+  Skeleton,
+  LinearProgress,
+  Divider,
+  TextField,
+  IconButton,
+  Tooltip
 } from '@mui/material'
 import { 
   Pets as PetsIcon,
   LocalHospital as HealthIcon,
   FavoriteBorder as BreedingIcon,
   ShoppingCart as SalesIcon,
-  Assessment as StatsIcon,
   TrendingUp as TrendingUpIcon,
   NotificationsActive as AlertIcon,
   ChildCare as WeaningIcon,
   HomeWork as PenIcon,
-  ReportProblem as DeathIcon
+  ReportProblem as DeathIcon,
+  AccountBalance as ProfitIcon,
+  Receipt as ExpensesIcon,
+  ChildCare as BirthIcon,
+  ArrowUpward as ArrowUpIcon,
+  ArrowDownward as ArrowDownIcon,
+  Remove as FlatIcon,
+  Male as MaleIcon,
+  Female as FemaleIcon,
+  FilterAltOff as ClearFilterIcon,
+  CalendarMonth as CalendarIcon,
+  Diversity1 as BreedingActiveIcon,
+  Inventory2 as InventoryIcon,
+  Grass as FeedIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { useTheme, alpha } from '@mui/material/styles'
+import {
+  BarChart, Bar, XAxis, YAxis, Cell,
+  Tooltip as ReTooltip, ResponsiveContainer, Legend, CartesianGrid
+} from 'recharts'
+import { useEffect, useMemo, useState } from 'react'
+import { useTheme } from '@mui/material/styles'
 import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
+
+const CHART_COLORS = ['#2196f3', '#ff9800', '#4caf50', '#f44336', '#9c27b0', '#00bcd4', '#ff5722', '#607d8b']
 
 interface Stats {
   totalGoats: number
@@ -42,6 +65,30 @@ interface Stats {
   totalExpenses: number
   totalSales: number
   netProfit: number
+  filtered: boolean
+  currentYear: number
+  expensesByMonth: Array<{ month: number; name: string; amount: number }>
+  salesByMonth: Array<{ month: number; name: string; amount: number }>
+  activeBreedings: number
+  lowStockCount: number
+  feedConsumption: { quantity: number; cost: number; hasLogs?: boolean; source?: string }
+  monthly: {
+    totalSales: number
+    totalExpenses: number
+    netProfit: number
+    salesCount: number
+    birthsCount: number
+    deathsCount: number
+    herdGrowth: number
+    mortalityRate: number
+    expensesByCategory: Array<{ category: string; amount: number }>
+  }
+  previous: {
+    totalSales: number
+    totalExpenses: number
+    netProfit: number
+  } | null
+  comparison: Record<string, number | null> | null
 }
 
 interface AlertItem {
@@ -53,16 +100,77 @@ interface AlertItem {
   date: string
 }
 
-interface Pen {
-  id: string
-  name: string
-  nameAr: string
-  type: string
-  capacity: number | null
-  notes: string | null
-  _count: {
-    goats: number
-  }
+
+
+/* ── Trend Badge ── */
+function TrendBadge({ value, invertColor }: { value: number | null | undefined; invertColor?: boolean }) {
+  if (value === null || value === undefined) return null
+  const positive = invertColor ? value < 0 : value > 0
+  const color = value === 0 ? 'text.secondary' : positive ? 'success.main' : 'error.main'
+  const Icon = value > 0 ? ArrowUpIcon : value < 0 ? ArrowDownIcon : FlatIcon
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color }}>
+      <Icon sx={{ fontSize: 16 }} />
+      <Typography variant="caption" fontWeight="bold" sx={{ color }}>
+        {Math.abs(value).toFixed(1)}%
+      </Typography>
+    </Stack>
+  )
+}
+
+/* ── KPI Card ── */
+function KpiCard({
+  icon, title, value, subtitle, trend, color, invertColor
+}: {
+  icon: React.ReactNode
+  title: string
+  value: string
+  subtitle?: string
+  trend?: number | null
+  color: string
+  invertColor?: boolean
+}) {
+  return (
+    <Card sx={{ height: '100%', borderRadius: 3 }}>
+      <CardContent sx={{ pt: 3 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+          <Avatar sx={{ bgcolor: `${color}.main`, width: 48, height: 48, mb: 1 }}>
+            {icon}
+          </Avatar>
+          {trend !== undefined && <TrendBadge value={trend} invertColor={invertColor} />}
+        </Stack>
+        <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
+          {value}
+        </Typography>
+        <Typography variant="subtitle2" color="text.secondary" fontWeight="bold" sx={{ mt: 0.5 }}>
+          {title}
+        </Typography>
+        {subtitle && (
+          <Typography variant="caption" color="text.secondary">
+            {subtitle}
+          </Typography>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ── Skeleton ── */
+function DashboardSkeleton() {
+  return (
+    <Grid container spacing={3} mb={4}>
+      {[...Array(8)].map((_, i) => (
+        <Grid key={i} size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card sx={{ borderRadius: 3, p: 2 }}>
+            <Skeleton variant="circular" width={48} height={48} />
+            <Skeleton variant="text" sx={{ mt: 2, fontSize: '1.5rem' }} width="60%" />
+            <Skeleton variant="text" width="80%" />
+            <Skeleton variant="text" width="40%" />
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
+  )
 }
 
 export default function DashboardPage() {
@@ -70,65 +178,57 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
-  const [loadingAlerts, setLoadingAlerts] = useState(true)
-  const [pens, setPens] = useState<Pen[]>([])
-  const [showCharts, setShowCharts] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState('')
 
   useEffect(() => {
-    fetch('/api/stats')
+    setLoading(true)
+    const params = new URLSearchParams()
+    if (selectedMonth) {
+      const [y, m] = selectedMonth.split('-')
+      params.set('year', y)
+      params.set('month', m)
+    }
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    fetch(`/api/stats${qs}`)
       .then(res => res.json())
       .then(data => {
-        setStats(data)
+        if (data && data.monthly) {
+          setStats(data)
+        } else if (data && !data.error) {
+          // Ensure monthly defaults exist
+          setStats({
+            ...data,
+            monthly: data.monthly || { totalSales: 0, totalExpenses: 0, netProfit: 0, salesCount: 0, birthsCount: 0, deathsCount: 0, herdGrowth: 0, mortalityRate: 0, expensesByCategory: [] },
+            feedConsumption: data.feedConsumption || { quantity: 0, cost: 0 },
+            activeBreedings: data.activeBreedings ?? 0,
+            lowStockCount: data.lowStockCount ?? 0,
+          })
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
-      
+  }, [selectedMonth])
+
+  useEffect(() => {
     fetch('/api/alerts')
       .then(res => res.json())
-      .then(data => {
-        setAlerts(Array.isArray(data) ? data : [])
-        setLoadingAlerts(false)
-      })
-      .catch(() => setLoadingAlerts(false))
-
-    fetch('/api/pens')
-      .then(res => res.json())
-      .then(data => {
-        setPens(Array.isArray(data) ? data : [])
-      })
-      .catch(() => setPens([]))
+      .then(data => setAlerts(Array.isArray(data) ? data : []))
+      .catch(() => setAlerts([]))
   }, [])
 
-  const dashboardCards = [
-    {
-      title: 'الماعز والخرفان',
-      icon: <PetsIcon sx={{ fontSize: 40 }} />,
-      color: 'primary',
-      link: '/dashboard/goats',
-      stats: loading ? '...' : `${formatNumber(stats?.activeGoats || 0)} نشط`
-    },
-    {
-      title: 'السجلات الصحية',
-      icon: <HealthIcon sx={{ fontSize: 40 }} />,
-      color: 'error',
-      link: '/dashboard/health',
-      stats: 'إدارة الصحة'
-    },
-    {
-      title: 'التكاثر',
-      icon: <BreedingIcon sx={{ fontSize: 40 }} />,
-      color: 'secondary',
-      link: '/dashboard/breeding',
-      stats: loading ? '...' : `${formatNumber(stats?.pregnantGoats || 0)} حامل`
-    },
-    {
-      title: 'المبيعات',
-      icon: <SalesIcon sx={{ fontSize: 40 }} />,
-      color: 'info',
-      link: '/dashboard/sales',
-      stats: loading ? '...' : formatCurrency(stats?.totalSales || 0)
-    },
-  ]
+  const periodLabel = selectedMonth ? 'الشهر' : 'الإجمالي'
+
+  /* ── Category labels ── */
+  const categoryLabels: Record<string, string> = {
+    FEED: 'علف', MEDICINE: 'دواء', EQUIPMENT: 'معدات', LABOR: 'عمالة',
+    UTILITIES: 'مرافق', MAINTENANCE: 'صيانة', TRANSPORT: 'نقل', OTHER: 'أخرى'
+  }
+
+  /* ── Memoized chart data ── */
+
+  const totalCategoryExpenses = useMemo(() => {
+    return stats?.monthly?.expensesByCategory?.reduce((s, i) => s + i.amount, 0) || 1
+  }, [stats])
 
   return (
     <Box sx={{ width: '100%', overflowX: 'hidden' }}>
@@ -143,20 +243,45 @@ export default function DashboardPage() {
           borderColor: 'divider'
         }}
       >
-        <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} mb={1}>
-          <PetsIcon sx={{ fontSize: 48, color: 'primary.main' }} />
-          <Box>
-            <Typography variant="h4" fontWeight="bold">
-              لوحة التحكم الرئيسية
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              متابعة وإدارة قطيع الماعز والخرفان
-            </Typography>
-          </Box>
+        <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" spacing={2} mb={1}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <PetsIcon sx={{ fontSize: 48, color: 'primary.main' }} />
+            <Box>
+              <Typography variant="h4" fontWeight="bold">
+                لوحة التحكم الرئيسية
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                متابعة وإدارة قطيع الماعز والخرفان
+              </Typography>
+            </Box>
+          </Stack>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <CalendarIcon color="action" />
+            <TextField
+              type="month"
+              size="small"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              placeholder="اختر شهر"
+              sx={{ minWidth: 180 }}
+              slotProps={{
+                inputLabel: { shrink: true }
+              }}
+            />
+            {selectedMonth && (
+              <Tooltip title="إزالة الفلتر - عرض الكل">
+                <IconButton size="small" onClick={() => setSelectedMonth('')} color="error">
+                  <ClearFilterIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
         </Stack>
       </Paper>
 
-      {!loading && stats && (
+      {loading ? (
+        <DashboardSkeleton />
+      ) : stats ? (
         <>
           {/* قسم التنبيهات */}
           {alerts.length > 0 && (
@@ -202,302 +327,220 @@ export default function DashboardPage() {
             </Box>
           )}
 
-          {stats && (
-            <Grid container spacing={3} mb={4}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  إجمالي القطيع
-                </Typography>
-                <Typography variant="h3" fontWeight="bold" color="primary">
-                  {formatNumber(stats.totalGoats)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatNumber(stats.totalTypes)} أنواع • {formatNumber(stats.totalBreeds)} سلالة
-                </Typography>
-              </CardContent>
-            </Card>
+          {/* ── KPI Cards ── */}
+          <Grid container spacing={3} mb={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<PetsIcon />}
+                title="إجمالي القطيع"
+                value={formatNumber(stats.totalGoats)}
+                subtitle={`نشط: ${formatNumber(stats.activeGoats)} | ${formatNumber(stats.totalTypes)} أنواع`}
+                color="primary"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<MaleIcon />}
+                title="الذكور / الإناث"
+                value={`${formatNumber(stats.maleGoats)} / ${formatNumber(stats.femaleGoats)}`}
+                subtitle={`${formatNumber(stats.pregnantGoats)} أنثى حامل`}
+                color="secondary"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<SalesIcon />}
+                title={`مبيعات ${periodLabel}`}
+                value={formatCurrency(stats.monthly.totalSales)}
+                subtitle={`عمليات البيع: ${formatNumber(stats.monthly.salesCount)}`}
+                trend={stats.comparison?.totalSales}
+                color="info"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<ExpensesIcon />}
+                title={`مصروفات ${periodLabel}`}
+                value={formatCurrency(stats.monthly.totalExpenses)}
+                trend={stats.comparison?.totalExpenses}
+                color="warning"
+                invertColor
+              />
+            </Grid>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  الذكور / الإناث
-                </Typography>
-                <Typography variant="h3" fontWeight="bold" color="secondary">
-                  {formatNumber(stats.maleGoats)} / {formatNumber(stats.femaleGoats)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatNumber(stats.pregnantGoats)} أنثى حامل
-                </Typography>
-              </CardContent>
-            </Card>
+          <Grid container spacing={3} mb={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<ProfitIcon />}
+                title={`صافي الربح (${periodLabel})`}
+                value={formatCurrency(stats.monthly.netProfit)}
+                trend={stats.comparison?.netProfit}
+                color="success"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<BirthIcon />}
+                title="المواليد"
+                value={formatNumber(stats.monthly.birthsCount)}
+                trend={stats.comparison?.birthsCount}
+                color="info"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<TrendingUpIcon />}
+                title="نمو القطيع"
+                value={formatNumber(stats.monthly.herdGrowth)}
+                subtitle={`مواليد: ${stats.monthly.birthsCount} | نفوق: ${stats.monthly.deathsCount}`}
+                trend={stats.comparison?.herdGrowth}
+                color="success"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                icon={<HealthIcon />}
+                title="نسبة النفوق"
+                value={`${stats.monthly.mortalityRate.toFixed(1)}%`}
+                subtitle={`عدد النفوق: ${formatNumber(stats.monthly.deathsCount)}`}
+                trend={stats.comparison?.deathsCount}
+                color="error"
+                invertColor
+              />
+            </Grid>
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  إجمالي المبيعات
-                </Typography>
-                <Typography variant="h3" fontWeight="bold" color="info.main">
-                  {formatCurrency(stats.totalSales || 0)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  درهم
-                </Typography>
-              </CardContent>
-            </Card>
+          {/* ── Row 3 - Additional KPIs ── */}
+          <Grid container spacing={3} mb={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <KpiCard
+                icon={<BreedingActiveIcon />}
+                title="التكاثر النشط"
+                value={formatNumber(stats.activeBreedings)}
+                subtitle={`${formatNumber(stats.pregnantGoats)} حامل حالياً`}
+                color="secondary"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <KpiCard
+                icon={stats.lowStockCount > 0 ? <WarningIcon /> : <InventoryIcon />}
+                title="المخزون المنخفض"
+                value={formatNumber(stats.lowStockCount)}
+                subtitle={stats.lowStockCount > 0 ? 'أصناف تحت الحد الأدنى ⚠️' : 'المخزون جيد ✓'}
+                color={stats.lowStockCount > 0 ? 'error' : 'success'}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <KpiCard
+                icon={<FeedIcon />}
+                title={`استهلاك الأعلاف (${periodLabel})`}
+                value={`${formatNumber(stats.feedConsumption?.quantity ?? 0)} كجم`}
+                subtitle={`التكلفة: ${formatCurrency(stats.feedConsumption?.cost ?? 0)}`}
+                color="warning"
+              />
+            </Grid>
           </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <TrendingUpIcon color="success" />
-                  <Typography variant="h6">صافي الربح</Typography>
-                </Stack>
-                <Typography variant="h3" fontWeight="bold" color="success.main" mt={1}>
-                  {formatCurrency(stats.netProfit)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  درهم
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-
-          {/* Charts Section */}
-          {pens.length > 0 && (
-            <Box mb={4}>
-              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5} mb={2}>
-                <Typography variant="h6" fontWeight="bold">
-                  التحليل البياني
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setShowCharts(!showCharts)}
+          {/* ── Yearly Sales vs Expenses Comparison Chart ── */}
+          <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              مقارنة المبيعات والمصروفات الشهرية - {stats.currentYear}
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            {stats.expensesByMonth?.every(m => m.amount === 0) && stats.salesByMonth?.every(m => m.amount === 0) ? (
+              <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
+                لا توجد بيانات مسجلة لهذه السنة
+              </Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={380}>
+                <BarChart
+                  data={stats.expensesByMonth?.map((exp, i) => ({
+                    name: exp.name,
+                    expenses: exp.amount,
+                    sales: stats.salesByMonth?.[i]?.amount || 0,
+                    profit: (stats.salesByMonth?.[i]?.amount || 0) - exp.amount
+                  }))}
+                  barGap={4}
+                  barSize={18}
                 >
-                  {showCharts ? 'إخفاء' : 'عرض'}
-                </Button>
-              </Stack>
-              
-              {showCharts && (
-                <Grid container spacing={3}>
-                  {/* Pie Chart - Distribution by Type */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
-                          توزيع الحيوانات حسب نوع الحظيرة
-                        </Typography>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={[
-                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.primary.main },
-                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.error.main },
-                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.success.main },
-                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.warning.main }
-                              ].filter(item => item.value > 0)}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                              outerRadius={80}
-                              fill={theme.palette.primary.main}
-                              dataKey="value"
-                            >
-                              {[
-                                { name: 'ولادة', value: pens.filter(p => p.type === 'BREEDING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.primary.main },
-                                { name: 'عزل', value: pens.filter(p => p.type === 'ISOLATION').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.error.main },
-                                { name: 'تسمين', value: pens.filter(p => p.type === 'FATTENING').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.success.main },
-                                { name: 'عام', value: pens.filter(p => !p.type || p.type === 'GENERAL').reduce((sum, p) => sum + p._count.goats, 0), color: theme.palette.warning.main }
-                              ].filter(item => item.value > 0).map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-                  </Grid>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontFamily: 'Cairo', fontSize: 11 }} angle={-35} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontFamily: 'Cairo', fontSize: 12 }} />
+                  <ReTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      return (
+                        <Paper sx={{ p: 1.5, borderRadius: 2 }}>
+                          {payload.map((entry, i) => (
+                            <Typography key={i} variant="body2" sx={{ color: entry.color }} fontWeight="bold">
+                              {entry.name}: {formatCurrency(Number(entry.value))}
+                            </Typography>
+                          ))}
+                        </Paper>
+                      )
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="sales" name="المبيعات" fill="#4caf50" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="المصروفات" fill="#f44336" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="profit" name="صافي الربح" fill="#2196f3" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
 
-                  {/* Bar Chart - Gender Distribution */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
-                          توزيع الذكور والإناث
-                        </Typography>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={[
-                                { name: 'ذكور', value: stats?.maleGoats || 0, color: theme.palette.primary.main },
-                                { name: 'إناث', value: stats?.femaleGoats || 0, color: theme.palette.secondary.main }
-                              ].filter(item => item.value > 0)}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, value, percent }) => `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
-                              outerRadius={80}
-                              fill={theme.palette.primary.main}
-                              dataKey="value"
-                            >
-                              {[
-                                { name: 'ذكور', value: stats?.maleGoats || 0, color: theme.palette.primary.main },
-                                { name: 'إناث', value: stats?.femaleGoats || 0, color: theme.palette.secondary.main }
-                              ].filter(item => item.value > 0).map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Bar Chart - Top 10 Pens */}
-                  <Grid size={{ xs: 12 }}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="subtitle1" fontWeight="bold" mb={2} textAlign="center">
-                          أكثر 10 حظائر من حيث عدد الحيوانات
-                        </Typography>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart
-                            data={[...pens]
-                              .sort((a, b) => b._count.goats - a._count.goats)
-                              .slice(0, 10)
-                              .map(pen => ({
-                                name: pen.nameAr,
-                                'عدد الحيوانات': pen._count.goats,
-                                'السعة': pen.capacity || 0
-                              }))}
-                          >
-                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                            <YAxis />
-                            <RechartsTooltip />
-                            <Legend />
-                            <Bar dataKey="عدد الحيوانات" fill={theme.palette.success.main} />
-                            <Bar dataKey="السعة" fill={theme.palette.primary.main} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-              )}
-            </Box>
-          )}
+          {/* ── Expenses breakdown with progress bars ── */}
+          <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              تفاصيل المصروفات {selectedMonth ? '' : '(إجمالي)'}
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            {!stats.monthly.expensesByCategory || stats.monthly.expensesByCategory.length === 0 ? (
+              <Typography color="text.secondary" align="center">
+                لا توجد مصروفات {selectedMonth ? 'لهذا الشهر' : ''}
+              </Typography>
+            ) : (
+              <Grid container spacing={2}>
+                {stats.monthly.expensesByCategory
+                  .sort((a, b) => b.amount - a.amount)
+                  .map((item, idx) => {
+                    const pct = (item.amount / totalCategoryExpenses) * 100
+                    const color = CHART_COLORS[idx % CHART_COLORS.length]
+                    return (
+                      <Grid key={item.category} size={{ xs: 12, sm: 6 }}>
+                        <Stack spacing={0.5}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="body2" fontWeight="bold">
+                              {categoryLabels[item.category] || item.category}
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography variant="body2" color="text.secondary">
+                                {pct.toFixed(1)}%
+                              </Typography>
+                              <Typography variant="body2" fontWeight="bold">
+                                {formatCurrency(item.amount)}
+                              </Typography>
+                            </Stack>
+                          </Stack>
+                          <LinearProgress
+                            variant="determinate"
+                            value={pct}
+                            sx={{
+                              height: 10,
+                              borderRadius: 5,
+                              bgcolor: 'grey.200',
+                              '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 5 }
+                            }}
+                          />
+                        </Stack>
+                      </Grid>
+                    )
+                  })}
+              </Grid>
+            )}
+          </Paper>
       </>
-      )}
-
-      <Grid container spacing={3}>
-        {dashboardCards.map((card, index) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-            <Card
-              component={Link}
-              href={card.link}
-              sx={{
-                height: '100%',
-                textDecoration: 'none',
-                transition: 'all 0.3s ease',
-                '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 }
-              }}
-            >
-              <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                <Box
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mx: 'auto',
-                    mb: 2,
-                    bgcolor: alpha(theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].main, 0.14),
-                    color: theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].main
-                  }}
-                >
-                  {card.icon}
-                </Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  {card.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {card.stats}
-                </Typography>
-                <Button
-                  variant="contained"
-                  sx={{
-                    mt: 2,
-                    bgcolor: theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].main,
-                    '&:hover': { bgcolor: theme.palette[card.color as 'primary' | 'error' | 'secondary' | 'info'].dark }
-                  }}
-                >
-                  فتح
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card
-            component={Link}
-            href="/dashboard/types"
-            sx={{
-              height: '100%',
-              textDecoration: 'none',
-              transition: 'all 0.3s ease',
-              '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 }
-            }}
-          >
-            <CardContent sx={{ textAlign: 'center', py: 4 }}>
-              <Box
-                sx={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mx: 'auto',
-                  mb: 2,
-                  bgcolor: alpha(theme.palette.warning.main, 0.14),
-                  color: theme.palette.warning.main
-                }}
-              >
-                <StatsIcon sx={{ fontSize: 40 }} />
-              </Box>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>
-                الأنواع والسلالات
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {loading ? '...' : `${formatNumber(stats?.totalTypes || 0)} / ${formatNumber(stats?.totalBreeds || 0)}`}
-              </Typography>
-              <Button
-                variant="contained"
-                sx={{ mt: 2, bgcolor: 'warning.main', '&:hover': { bgcolor: 'warning.dark' } }}
-              >
-                إدارة
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      ) : null}
     </Box>
   )
 }

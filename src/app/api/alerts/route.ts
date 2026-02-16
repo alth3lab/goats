@@ -115,18 +115,17 @@ export async function GET(request: NextRequest) {
       }),
 
       // 7. Low Stock Items
-      prismaAny.inventoryItem.findMany({
-        where: {
-          currentStock: { lte: prismaAny.raw('minStock') }
-        },
-        select: {
-          id: true,
-          nameAr: true,
-          currentStock: true,
-          minStock: true,
-          unit: true
-        }
-      }).catch(() => []),
+      prisma.$queryRaw<Array<{
+        id: string
+        nameAr: string
+        currentStock: number
+        minStock: number | null
+        unit: string
+      }>>`
+        SELECT id, nameAr, currentStock, minStock, unit
+        FROM InventoryItem
+        WHERE minStock IS NOT NULL AND currentStock <= minStock
+      `.catch(() => []),
 
       // 8. Expiring Feeds
       prismaAny.feedStock.findMany({
