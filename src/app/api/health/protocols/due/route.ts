@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
         gender: true,
         birthDate: true,
         healthRecords: {
-          where: { type: 'VACCINATION' },
           select: { id: true, description: true, date: true, type: true },
           orderBy: { date: 'desc' }
         }
@@ -46,6 +45,7 @@ export async function GET(request: NextRequest) {
       protocolId: string
       protocolName: string
       protocolNameAr: string
+      protocolType: string
       medication: string | null
       dosage: string | null
       ageMonths: number
@@ -62,13 +62,17 @@ export async function GET(request: NextRequest) {
         // Skip if protocol is gender-specific and doesn't match
         if (protocol.gender && protocol.gender !== goat.gender) continue
 
+        // البروتوكول يعمل فقط من تاريخ إضافته فصاعداً
+        const protocolCreatedAt = new Date(protocol.createdAt)
+
         // Calculate when this vaccination is due
         const birthDate = new Date(goat.birthDate)
 
         if (protocol.repeatMonths) {
-          // Recurring vaccination — check if enough time has passed since last one
+          // Recurring vaccination — only count records AFTER protocol was created
           const relevantRecords = goat.healthRecords.filter(hr =>
-            hr.description?.includes(protocol.name) || hr.description?.includes(protocol.nameAr)
+            (hr.description?.includes(protocol.name) || hr.description?.includes(protocol.nameAr))
+            && new Date(hr.date) >= protocolCreatedAt
           )
 
           const lastRecord = relevantRecords.length > 0 ? relevantRecords[0] : null
@@ -83,12 +87,15 @@ export async function GET(request: NextRequest) {
             dueDate = new Date(lastRecord.date)
             dueDate.setMonth(dueDate.getMonth() + protocol.repeatMonths)
           } else {
-            // Never vaccinated — due since ageMonths old
-            dueDate = new Date(birthDate)
-            dueDate.setMonth(dueDate.getMonth() + protocol.ageMonths)
+            // Never vaccinated since protocol was added — due from protocol creation or today (whichever is later)
+            dueDate = protocolCreatedAt > today ? new Date(protocolCreatedAt) : new Date(today)
           }
 
-          const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+          // Determine status BEFORE resetting overdue dates
+          const isOverdue = dueDate < today
+          const originalDueDate = new Date(dueDate)
+
+          const diffDays = Math.ceil((originalDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
           if (diffDays <= 14) { // Due within 2 weeks or overdue
             dueList.push({
@@ -98,12 +105,13 @@ export async function GET(request: NextRequest) {
               protocolId: protocol.id,
               protocolName: protocol.name,
               protocolNameAr: protocol.nameAr,
+              protocolType: protocol.type,
               medication: protocol.medication,
               dosage: protocol.dosage,
               ageMonths: protocol.ageMonths,
               goatAgeMonths: age.totalMonths,
-              status: diffDays < 0 ? 'overdue' : diffDays <= 7 ? 'due_soon' : 'due',
-              dueDate: dueDate.toISOString(),
+              status: isOverdue ? 'overdue' : diffDays <= 7 ? 'due_soon' : 'due',
+              dueDate: originalDueDate.toISOString(),
               lastVaccination: lastRecord ? new Date(lastRecord.date).toISOString() : null
             })
           }
@@ -111,18 +119,17 @@ export async function GET(request: NextRequest) {
           // One-time vaccination
           if (age.totalMonths < protocol.ageMonths) continue // Too young
 
-          // Check if already vaccinated with this protocol
+          // Check if already vaccinated with this protocol AFTER it was created
           const alreadyDone = goat.healthRecords.some(hr =>
-            hr.description?.includes(protocol.name) || hr.description?.includes(protocol.nameAr)
+            (hr.description?.includes(protocol.name) || hr.description?.includes(protocol.nameAr))
+            && new Date(hr.date) >= protocolCreatedAt
           )
 
           if (alreadyDone) continue
 
-          // Due since ageMonths old
-          const dueDate = new Date(birthDate)
-          dueDate.setMonth(dueDate.getMonth() + protocol.ageMonths)
-
-          const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+          // Due from protocol creation date
+          const dueDate = new Date(protocolCreatedAt)
+          const isOverdue = dueDate < today
 
           dueList.push({
             goatId: goat.id,
@@ -131,11 +138,12 @@ export async function GET(request: NextRequest) {
             protocolId: protocol.id,
             protocolName: protocol.name,
             protocolNameAr: protocol.nameAr,
+            protocolType: protocol.type,
             medication: protocol.medication,
             dosage: protocol.dosage,
             ageMonths: protocol.ageMonths,
             goatAgeMonths: age.totalMonths,
-            status: diffDays < 0 ? 'overdue' : diffDays <= 7 ? 'due_soon' : 'due',
+            status: isOverdue ? 'overdue' : 'due_soon',
             dueDate: dueDate.toISOString(),
             lastVaccination: null
           })

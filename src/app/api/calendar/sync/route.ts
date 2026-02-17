@@ -211,6 +211,8 @@ export async function POST(request: NextRequest) {
     })
 
     for (const protocol of protocols) {
+      const protocolCreatedAt = new Date(protocol.createdAt)
+
       for (const goat of allActiveGoats) {
         try {
           // تحقق من الجنس
@@ -224,17 +226,18 @@ export async function POST(request: NextRequest) {
           // لا يُطبق إذا الحيوان أصغر من العمر المطلوب
           if (ageMonths < protocol.ageMonths) continue
 
-          // البحث عن آخر سجل يطابق هذا البروتوكول
+          // البحث عن آخر سجل يطابق هذا البروتوكول (بعد إنشاء البروتوكول فقط)
           const matchingRecords = goat.healthRecords.filter(r =>
             r.description && r.description.includes(protocol.nameAr)
+            && new Date(r.date) >= protocolCreatedAt
           )
           const lastRecord = matchingRecords[0]
 
           let dueDate: Date
 
           if (!lastRecord) {
-            // لم يتلق هذا التطعيم أبداً - مستحق الآن
-            dueDate = new Date(today)
+            // لم يتلق هذا التطعيم بعد إضافة البروتوكول - مستحق من تاريخ الإضافة أو اليوم
+            dueDate = protocolCreatedAt > today ? new Date(protocolCreatedAt) : new Date(today)
           } else if (protocol.repeatMonths) {
             // حساب الموعد التالي بناءً على التكرار
             dueDate = new Date(lastRecord.date)

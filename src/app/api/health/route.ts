@@ -67,35 +67,42 @@ export async function POST(request: NextRequest) {
         return record
     })
 
-    // إنشاء حدث في التقويم للتطعيمات والمواعيد القادمة    try {
-      if (type === 'VACCINATION' || type === 'CHECKUP') {
-        const eventType = type === 'VACCINATION' ? 'VACCINATION' : 'CHECKUP'
+    // إنشاء حدث في التقويم للتطعيمات والمواعيد القادمة
+    try {
+      const typeLabels: Record<string, string> = {
+        VACCINATION: 'تطعيم', DEWORMING: 'مضاد ديدان', TREATMENT: 'علاج', CHECKUP: 'فحص', SURGERY: 'جراحة'
+      }
+      const eventTypeMap: Record<string, string> = {
+        VACCINATION: 'VACCINATION', DEWORMING: 'DEWORMING', TREATMENT: 'CHECKUP', CHECKUP: 'CHECKUP', SURGERY: 'CHECKUP'
+      }
+      const label = typeLabels[type] || type
+      const calEventType = eventTypeMap[type] || 'CHECKUP'
+
+      await prisma.calendarEvent.create({
+        data: {
+          eventType: calEventType as any,
+          title: `${label}: ${result.goat.tagId}`,
+          description: description || '',
+          date: new Date(date),
+          goatId,
+          isCompleted: true,
+          createdBy: userId
+        }
+      })
+
+      // إضافة حدث للموعد القادم
+      if (nextDueDate) {
         await prisma.calendarEvent.create({
           data: {
-            eventType,
-            title: `${type === 'VACCINATION' ? 'تطعيم' : 'فحص'}: ${result.goat.tagId}`,
-            description: description || '',
-            date: new Date(date),
+            eventType: calEventType as any,
+            title: `${label} قادم: ${result.goat.tagId}`,
+            description: `موعد ${label} التالي`,
+            date: new Date(nextDueDate),
             goatId,
-            isCompleted: true,
+            reminder: true,
             createdBy: userId
           }
         })
-
-        // إضافة حدث للموعد القادم
-        if (nextDueDate) {
-          await prisma.calendarEvent.create({
-            data: {
-              eventType,
-              title: `${type === 'VACCINATION' ? 'تطعيم قادم' : 'فحص قادم'}: ${result.goat.tagId}`,
-              description: `موعد ${type === 'VACCINATION' ? 'التطعيم' : 'الفحص'} التالي`,
-              date: new Date(nextDueDate),
-              goatId,
-              reminder: true,
-              createdBy: userId
-            }
-          })
-        }
       }
     } catch (calendarError) {
       console.error('Failed to create calendar event:', calendarError)

@@ -91,6 +91,7 @@ interface DueVaccination {
   protocolId: string
   protocolName: string
   protocolNameAr: string
+  protocolType: string
   medication: string | null
   dosage: string | null
   ageMonths: number
@@ -325,18 +326,22 @@ export default function HealthPage() {
       notes: protocolForm.notes || null
     }
 
-    if (editingProtocol) {
-      await fetch(`/api/health/protocols`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingProtocol.id, ...payload })
-      })
-    } else {
-      await fetch('/api/health/protocols', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+    const resp = editingProtocol
+      ? await fetch(`/api/health/protocols`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingProtocol.id, ...payload })
+        })
+      : await fetch('/api/health/protocols', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      alert(err.error || 'فشل في حفظ البروتوكول')
+      return
     }
 
     setProtocolOpen(false)
@@ -345,18 +350,22 @@ export default function HealthPage() {
 
   const handleProtocolDelete = async (id: string) => {
     if (!confirm('هل تريد حذف هذا البروتوكول؟')) return
-    await fetch('/api/health/protocols', {
+    const resp = await fetch('/api/health/protocols', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
     })
+    if (!resp.ok) {
+      alert('فشل في حذف البروتوكول')
+      return
+    }
     loadProtocols()
   }
 
   const handleQuickVaccinate = async (due: DueVaccination) => {
     const payload = {
       goatId: due.goatId,
-      type: 'VACCINATION',
+      type: due.protocolType || 'VACCINATION',
       date: new Date(),
       description: `${due.protocolNameAr} (${due.protocolName})`,
       veterinarian: null,
@@ -364,11 +373,15 @@ export default function HealthPage() {
       nextDueDate: null,
       moveToIsolation: false
     }
-    await fetch('/api/health', {
+    const resp = await fetch('/api/health', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
+    if (!resp.ok) {
+      alert('فشل في تسجيل التطعيم')
+      return
+    }
     loadDueVaccinations()
     // Refresh records too
     const res = await fetch('/api/health')
@@ -1180,6 +1193,7 @@ export default function HealthPage() {
                 <MenuItem value="DEWORMING">مضاد ديدان</MenuItem>
                 <MenuItem value="TREATMENT">علاج</MenuItem>
                 <MenuItem value="CHECKUP">فحص</MenuItem>
+                <MenuItem value="SURGERY">جراحة</MenuItem>
               </Select>
             </FormControl>
             <TextField
