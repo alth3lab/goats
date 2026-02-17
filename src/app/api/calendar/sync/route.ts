@@ -196,42 +196,92 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. إنشاء تذكيرات تطعيم دوري للماعز النشط
-    const activeGoats = await prisma.goat.findMany({
+    // 5. إنشاء تذكيرات من بروتوكولات التطعيم النشطة
+    const protocols = await prisma.vaccinationProtocol.findMany({
+      where: { isActive: true }
+    })
+
+    const allActiveGoats = await prisma.goat.findMany({
       where: { status: 'ACTIVE' },
       include: {
         healthRecords: {
-          where: { type: 'VACCINATION' },
-          orderBy: { date: 'desc' },
-          take: 1
+          orderBy: { date: 'desc' }
         }
       }
     })
 
-    for (const goat of activeGoats) {
-      try {
-        const lastVaccination = goat.healthRecords[0]
-        if (!lastVaccination) continue
+    for (const protocol of protocols) {
+      for (const goat of allActiveGoats) {
+        try {
+          // تحقق من الجنس
+          if (protocol.gender && goat.gender !== protocol.gender) continue
 
-        const nextVaccinationDate = new Date(lastVaccination.date)
-        nextVaccinationDate.setMonth(nextVaccinationDate.getMonth() + 6)
+          // حساب عمر الحيوان بالأشهر
+          const birthDate = goat.birthDate ? new Date(goat.birthDate) : null
+          if (!birthDate) continue
+          const ageMonths = (today.getFullYear() - birthDate.getFullYear()) * 12 + (today.getMonth() - birthDate.getMonth())
 
-        if (nextVaccinationDate > today && nextVaccinationDate < new Date(today.getFullYear(), today.getMonth() + 3, 1)) {
+          // لا يُطبق إذا الحيوان أصغر من العمر المطلوب
+          if (ageMonths < protocol.ageMonths) continue
+
+          // البحث عن آخر سجل يطابق هذا البروتوكول
+          const matchingRecords = goat.healthRecords.filter(r =>
+            r.description && r.description.includes(protocol.nameAr)
+          )
+          const lastRecord = matchingRecords[0]
+
+          let dueDate: Date
+
+          if (!lastRecord) {
+            // لم يتلق هذا التطعيم أبداً - مستحق الآن
+            dueDate = new Date(today)
+          } else if (protocol.repeatMonths) {
+            // حساب الموعد التالي بناءً على التكرار
+            dueDate = new Date(lastRecord.date)
+            dueDate.setMonth(dueDate.getMonth() + protocol.repeatMonths)
+            // إذا الموعد فات، اجعله اليوم
+            if (dueDate < today) dueDate = new Date(today)
+          } else {
+            // بروتوكول مرة واحدة وتم تنفيذه - تخطي
+            continue
+          }
+
+          // فقط أحداث خلال 3 أشهر قادمة
+          const threeMonthsLater = new Date(today)
+          threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3)
+          if (dueDate > threeMonthsLater) continue
+
+          // التحقق من عدم وجود حدث مسبق لنفس البروتوكول والحيوان
+          const eventTitle = `${protocol.nameAr}: ${goat.tagId}`
+          const startOfDay = new Date(dueDate)
+          startOfDay.setHours(0, 0, 0, 0)
+          const endOfDay = new Date(dueDate)
+          endOfDay.setHours(23, 59, 59, 999)
+
           const existingEvent = await prisma.calendarEvent.findFirst({
             where: {
-              eventType: 'VACCINATION',
               goatId: goat.id,
-              date: { gte: new Date(nextVaccinationDate.setHours(0, 0, 0, 0)), lte: new Date(nextVaccinationDate.setHours(23, 59, 59, 999)) }
+              title: { contains: protocol.nameAr },
+              date: { gte: startOfDay, lte: endOfDay }
             }
           })
 
           if (!existingEvent) {
+            const typeMap: Record<string, string> = {
+              'VACCINATION': 'VACCINATION',
+              'DEWORMING': 'DEWORMING',
+              'TREATMENT': 'CHECKUP',
+              'CHECKUP': 'CHECKUP',
+              'SURGERY': 'CHECKUP'
+            }
             await prisma.calendarEvent.create({
               data: {
-                eventType: 'VACCINATION',
-                title: `تطعيم دوري: ${goat.tagId}`,
-                description: 'موعد التطعيم الدوري (كل 6 أشهر)',
-                date: nextVaccinationDate,
+                eventType: (typeMap[protocol.type] || 'CHECKUP') as any,
+                title: eventTitle,
+                description: protocol.medication
+                  ? `${protocol.description || ''} | الدواء: ${protocol.medication}${protocol.dosage ? ' | الجرعة: ' + protocol.dosage : ''}`
+                  : protocol.description || `بروتوكول: ${protocol.nameAr}`,
+                date: dueDate,
                 goatId: goat.id,
                 reminder: true,
                 reminderDays: 3,
@@ -240,10 +290,10 @@ export async function POST(request: NextRequest) {
             })
             created++
           }
+        } catch (e) {
+          console.error('Error creating protocol event:', protocol.name, goat.tagId, e)
+          errors++
         }
-      } catch (e) {
-        console.error('Error creating vaccination reminder:', goat.id, e)
-        errors++
       }
     }
 
