@@ -89,14 +89,21 @@ export async function POST(request: NextRequest) {
       orderBy: { farm: { createdAt: 'asc' } }
     })
 
-    if (!user.tenantId || !userFarm) {
+    // SUPER_ADMIN can login without a farm; others need one
+    if (!user.tenantId && user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'لم يتم ربط الحساب بمستأجر' }, { status: 403 })
+    }
+    if (!userFarm && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'لم يتم ربط الحساب بمزرعة' }, { status: 403 })
     }
 
+    const farmId = userFarm?.farmId || ''
+    const tenantId = user.tenantId || ''
+
     await logActivity({
       userId: user.id,
-      tenantId: user.tenantId,
-      farmId: userFarm.farmId,
+      tenantId,
+      farmId,
       action: 'LOGIN',
       entity: 'User',
       entityId: user.id,
@@ -109,17 +116,17 @@ export async function POST(request: NextRequest) {
     const token = await signToken({
       userId: user.id,
       role: user.role,
-      tenantId: user.tenantId,
-      farmId: userFarm.farmId
+      tenantId,
+      farmId
     })
 
     const response = NextResponse.json({
       id: user.id,
       fullName: user.fullName,
       role: user.role,
-      tenantId: user.tenantId,
-      farmId: userFarm.farmId,
-      farmName: userFarm.farm.name,
+      tenantId,
+      farmId,
+      farmName: userFarm?.farm.name || '',
     })
 
     response.cookies.set(TOKEN_COOKIE, token, {

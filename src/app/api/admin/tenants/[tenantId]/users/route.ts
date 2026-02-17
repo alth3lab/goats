@@ -21,8 +21,9 @@ export async function GET(
     const { tenantId } = await params
 
     // No runWithTenant → bypass middleware filtering
+    // Exclude SUPER_ADMIN from tenant user lists
     const users = await prisma.user.findMany({
-      where: { tenantId },
+      where: { tenantId, role: { not: 'SUPER_ADMIN' } },
       include: {
         userFarms: {
           include: {

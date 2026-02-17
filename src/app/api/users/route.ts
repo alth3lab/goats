@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const users = await prisma.user.findMany({
+      where: { role: { not: 'SUPER_ADMIN' } },
       orderBy: { createdAt: 'desc' }
     })
     return NextResponse.json(users)
