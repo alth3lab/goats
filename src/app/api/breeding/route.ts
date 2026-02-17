@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     if (!body?.motherId || !body?.fatherId) {
       return NextResponse.json({ error: 'يجب اختيار الأم والأب' }, { status: 400 })

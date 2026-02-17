@@ -43,7 +43,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const existing = await prisma.breeding.findUnique({
       where: { id },
@@ -253,7 +253,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     
     // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل
     const prismaAny = prisma as any

@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logActivity } from '@/lib/activityLogger'
+import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
-  const userId = request.cookies.get('userId')?.value || undefined
+  const token = request.cookies.get(TOKEN_COOKIE)?.value
+  let userId: string | undefined
+
+  if (token) {
+    const payload = await verifyToken(token)
+    userId = payload?.userId
+  }
 
   if (userId) {
     await logActivity({
@@ -19,8 +26,9 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ success: true })
-  response.cookies.set('userId', '', {
+  response.cookies.set(TOKEN_COOKIE, '', {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     expires: new Date(0)

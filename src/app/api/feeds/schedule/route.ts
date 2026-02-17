@@ -75,7 +75,7 @@ export async function DELETE(request: NextRequest) {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
 
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     const deleted = await prisma.feedingSchedule.deleteMany({})
 
     await logActivity({

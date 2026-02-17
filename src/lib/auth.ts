@@ -1,14 +1,17 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
-export function getUserIdFromRequest(request: NextRequest) {
-  const userId = request.cookies.get('userId')?.value
-  return userId || null
+export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
+  const token = request.cookies.get(TOKEN_COOKIE)?.value
+  if (!token) return null
+  const payload = await verifyToken(token)
+  return payload?.userId || null
 }
 
 export async function getUserWithPermissions(request: NextRequest) {
-  const userId = getUserIdFromRequest(request)
+  const userId = await getUserIdFromRequest(request)
   if (!userId) return null
 
   const user = await prisma.user.findUnique({

@@ -49,7 +49,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const record = await prisma.feedingRecord.update({
       where: { id },
@@ -98,7 +98,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const record = await prisma.feedingRecord.findUnique({ where: { id } })
     if (!record) {

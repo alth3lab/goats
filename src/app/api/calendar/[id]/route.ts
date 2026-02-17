@@ -15,7 +15,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const event = await prisma.calendarEvent.update({
       where: { id },
@@ -47,7 +47,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const event = await prisma.calendarEvent.delete({
       where: { id }

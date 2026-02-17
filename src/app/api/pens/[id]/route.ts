@@ -52,7 +52,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     const { name, nameAr, capacity, type, notes } = body
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const pen = await prisma.pen.update({
       where: { id },
@@ -90,7 +90,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     
     // Check if pen has goats
     const count = await prisma.goat.count({

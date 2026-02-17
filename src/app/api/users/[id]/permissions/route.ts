@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     const permissionIds: string[] = Array.isArray(body.permissionIds) ? body.permissionIds : []
 
     await prisma.$transaction([

@@ -15,7 +15,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const sale = await prisma.sale.findUnique({
       where: { id },
@@ -103,7 +103,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const result = await prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({

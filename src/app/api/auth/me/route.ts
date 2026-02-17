@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.cookies.get('userId')?.value
-    if (!userId) {
+    const token = request.cookies.get(TOKEN_COOKIE)?.value
+    if (!token) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
+    }
+
+    const payload = await verifyToken(token)
+    if (!payload) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: payload.userId },
       include: {
         permissions: { include: { permission: true } }
       }

@@ -15,7 +15,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const categoryMap: Record<string, string> = {
       GRAIN: 'GRAINS',
@@ -65,7 +65,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     // Get feed type info before deleting
     const feedType = await prisma.feedType.findUnique({

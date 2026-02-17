@@ -35,7 +35,7 @@ export async function POST(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const { type, quantity, unitPrice, reference, notes } = body
 

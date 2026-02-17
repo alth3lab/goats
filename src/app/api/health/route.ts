@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { goatId, type, date, description, veterinarian, cost, nextDueDate, moveToIsolation } = body
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     // Transaction to handle record creation + potential isolation
     const result = await prisma.$transaction(async (tx) => {

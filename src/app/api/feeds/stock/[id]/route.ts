@@ -15,7 +15,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     // Convert field names from frontend to database schema
     const updateData: any = {
@@ -60,7 +60,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     // Get stock info before deleting
     const stock = await prisma.feedStock.findUnique({

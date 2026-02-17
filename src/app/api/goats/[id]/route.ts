@@ -66,7 +66,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     
     // إذا تغيرت الحالة إلى مباع أو متوفى، قم بإزالة الماعز من الحظيرة تلقائياً
     if (body.status === 'SOLD' || body.status === 'DECEASED') {
@@ -101,7 +101,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     
     // التحقق من عدم وجود breeding نشط
     const activeBreeding = await prisma.breeding.findFirst({

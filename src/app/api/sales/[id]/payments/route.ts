@@ -38,7 +38,7 @@ export async function POST(
 
     const { id } = await params
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     // التحقق من وجود البيع
     const sale = await prisma.sale.findUnique({

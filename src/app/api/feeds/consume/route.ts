@@ -28,7 +28,7 @@ function dateRange(start: Date, end: Date) {
 }
 
 async function resolveActorId(request: NextRequest) {
-  const fromCookie = getUserIdFromRequest(request)
+  const fromCookie = await getUserIdFromRequest(request)
   if (fromCookie) return fromCookie
 
   const admin = await prisma.user.findFirst({

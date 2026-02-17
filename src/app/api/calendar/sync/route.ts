@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
 
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     let created = 0
     let errors = 0
     const today = new Date()

@@ -14,7 +14,7 @@ export async function DELETE(
     if (auth.response) return auth.response
 
     const { id: saleId, paymentId } = await params
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
 
     const sale = await prisma.sale.findUnique({
       where: { id: saleId },

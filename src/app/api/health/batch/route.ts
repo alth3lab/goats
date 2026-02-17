@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         }
     })
 
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     await logActivity({
       userId: userId || undefined,
       action: 'CREATE',

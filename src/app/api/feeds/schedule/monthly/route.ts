@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
 
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     const body = await request.json().catch(() => ({}))
     const replaceExisting = body?.replaceExisting !== false
 

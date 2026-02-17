@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
-    const userId = getUserIdFromRequest(request)
+    const userId = await getUserIdFromRequest(request)
     let { name, nameAr, capacity, type, notes } = body
 
     // Ensure we have a unique name if not provided
