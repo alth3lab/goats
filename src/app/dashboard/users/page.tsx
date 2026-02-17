@@ -209,15 +209,15 @@ export default function UsersPage() {
 
                     {/* Details Grid */}
                     <Grid container spacing={2}>
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="body2" color="text.secondary">اسم المستخدم</Typography>
                         <Typography variant="body1">{u.username}</Typography>
                       </Grid>
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="body2" color="text.secondary">البريد الإلكتروني</Typography>
                         <Typography variant="body1">{u.email}</Typography>
                       </Grid>
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="body2" color="text.secondary">الدور</Typography>
                         <Chip label={roleLabels[u.role] || u.role} color="secondary" size="small" sx={{ mt: 0.5 }} />
                       </Grid>

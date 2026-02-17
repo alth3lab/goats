@@ -754,7 +754,7 @@ export default function BreedingPage() {
       {/* Search and Filter Bar */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
               size="small"
@@ -766,7 +766,7 @@ export default function BreedingPage() {
               }}
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <FormControl fullWidth size="small">
               <InputLabel>الحالة</InputLabel>
               <Select
@@ -782,7 +782,7 @@ export default function BreedingPage() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Checkbox 
                 checked={showUpcomingOnly}
@@ -791,7 +791,7 @@ export default function BreedingPage() {
               <Typography variant="body2">ولادات قريبة فقط</Typography>
             </Stack>
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <Typography variant="body2" color="text.secondary" textAlign="right">
               النتائج: <strong>{filteredRecords.length}</strong> من {records.length}
             </Typography>

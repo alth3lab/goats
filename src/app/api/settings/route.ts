@@ -19,10 +19,7 @@ const defaultSettings = {
 export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_settings')
-    if (auth.response) return auth.response
-
-    const prismaAny = prisma as any
-    const settings = await prismaAny.appSetting.upsert({
+    if (auth.response) return auth.response    const settings = await prisma.appSetting.upsert({
       where: { id: 'default' },
       update: {},
       create: { id: 'default', ...defaultSettings }
@@ -38,9 +35,7 @@ export async function PUT(request: NextRequest) {
     const auth = await requirePermission(request, 'view_settings')
     if (auth.response) return auth.response
 
-    const body = await request.json()
-    const prismaAny = prisma as any
-    const settings = await prismaAny.appSetting.upsert({
+    const body = await request.json()    const settings = await prisma.appSetting.upsert({
       where: { id: 'default' },
       update: body,
       create: { id: 'default', ...defaultSettings, ...body }

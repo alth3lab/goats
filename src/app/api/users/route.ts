@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { createUserSchema, validateBody } from '@/lib/validators/schemas'
+import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
 
@@ -25,9 +27,15 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
+    const validation = validateBody(createUserSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
     const userId = await getUserIdFromRequest(request)
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(validation.data.password, 12)
     const user = await prisma.user.create({
-      data: body
+      data: { ...validation.data, password: hashedPassword }
     })
     await logActivity({
       userId: userId || undefined,

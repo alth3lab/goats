@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { updateGoatSchema, validateBody } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
 
@@ -66,16 +67,21 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
+    const validation = validateBody(updateGoatSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
     const userId = await getUserIdFromRequest(request)
     
+    const updateData = { ...validation.data } as Record<string, unknown>
     // إذا تغيرت الحالة إلى مباع أو متوفى، قم بإزالة الماعز من الحظيرة تلقائياً
-    if (body.status === 'SOLD' || body.status === 'DECEASED') {
-      body.penId = null
+    if (updateData.status === 'SOLD' || updateData.status === 'DECEASED') {
+      updateData.penId = null
     }
 
     const goat = await prisma.goat.update({
       where: { id },
-      data: body
+      data: updateData as any
     })
     await logActivity({
       userId: userId || undefined,

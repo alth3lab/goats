@@ -241,15 +241,15 @@ export default function ActivitiesPage() {
 
                     {/* Details */}
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">الكيان</Typography>
                         <Typography variant="body1">{log.entity}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">التاريخ</Typography>
                         <Typography variant="body1">{formatDate(log.createdAt)}</Typography>
                       </Grid>
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="body2" color="text.secondary">الوصف</Typography>
                         <Typography variant="body1">{log.description}</Typography>
                       </Grid>

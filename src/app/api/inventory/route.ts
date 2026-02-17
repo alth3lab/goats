@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { createInventoryItemSchema, validateBody } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
 
@@ -46,8 +47,12 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
+    const validation = validateBody(createInventoryItemSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
     const item = await prisma.inventoryItem.create({
-      data: body
+      data: validation.data as any
     })
 
     return NextResponse.json(item, { status: 201 })

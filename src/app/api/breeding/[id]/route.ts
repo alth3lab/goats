@@ -115,13 +115,11 @@ export async function PUT(
       data: body
     })
     
-    // مزامنة تلقائية مع التقويم
-    const prismaAny = prisma as any
-    try {
+    // مزامنة تلقائية مع التقويم    try {
       // 1. إذا تغير dueDate أو تمت إضافته
       if (body.dueDate !== undefined && body.dueDate !== existing.dueDate) {
         // البحث عن حدث الولادة المتوقعة الموجود باستخدام breedingId
-        const existingBirthEvent = await prismaAny.calendarEvent.findFirst({
+        const existingBirthEvent = await prisma.calendarEvent.findFirst({
           where: {
             breedingId: id,
             eventType: 'BIRTH'
@@ -132,7 +130,7 @@ export async function PUT(
           // إذا كان هناك dueDate جديد
           if (existingBirthEvent) {
             // تحديث الحدث الموجود
-            await prismaAny.calendarEvent.update({
+            await prisma.calendarEvent.update({
               where: { id: existingBirthEvent.id },
               data: {
                 date: body.dueDate,
@@ -143,7 +141,7 @@ export async function PUT(
             })
           } else {
             // إنشاء حدث جديد
-            await prismaAny.calendarEvent.create({
+            await prisma.calendarEvent.create({
               data: {
                 eventType: 'BIRTH',
                 title: `ولادة متوقعة: ${existing.mother.tagId}`,
@@ -158,7 +156,7 @@ export async function PUT(
           }
         } else if (existingBirthEvent) {
           // إذا تم حذف dueDate، احذف الحدث
-          await prismaAny.calendarEvent.delete({
+          await prisma.calendarEvent.delete({
             where: { id: existingBirthEvent.id }
           })
         }
@@ -167,7 +165,7 @@ export async function PUT(
       // 2. إذا تغيرت الحالة إلى DELIVERED
       if (body.pregnancyStatus === 'DELIVERED' && existing.pregnancyStatus !== 'DELIVERED') {
         // البحث عن حدث الولادة المتوقعة باستخدام breedingId
-        const birthEvent = await prismaAny.calendarEvent.findFirst({
+        const birthEvent = await prisma.calendarEvent.findFirst({
           where: {
             breedingId: id,
             eventType: 'BIRTH'
@@ -176,7 +174,7 @@ export async function PUT(
         
         if (birthEvent) {
           // تحديث الحدث ليكون مكتمل بدلاً من حذفه
-          await prismaAny.calendarEvent.update({
+          await prisma.calendarEvent.update({
             where: { id: birthEvent.id },
             data: {
               isCompleted: true,
@@ -187,7 +185,7 @@ export async function PUT(
           })
         } else if (body.birthDate) {
           // إنشاء حدث ولادة فعلية إذا لم يكن هناك حدث متوقع
-          await prismaAny.calendarEvent.create({
+          await prisma.calendarEvent.create({
             data: {
               eventType: 'BIRTH',
               title: `ولادة: ${existing.mother.tagId}`,
@@ -204,7 +202,7 @@ export async function PUT(
       
       // 3. إذا تغيرت الحالة من DELIVERED إلى شيء آخر (إعادة فتح السجل)
       if (existing.pregnancyStatus === 'DELIVERED' && body.pregnancyStatus !== 'DELIVERED') {
-        const birthEvent = await prismaAny.calendarEvent.findFirst({
+        const birthEvent = await prisma.calendarEvent.findFirst({
           where: {
             breedingId: id,
             eventType: 'BIRTH'
@@ -213,7 +211,7 @@ export async function PUT(
         
         if (birthEvent && birthEvent.isCompleted) {
           // إرجاع الحدث لحالة غير مكتمل
-          await prismaAny.calendarEvent.update({
+          await prisma.calendarEvent.update({
             where: { id: birthEvent.id },
             data: {
               isCompleted: false,
@@ -255,10 +253,8 @@ export async function DELETE(
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
     
-    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل
-    const prismaAny = prisma as any
-    try {
-      await prismaAny.calendarEvent.deleteMany({
+    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل    try {
+      await prisma.calendarEvent.deleteMany({
         where: { breedingId: id }
       })
     } catch (calendarError) {

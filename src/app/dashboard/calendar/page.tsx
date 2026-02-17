@@ -260,7 +260,7 @@ export default function CalendarPage() {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} lg={8}>
+        <Grid size={{ xs: 12, lg: 8 }}>
           <Paper sx={{ p: { xs: 1.5, sm: 2.5, md: 3 } }}>
             <Box
               sx={{
@@ -384,7 +384,7 @@ export default function CalendarPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} lg={4}>
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               الأحداث القادمة
@@ -460,7 +460,7 @@ export default function CalendarPage() {
         <DialogTitle>إضافة حدث جديد</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 select
                 fullWidth
@@ -478,7 +478,7 @@ export default function CalendarPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="العنوان"
@@ -486,7 +486,7 @@ export default function CalendarPage() {
                 onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 type="date"
@@ -496,7 +496,7 @@ export default function CalendarPage() {
                 onChange={(e) => setEventData({ ...eventData, date: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 type="time"
@@ -506,7 +506,7 @@ export default function CalendarPage() {
                 onChange={(e) => setEventData({ ...eventData, time: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 multiline
@@ -516,7 +516,7 @@ export default function CalendarPage() {
                 onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 multiline
@@ -526,7 +526,7 @@ export default function CalendarPage() {
                 onChange={(e) => setEventData({ ...eventData, notes: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Checkbox
                   checked={eventData.reminder}

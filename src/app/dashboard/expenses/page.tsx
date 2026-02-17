@@ -361,14 +361,14 @@ export default function ExpensesPage() {
                     </Box>
 
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">المبلغ</Typography>
                         <Typography variant="h6" fontWeight="bold" color="error.main">
                           {formatCurrency(e.amount)}
                         </Typography>
                       </Grid>
                       {e.paymentMethod && (
-                        <Grid item xs={6}>
+                        <Grid size={{ xs: 6 }}>
                           <Typography variant="body2" color="text.secondary">طريقة الدفع</Typography>
                           <Typography variant="body1">{e.paymentMethod}</Typography>
                         </Grid>

@@ -552,7 +552,7 @@ export default function FeedsPage() {
     <Box sx={{ p: 3 }}>
       <Skeleton variant="rectangular" height={60} sx={{ mb: 2, borderRadius: 2 }} />
       <Grid container spacing={2}>
-        {[1, 2, 3, 4].map(i => <Grid item xs={12} sm={6} md={3} key={i}><Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} /></Grid>)}
+        {[1, 2, 3, 4].map(i => <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}><Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} /></Grid>)}
       </Grid>
     </Box>
   )
@@ -622,7 +622,7 @@ export default function FeedsPage() {
             {/* ── Main Content: Feeding Plan + Stock Side by Side ── */}
             <Grid container spacing={2}>
               {/* Left: Feeding Plan */}
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Paper sx={{ p: 2.5, borderRadius: 3 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -652,7 +652,7 @@ export default function FeedsPage() {
                         const penDailyKg = p.items.reduce((s, i) => s + i.amount * p.heads, 0)
                         const penDailyCost = p.items.reduce((s, i) => s + i.amount * p.heads * i.unitCost, 0)
                         return (
-                          <Grid item xs={12} sm={6} key={p.penId}>
+                          <Grid size={{ xs: 12, sm: 6 }} key={p.penId}>
                             <Card sx={{
                               borderRadius: 3, height: '100%',
                               bgcolor: 'background.paper',
@@ -771,7 +771,7 @@ export default function FeedsPage() {
               </Grid>
 
               {/* Stock - Horizontal */}
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Paper sx={{ p: 2.5, borderRadius: 3 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -795,7 +795,7 @@ export default function FeedsPage() {
                         const stockDaysLeft = dailyUse > 0 ? Math.floor(s.totalQty / dailyUse) : null
                         const color = catColor(s.feedType.category)
                         return (
-                          <Grid item xs={6} sm={4} md={3} lg={2} key={s.feedType.id}>
+                          <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={s.feedType.id}>
                             <Card sx={{
                               borderRadius: 3, height: '100%',
                               bgcolor: 'background.paper',
@@ -892,7 +892,7 @@ export default function FeedsPage() {
                 {feedTypes.map(t => {
                   const color = catColor(t.category)
                   return (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={t.id}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={t.id}>
                       <Card sx={{
                         borderRadius: 3, height: '100%',
                         bgcolor: 'background.paper',
@@ -977,19 +977,19 @@ export default function FeedsPage() {
                               </Stack>
 
                               <Grid container spacing={1}>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="caption" color="text.secondary">القيمة</Typography>
                                   <Typography variant="body2" fontWeight="bold">{row.value}</Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="caption" color="text.secondary">المورد</Typography>
                                   <Typography variant="body2" fontWeight="bold" noWrap>{row.supplier}</Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="caption" color="text.secondary">الشراء</Typography>
                                   <Typography variant="body2">{row.purchaseDate}</Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="caption" color="text.secondary">الانتهاء</Typography>
                                   <Typography variant="body2">{row.expiryDate}</Typography>
                                 </Grid>
@@ -1070,19 +1070,19 @@ export default function FeedsPage() {
 
                               {/* Details Grid */}
                               <Grid container spacing={2}>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="body2" color="text.secondary">عدد الرؤوس</Typography>
                                   <Typography variant="body1" fontWeight="bold">{heads}</Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="body2" color="text.secondary">كجم / رأس / يوم</Typography>
                                   <Typography variant="body1" fontWeight="bold">{s.quantity} كجم</Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="body2" color="text.secondary">الوجبات</Typography>
                                   <Typography variant="body1" fontWeight="bold">{s.frequency} وجبات</Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={{ xs: 6 }}>
                                   <Typography variant="body2" color="text.secondary">الإجمالي اليومي</Typography>
                                   <Typography variant="body1" fontWeight="bold" color="primary.main">{(s.quantity * heads).toFixed(1)} كجم</Typography>
                                 </Grid>

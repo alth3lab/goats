@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, getUserIdFromRequest } from '@/lib/auth'
 import { logActivity } from '@/lib/activityLogger'
+import { createCalendarEventSchema, validateBody } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
 
@@ -50,13 +51,17 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
+    const validation = validateBody(createCalendarEventSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
     const userId = await getUserIdFromRequest(request)
 
     const event = await prisma.calendarEvent.create({
       data: {
-        ...body,
+        ...validation.data,
         createdBy: userId || undefined
-      }
+      } as any
     })
 
     await logActivity({

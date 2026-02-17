@@ -373,12 +373,12 @@ export default function HealthPage() {
 
                     {/* Details Grid */}
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">التاريخ</Typography>
                         <Typography variant="body1">{formatDate(r.date)}</Typography>
                       </Grid>
                       {r.nextDueDate && (
-                        <Grid item xs={6}>
+                        <Grid size={{ xs: 6 }}>
                           <Typography variant="body2" color="text.secondary">المستحق القادم</Typography>
                           <Chip 
                             label={formatDate(r.nextDueDate)} 
@@ -390,19 +390,19 @@ export default function HealthPage() {
                         </Grid>
                       )}
                       {r.description && (
-                        <Grid item xs={12}>
+                        <Grid size={{ xs: 12 }}>
                           <Typography variant="body2" color="text.secondary">الوصف</Typography>
                           <Typography variant="body1">{r.description}</Typography>
                         </Grid>
                       )}
                       {r.veterinarian && (
-                        <Grid item xs={6}>
+                        <Grid size={{ xs: 6 }}>
                           <Typography variant="body2" color="text.secondary">الطبيب</Typography>
                           <Typography variant="body1">{r.veterinarian}</Typography>
                         </Grid>
                       )}
                       {r.cost && (
-                        <Grid item xs={6}>
+                        <Grid size={{ xs: 6 }}>
                           <Typography variant="body2" color="text.secondary">التكلفة</Typography>
                           <Typography variant="body1" fontWeight="bold" color="primary.main">
                             {r.cost.toFixed(2)} ريال

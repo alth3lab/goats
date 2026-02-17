@@ -252,7 +252,7 @@ export default function InventoryPage() {
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="الاسم بالعربية"
@@ -260,7 +260,7 @@ export default function InventoryPage() {
                 onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="الاسم بالإنجليزية"
@@ -268,7 +268,7 @@ export default function InventoryPage() {
                 onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 select
                 fullWidth
@@ -281,7 +281,7 @@ export default function InventoryPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="الوحدة"
@@ -289,7 +289,7 @@ export default function InventoryPage() {
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -298,7 +298,7 @@ export default function InventoryPage() {
                 onChange={(e) => setFormData({ ...formData, minStock: Number(e.target.value) })}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -307,7 +307,7 @@ export default function InventoryPage() {
                 onChange={(e) => setFormData({ ...formData, currentStock: Number(e.target.value) })}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -316,7 +316,7 @@ export default function InventoryPage() {
                 onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 multiline
@@ -341,7 +341,7 @@ export default function InventoryPage() {
         <DialogTitle>تسجيل حركة مخزون - {selectedItem?.nameAr}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 select
                 fullWidth
@@ -354,7 +354,7 @@ export default function InventoryPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -363,7 +363,7 @@ export default function InventoryPage() {
                 onChange={(e) => setTransactionData({ ...transactionData, quantity: Number(e.target.value) })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -372,7 +372,7 @@ export default function InventoryPage() {
                 onChange={(e) => setTransactionData({ ...transactionData, unitPrice: Number(e.target.value) })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="المرجع / الفاتورة"
@@ -380,7 +380,7 @@ export default function InventoryPage() {
                 onChange={(e) => setTransactionData({ ...transactionData, reference: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 multiline
@@ -440,21 +440,21 @@ function InventoryTable({ items, onEdit, onTransaction }: any) {
 
                     {/* Details Grid */}
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">الكمية الحالية</Typography>
                         <Typography variant="h6" fontWeight="bold" color="primary.main">
                           {item.currentStock} {item.unit}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">الحد الأدنى</Typography>
                         <Typography variant="body1">{item.minStock} {item.unit}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">سعر الوحدة</Typography>
                         <Typography variant="body1">{item.unitPrice || 0} درهم</Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={{ xs: 6 }}>
                         <Typography variant="body2" color="text.secondary">الحالة</Typography>
                         {item.currentStock <= item.minStock ? (
                           <Chip

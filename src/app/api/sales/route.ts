@@ -205,11 +205,9 @@ export async function POST(request: NextRequest) {
       return { ...newSale, paymentStatus: finalStatus }
     })
 
-    // إنشاء حدث في التقويم للبيع
-    const prismaAny = prisma as any
-    try {
+    // إنشاء حدث في التقويم للبيع    try {
       const goat = body.goatId ? await prisma.goat.findUnique({ where: { id: body.goatId } }) : null
-      await prismaAny.calendarEvent.create({
+      await prisma.calendarEvent.create({
         data: {
           eventType: 'SALE',
           title: `بيع: ${goat?.tagId || 'دون تحديد'}`,

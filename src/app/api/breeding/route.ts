@@ -90,10 +90,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // إنشاء حدث تزاوج في التقويم
-    const prismaAny = prisma as any
-    try {
-      await prismaAny.calendarEvent.create({
+    // إنشاء حدث تزاوج في التقويم    try {
+      await prisma.calendarEvent.create({
         data: {
           eventType: 'BREEDING',
           title: `تزاوج: ${record.mother.tagId} + ${record.father.tagId}`,
@@ -108,7 +106,7 @@ export async function POST(request: NextRequest) {
       // إنشاء حدث ولادة متوقعة إذا كان هناك تاريخ استحقاق
       if (record.dueDate) {
         // التحقق من عدم وجود حدث ولادة مسبق لنفس سجل التكاثر
-        const existingBirthEvent = await prismaAny.calendarEvent.findFirst({
+        const existingBirthEvent = await prisma.calendarEvent.findFirst({
           where: {
             breedingId: record.id,
             eventType: 'BIRTH'
@@ -116,7 +114,7 @@ export async function POST(request: NextRequest) {
         })
         
         if (!existingBirthEvent) {
-          await prismaAny.calendarEvent.create({
+          await prisma.calendarEvent.create({
             data: {
               eventType: 'BIRTH',
               title: `ولادة متوقعة: ${record.mother.tagId}`,

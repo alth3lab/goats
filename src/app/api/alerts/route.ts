@@ -12,10 +12,7 @@ export async function GET(request: NextRequest) {
 
     const today = new Date()
     const nextMonth = new Date()
-    nextMonth.setDate(today.getDate() + 30)
-
-    const prismaAny = prisma as any
-    const settings = await prismaAny.appSetting.findFirst()
+    nextMonth.setDate(today.getDate() + 30)    const settings = await prisma.appSetting.findFirst()
     const alertPenCapacityPercent = settings?.alertPenCapacityPercent ?? 90
     const alertDeathCount = settings?.alertDeathCount ?? 3
     const alertDeathWindowDays = settings?.alertDeathWindowDays ?? 30
@@ -128,7 +125,7 @@ export async function GET(request: NextRequest) {
       `.catch(() => []),
 
       // 8. Expiring Feeds
-      prismaAny.feedStock.findMany({
+      prisma.feedStock.findMany({
         where: {
           expiryDate: {
             lte: nextMonth,

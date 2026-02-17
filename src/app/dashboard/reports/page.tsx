@@ -488,7 +488,8 @@ export default function ReportsPage() {
                         innerRadius={50}
                         paddingAngle={3}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        label={((entry: any) => `${entry.name} ${((entry.percent ?? 0) * 100).toFixed(0)}%`) as any}
                       >
                         {pieData.map((_, index) => (
                           <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />

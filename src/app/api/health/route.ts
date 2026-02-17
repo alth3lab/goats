@@ -67,12 +67,10 @@ export async function POST(request: NextRequest) {
         return record
     })
 
-    // إنشاء حدث في التقويم للتطعيمات والمواعيد القادمة
-    const prismaAny = prisma as any
-    try {
+    // إنشاء حدث في التقويم للتطعيمات والمواعيد القادمة    try {
       if (type === 'VACCINATION' || type === 'CHECKUP') {
         const eventType = type === 'VACCINATION' ? 'VACCINATION' : 'CHECKUP'
-        await prismaAny.calendarEvent.create({
+        await prisma.calendarEvent.create({
           data: {
             eventType,
             title: `${type === 'VACCINATION' ? 'تطعيم' : 'فحص'}: ${result.goat.tagId}`,
@@ -86,7 +84,7 @@ export async function POST(request: NextRequest) {
 
         // إضافة حدث للموعد القادم
         if (nextDueDate) {
-          await prismaAny.calendarEvent.create({
+          await prisma.calendarEvent.create({
             data: {
               eventType,
               title: `${type === 'VACCINATION' ? 'تطعيم قادم' : 'فحص قادم'}: ${result.goat.tagId}`,

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { createGoatSchema, validateBody, parsePagination, paginatedResponse } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
 
@@ -14,67 +15,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const format = searchParams.get('format')
-    
-    const goats = await prisma.goat.findMany({
-      where: status ? { status: status as any } : undefined,
-      include: {
-        breed: {
-          include: {
-            type: true
-          }
-        },
-        pen: true,
-        healthRecords: {
-          take: 5,
-          orderBy: { date: 'desc' }
-        },
-        // إضافة سجلات التكاثر للأمهات
-        breedingAsMother: {
-          where: {
-            pregnancyStatus: 'PREGNANT'
-          },
-          orderBy: { matingDate: 'desc' },
-          take: 1
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-    
-    // إضافة معلومات العمر وحالة الحمل لكل ماعز
-    const goatsWithAge = goats.map(goat => {
-      const age = calculateGoatAge(goat.birthDate)
-      const currentBreeding = goat.breedingAsMother && goat.breedingAsMother.length > 0 ? goat.breedingAsMother[0] : null
-      
-      return {
-        ...goat,
-        age: {
-          years: age.years,
-          months: age.months,
-          days: age.days,
-          totalMonths: age.totalMonths,
-          category: age.categoryAr,
-          formatted: formatAge(age)
-        },
-        pregnancyStatus: currentBreeding ? currentBreeding.pregnancyStatus : null,
-        dueDate: currentBreeding ? currentBreeding.dueDate : null
-      }
-    })
-    
+
+    const where = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' } : undefined
+
+    // CSV export returns all data without pagination
     if (format === 'csv') {
-      const header = [
-        'tagId',
-        'name',
-        'type',
-        'breed',
-        'gender',
-        'status',
-        'birthDate',
-        'weight',
-        'color',
-        'pen',
-        'notes'
-      ]
-      const rows = goatsWithAge.map((goat) => [
+      const goats = await prisma.goat.findMany({
+        where,
+        include: { breed: { include: { type: true } }, pen: true },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      const header = ['tagId', 'name', 'type', 'breed', 'gender', 'status', 'birthDate', 'weight', 'color', 'pen', 'notes']
+      const rows = goats.map((goat) => [
         goat.tagId,
         goat.name || '',
         goat.breed?.type?.nameAr || '',
@@ -100,6 +53,50 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const usePagination = searchParams.has('page')
+    const { skip, take, page, limit } = parsePagination(searchParams)
+
+    const [goats, total] = await Promise.all([
+      prisma.goat.findMany({
+        where,
+        include: {
+          breed: { include: { type: true } },
+          pen: true,
+          healthRecords: { take: 5, orderBy: { date: 'desc' } },
+          breedingAsMother: {
+            where: { pregnancyStatus: 'PREGNANT' },
+            orderBy: { matingDate: 'desc' },
+            take: 1
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        ...(usePagination ? { skip, take } : {}),
+      }),
+      usePagination ? prisma.goat.count({ where }) : Promise.resolve(0)
+    ])
+    
+    const goatsWithAge = goats.map(goat => {
+      const age = calculateGoatAge(goat.birthDate)
+      const currentBreeding = goat.breedingAsMother && goat.breedingAsMother.length > 0 ? goat.breedingAsMother[0] : null
+      
+      return {
+        ...goat,
+        age: {
+          years: age.years,
+          months: age.months,
+          days: age.days,
+          totalMonths: age.totalMonths,
+          category: age.categoryAr,
+          formatted: formatAge(age)
+        },
+        pregnancyStatus: currentBreeding ? currentBreeding.pregnancyStatus : null,
+        dueDate: currentBreeding ? currentBreeding.dueDate : null
+      }
+    })
+
+    if (usePagination) {
+      return NextResponse.json(paginatedResponse(goatsWithAge, total, page, limit))
+    }
     return NextResponse.json(goatsWithAge)
   } catch (error) {
     return NextResponse.json({ error: 'فشل في جلب البيانات' }, { status: 500 })
@@ -112,9 +109,14 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response
 
     const body = await request.json()
+    const validation = validateBody(createGoatSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+
     const userId = await getUserIdFromRequest(request)
     const goat = await prisma.goat.create({
-      data: body
+      data: validation.data as any
     })
     await logActivity({
       userId: userId || undefined,
