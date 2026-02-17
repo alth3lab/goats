@@ -102,6 +102,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { can, loading: authLoading } = useAuth()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
   const drawerWidth = collapsed ? collapsedDrawerWidth : expandedDrawerWidth
   const mobileAppBarHeight = '88px'
   const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
@@ -243,8 +244,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: isDesktop ? `calc(100% - ${drawerWidth}px)` : '100%',
+          ml: isDesktop ? `${drawerWidth}px` : 0,
           zIndex: (theme) => theme.zIndex.modal + 200,
           bgcolor: 'background.paper',
           color: 'text.primary',
@@ -328,7 +329,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ width: isDesktop ? drawerWidth : 0, flexShrink: 0 }}
       >
         <SwipeableDrawer
           anchor="right"
@@ -343,11 +344,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             container: typeof window !== 'undefined' ? document.body : undefined
           }}
           sx={{
-            display: { xs: 'block', sm: 'none' },
+            display: { xs: 'block', lg: 'none' },
             zIndex: (t) => t.zIndex.modal + 50,
             '& .MuiDrawer-paper': {
-              width: '88vw',
-              maxWidth: 340,
+              width: { xs: '88vw', sm: '72vw', md: '62vw' },
+              maxWidth: 360,
               boxSizing: 'border-box',
               position: 'fixed',
               top: 0,
@@ -367,7 +368,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Drawer
           variant="permanent"
           sx={{
-            display: { xs: 'none', sm: 'block' },
+            display: { xs: 'none', lg: 'block' },
             zIndex: (theme) => theme.zIndex.drawer,
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
@@ -386,15 +387,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         component="main"
         sx={{
           flexGrow: 1,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: isDesktop ? `calc(100% - ${drawerWidth}px)` : '100%',
           maxWidth: '100%',
           minHeight: '100vh',
           bgcolor: '#F6F5F1',
-          p: { xs: 1.5, sm: 3 },
+          p: { xs: 1.25, sm: 2, md: 2.5, lg: 3 },
           overflowX: 'hidden'
         }}
       >
-        <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px' } }} />
+        <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px', lg: '64px' } }} />
         <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>{children}</Box>
       </Box>
     </Box>

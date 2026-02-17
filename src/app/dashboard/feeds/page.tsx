@@ -143,6 +143,7 @@ type View = 'today' | 'stock' | 'schedules'
 export default function FeedsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const isTabletOrBelow = useMediaQuery(theme.breakpoints.down('lg'))
   const categoryColors = useMemo<Record<string, string>>(() => ({
     HAY: theme.palette.warning.dark,
     GRAINS: theme.palette.warning.main,
@@ -876,7 +877,7 @@ export default function FeedsPage() {
         <Fade in>
           <Box>
             {/* Quick Add Buttons */}
-            <Stack direction="row" spacing={1.5} mb={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2}>
               <Button variant="contained" startIcon={<AddIcon />} onClick={openAddType}>نوع علف جديد</Button>
               <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={openAddStock}>إضافة للمخزون</Button>
             </Stack>
@@ -943,14 +944,80 @@ export default function FeedsPage() {
               {stocks.length === 0 ? (
                 <Alert severity="info" variant="outlined">لا يوجد مخزون</Alert>
               ) : (
-                <AppDataGrid
-                  title=""
-                  showDensityToggle={false}
-                  autoHeight
-                  rows={stockRows}
-                  columns={stockColumns}
-                  initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
-                />
+                <>
+                  {/* Tablet/Mobile Cards View */}
+                  <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
+                    <Stack spacing={1.5}>
+                      {stockRows.map((row: any) => (
+                        <Card key={row.id} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
+                          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Stack spacing={1}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Typography variant="subtitle2" fontWeight="bold">{row.feedName}</Typography>
+                                <Chip
+                                  label={row.status}
+                                  size="small"
+                                  color={row.statusColor as any}
+                                  variant="outlined"
+                                />
+                              </Stack>
+
+                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                <Chip
+                                  label={row.category}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: alpha(row.categoryColor as string, 0.14),
+                                    color: row.categoryColor as string,
+                                    fontWeight: 700
+                                  }}
+                                />
+                                <Chip label={`الكمية: ${row.quantity}`} size="small" variant="outlined" />
+                                <Chip label={`الاستهلاك: ${row.dailyUse}`} size="small" variant="outlined" />
+                              </Stack>
+
+                              <Grid container spacing={1}>
+                                <Grid item xs={6}>
+                                  <Typography variant="caption" color="text.secondary">القيمة</Typography>
+                                  <Typography variant="body2" fontWeight="bold">{row.value}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="caption" color="text.secondary">المورد</Typography>
+                                  <Typography variant="body2" fontWeight="bold" noWrap>{row.supplier}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="caption" color="text.secondary">الشراء</Typography>
+                                  <Typography variant="body2">{row.purchaseDate}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                  <Typography variant="caption" color="text.secondary">الانتهاء</Typography>
+                                  <Typography variant="body2">{row.expiryDate}</Typography>
+                                </Grid>
+                              </Grid>
+
+                              <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                <IconButton size="small" color="primary" onClick={() => openEditStock(row.item)}><EditIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" color="error" onClick={() => setDeleteDialog({ type: 'stock', item: row.item })}><DeleteIcon fontSize="small" /></IconButton>
+                              </Stack>
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  {/* Desktop DataGrid */}
+                  <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
+                    <AppDataGrid
+                      title=""
+                      showDensityToggle={false}
+                      autoHeight
+                      rows={stockRows}
+                      columns={stockColumns}
+                      initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+                    />
+                  </Box>
+                </>
               )}
             </Paper>
           </Box>
@@ -961,7 +1028,7 @@ export default function FeedsPage() {
       {view === 'schedules' && (
         <Fade in>
           <Box>
-            <Stack direction="row" spacing={1.5} mb={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2}>
               <Button variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إضافة جدول تغذية</Button>
             </Stack>
 
@@ -975,7 +1042,7 @@ export default function FeedsPage() {
             ) : (
               <>
                 {/* Mobile Cards View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
                   <Stack spacing={2}>
                     {schedules.map(s => {
                       const heads = s.pen?._count?.goats || 0
@@ -1041,7 +1108,7 @@ export default function FeedsPage() {
                 </Box>
 
                 {/* Desktop Table View */}
-                <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 2, overflowX: 'auto' }}>
+                <TableContainer component={Paper} sx={{ display: { xs: 'none', lg: 'block' }, borderRadius: 2, overflowX: 'auto' }}>
                   <Table>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'action.hover' }}>

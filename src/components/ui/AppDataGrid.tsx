@@ -35,9 +35,15 @@ export function AppDataGrid({
   }, [getRowClassName])
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
       {(title || showDensityToggle) && (
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          spacing={1}
+          sx={{ mb: 1.5 }}
+        >
           <Typography variant="subtitle2" color="text.secondary">{title || ''}</Typography>
           {showDensityToggle && (
             <ToggleButtonGroup
@@ -48,6 +54,7 @@ export function AppDataGrid({
                 if (next) setDensity(next)
               }}
               sx={{
+                alignSelf: { xs: 'flex-start', sm: 'auto' },
                 '& .MuiToggleButton-root': {
                   borderColor: 'divider',
                   px: 1.25,
@@ -63,43 +70,46 @@ export function AppDataGrid({
         </Stack>
       )}
 
-      <DataGrid
-        density={density}
-        disableRowSelectionOnClick
-        getRowClassName={resolvedRowClassName}
-        pageSizeOptions={[10, 25, 50, 100]}
-        sx={{
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-          '& .MuiDataGrid-columnHeaders': {
-            bgcolor: '#F8F9F7'
-          },
-          '& .MuiDataGrid-columnHeaderTitle': {
-            fontWeight: 700
-          },
-          '& .MuiDataGrid-row:hover': {
-            bgcolor: 'rgba(79,122,87,0.05)'
-          },
-          '& .app-zebra-row': {
-            bgcolor: '#FCFDFC'
-          },
-          '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within, & .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': {
-            outline: '2px solid rgba(79,122,87,0.25)',
-            outlineOffset: -1
-          },
-          '& .MuiDataGrid-footerContainer': {
-            borderTop: '1px solid',
-            borderColor: 'divider'
-          },
-          '& .MuiTablePagination-toolbar': {
-            minHeight: 52
-          },
-          ...sx
-        }}
-        {...props}
-      />
+      <Box sx={{ width: '100%', overflowX: 'auto' }}>
+        <DataGrid
+          density={density}
+          disableRowSelectionOnClick
+          getRowClassName={resolvedRowClassName}
+          pageSizeOptions={[10, 25, 50, 100]}
+          sx={{
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            minWidth: { xs: 700, md: 0 },
+            '& .MuiDataGrid-columnHeaders': {
+              bgcolor: '#F8F9F7'
+            },
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 700
+            },
+            '& .MuiDataGrid-row:hover': {
+              bgcolor: 'rgba(79,122,87,0.05)'
+            },
+            '& .app-zebra-row': {
+              bgcolor: '#FCFDFC'
+            },
+            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within, & .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': {
+              outline: '2px solid rgba(79,122,87,0.25)',
+              outlineOffset: -1
+            },
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: '1px solid',
+              borderColor: 'divider'
+            },
+            '& .MuiTablePagination-toolbar': {
+              minHeight: 52
+            },
+            ...sx
+          }}
+          {...props}
+        />
+      </Box>
     </Box>
   )
 }
