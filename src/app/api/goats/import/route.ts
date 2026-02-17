@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'لا توجد بيانات للاستيراد' }, { status: 400 })
     }
 
-    // Check goat limit
+    // Check goat limit across entire tenant (not just current farm)
     const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
     if (tenant) {
-      const goatCount = await prisma.goat.count()
+      const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
       const remaining = tenant.maxGoats - goatCount
       if (remaining <= 0) {
         return NextResponse.json(

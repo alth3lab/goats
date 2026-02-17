@@ -22,6 +22,17 @@ export async function getUserWithPermissions(request: NextRequest) {
 
   if (!user) return null
 
+  // Check tenant is active (skip for SUPER_ADMIN)
+  if (user.role !== 'SUPER_ADMIN' && ctx.tenantId) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: ctx.tenantId },
+      select: { isActive: true, trialEndsAt: true, plan: true }
+    })
+    if (tenant && !tenant.isActive) {
+      return null // Tenant deactivated
+    }
+  }
+
   const permissions = user.permissions.map((entry) => entry.permission.name)
   return { user, permissions, tenantId: ctx.tenantId, farmId: ctx.farmId }
 }

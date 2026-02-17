@@ -119,10 +119,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // Check goat limit
+    // Check goat limit across entire tenant (not just current farm)
     const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
     if (tenant) {
-      const goatCount = await prisma.goat.count()
+      const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
       if (goatCount >= tenant.maxGoats) {
         return NextResponse.json(
           { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },

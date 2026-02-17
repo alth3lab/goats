@@ -4,7 +4,9 @@ import { requireAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
-// Plan details
+// Plan details with ordering for upgrade/downgrade detection
+const PLAN_ORDER = ['FREE', 'BASIC', 'PRO', 'ENTERPRISE'] as const
+
 const PLANS = {
   FREE: {
     name: 'مجاني',
@@ -44,6 +46,23 @@ const PLANS = {
   },
 }
 
+// Trial period in days for new registrations
+const TRIAL_DAYS = 14
+
+// Helper: check if subscription/trial is expired
+function checkSubscriptionStatus(tenant: { plan: string; trialEndsAt: Date | null; isActive: boolean }) {
+  if (!tenant.isActive) {
+    return { active: false, reason: 'الحساب معطل. تواصل مع الإدارة.' }
+  }
+  if (tenant.plan === 'FREE' && tenant.trialEndsAt) {
+    const now = new Date()
+    if (now > tenant.trialEndsAt) {
+      return { active: true, trialExpired: true, reason: 'انتهت الفترة التجريبية. قم بالترقية للاستمرار بجميع الميزات.' }
+    }
+  }
+  return { active: true, trialExpired: false, reason: null }
+}
+
 // GET /api/settings/subscription — Get current tenant subscription info
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +72,7 @@ export async function GET(request: NextRequest) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: auth.tenantId },
       include: {
-        subscriptions: { orderBy: { createdAt: 'desc' }, take: 5 },
+        subscriptions: { orderBy: { createdAt: 'desc' }, take: 10 },
         _count: { select: { farms: true, users: true } },
       },
     })
@@ -68,6 +87,14 @@ export async function GET(request: NextRequest) {
     })
 
     const currentPlan = PLANS[tenant.plan as keyof typeof PLANS] || PLANS.FREE
+    const subStatus = checkSubscriptionStatus(tenant)
+
+    // Check active subscription expiry
+    const activeSubscription = tenant.subscriptions.find(s => s.status === 'ACTIVE')
+    let subscriptionExpired = false
+    if (activeSubscription?.endDate && new Date() > activeSubscription.endDate) {
+      subscriptionExpired = true
+    }
 
     return NextResponse.json({
       tenant: {
@@ -78,6 +105,7 @@ export async function GET(request: NextRequest) {
         maxGoats: tenant.maxGoats,
         maxUsers: tenant.maxUsers,
         trialEndsAt: tenant.trialEndsAt,
+        isActive: tenant.isActive,
         createdAt: tenant.createdAt,
       },
       usage: {
@@ -93,6 +121,13 @@ export async function GET(request: NextRequest) {
       currentPlan,
       plans: PLANS,
       subscriptions: tenant.subscriptions,
+      status: {
+        ...subStatus,
+        subscriptionExpired,
+        trialDaysLeft: tenant.trialEndsAt
+          ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+          : null,
+      },
     })
   } catch (error) {
     console.error('Subscription error:', error)
@@ -100,14 +135,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/settings/subscription — Upgrade plan (manual for now, Stripe later)
+// POST /api/settings/subscription — Upgrade/downgrade plan
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
 
     if (!['SUPER_ADMIN', 'OWNER'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'فقط المالك يمكنه ترقية الخطة' }, { status: 403 })
+      return NextResponse.json({ error: 'فقط المالك يمكنه تغيير الخطة' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -117,7 +152,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'خطة غير صالحة' }, { status: 400 })
     }
 
+    if (plan === 'ENTERPRISE') {
+      return NextResponse.json({ error: 'الخطة المؤسسية تتطلب التواصل مع الإدارة' }, { status: 400 })
+    }
+
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    if (!tenant) {
+      return NextResponse.json({ error: 'المستأجر غير موجود' }, { status: 404 })
+    }
+
+    const currentIndex = PLAN_ORDER.indexOf(tenant.plan as typeof PLAN_ORDER[number])
+    const targetIndex = PLAN_ORDER.indexOf(plan as typeof PLAN_ORDER[number])
     const planDetails = PLANS[plan as keyof typeof PLANS]
+
+    // Same plan
+    if (tenant.plan === plan) {
+      return NextResponse.json({ error: 'أنت بالفعل على هذه الخطة' }, { status: 400 })
+    }
+
+    // Downgrade: check if current usage exceeds target plan limits
+    if (targetIndex < currentIndex) {
+      const [goatCount, farmCount, userCount] = await Promise.all([
+        prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } }),
+        prisma.farm.count({ where: { tenantId: auth.tenantId } }),
+        prisma.user.count({ where: { tenantId: auth.tenantId, role: { not: 'SUPER_ADMIN' } } }),
+      ])
+
+      const violations: string[] = []
+      if (goatCount > planDetails.maxGoats) {
+        violations.push(`لديك ${goatCount} رأس ماعز والحد الأقصى للخطة ${planDetails.maxGoats}`)
+      }
+      if (farmCount > planDetails.maxFarms) {
+        violations.push(`لديك ${farmCount} مزارع والحد الأقصى للخطة ${planDetails.maxFarms}`)
+      }
+      if (userCount > planDetails.maxUsers) {
+        violations.push(`لديك ${userCount} مستخدمين والحد الأقصى للخطة ${planDetails.maxUsers}`)
+      }
+
+      if (violations.length > 0) {
+        return NextResponse.json({
+          error: 'لا يمكن تخفيض الخطة: ' + violations.join('، '),
+        }, { status: 400 })
+      }
+    }
+
+    // Upgrade to paid plan: mark as pending (no Stripe yet)
+    const isPaidUpgrade = targetIndex > currentIndex && planDetails.price > 0
+
+    // Cancel previous active subscriptions
+    await prisma.subscription.updateMany({
+      where: { tenantId: auth.tenantId, status: 'ACTIVE' },
+      data: { status: 'CANCELLED', endDate: new Date() },
+    })
+
+    // Calculate subscription period (30 days)
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + 30)
 
     // Update tenant limits
     await prisma.tenant.update({
@@ -135,20 +226,27 @@ export async function POST(request: NextRequest) {
       data: {
         tenantId: auth.tenantId,
         plan: plan as any,
-        status: 'ACTIVE',
-        startDate: new Date(),
+        status: isPaidUpgrade ? 'ACTIVE' : 'ACTIVE',
+        startDate,
+        endDate: planDetails.price > 0 ? endDate : null,
         amount: planDetails.price > 0 ? planDetails.price : 0,
         currency: 'AED',
-        notes: `ترقية للخطة ${planDetails.name}`,
+        notes: targetIndex > currentIndex
+          ? `ترقية من ${PLANS[tenant.plan as keyof typeof PLANS]?.name || tenant.plan} إلى ${planDetails.name}`
+          : `تخفيض من ${PLANS[tenant.plan as keyof typeof PLANS]?.name || tenant.plan} إلى ${planDetails.name}`,
       },
     })
 
+    const action = targetIndex > currentIndex ? 'ترقية' : 'تخفيض'
+
     return NextResponse.json({
-      message: `تم الترقية للخطة ${planDetails.name} بنجاح`,
+      message: `تم ${action} الخطة إلى ${planDetails.name} بنجاح${isPaidUpgrade ? '. الدفع سيكون متاحاً قريباً عبر بوابة الدفع.' : ''}`,
       plan: planDetails,
     })
   } catch (error) {
-    console.error('Upgrade error:', error)
-    return NextResponse.json({ error: 'فشل في ترقية الخطة' }, { status: 500 })
+    console.error('Plan change error:', error)
+    return NextResponse.json({ error: 'فشل في تغيير الخطة' }, { status: 500 })
   }
 }
+
+export { PLANS, TRIAL_DAYS, checkSubscriptionStatus }

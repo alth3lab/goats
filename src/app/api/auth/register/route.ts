@@ -61,8 +61,12 @@ export async function POST(request: NextRequest) {
     // Create tenant + farm + user in transaction
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    // Trial period: 14 days
+    const trialEndsAt = new Date()
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14)
+
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create tenant
+      // 1. Create tenant with trial period
       const tenant = await tx.tenant.create({
         data: {
           name: farmName,
@@ -73,6 +77,7 @@ export async function POST(request: NextRequest) {
           maxFarms: 1,
           maxGoats: 50,
           maxUsers: 2,
+          trialEndsAt,
         }
       })
 
