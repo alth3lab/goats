@@ -11,7 +11,11 @@ export const menuPermissions: Record<string, string | undefined> = {
   '/dashboard/reports': 'view_reports',
   '/dashboard/activities': 'view_activities',
   '/dashboard/search': 'view_search',
-  '/dashboard/settings': 'view_settings'
+  '/dashboard/settings': 'view_settings',
+  '/dashboard/admin': '__super_admin__',
+  '/dashboard/billing': undefined,
+  '/dashboard/farms': undefined,
+  '/dashboard/team': undefined,
 }
 
 export const actionPermissions = {

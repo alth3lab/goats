@@ -5,14 +5,20 @@ import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
-// GET /api/settings/backup — Export full database as JSON
+// GET /api/settings/backup — Export current tenant/farm data as JSON
 export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_settings')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
-    // Fetch all tables in dependency order
+    // Tenant & farm info (manual query - not in middleware)
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    const farms = await prisma.farm.findMany({ where: { tenantId: auth.tenantId } })
+    const userFarms = await prisma.userFarm.findMany({ where: { farm: { tenantId: auth.tenantId } } })
+    const subscriptions = await prisma.subscription.findMany({ where: { tenantId: auth.tenantId } })
+
+    // All data tables (auto-filtered by middleware)
     const [
       users,
       permissions,
@@ -37,7 +43,6 @@ export async function GET(request: NextRequest) {
       feedingSchedules,
       dailyFeedConsumptions,
       calendarEvents,
-      appSettings,
     ] = await Promise.all([
       prisma.user.findMany(),
       prisma.permission.findMany(),
@@ -62,13 +67,18 @@ export async function GET(request: NextRequest) {
       prisma.feedingSchedule.findMany(),
       prisma.dailyFeedConsumption.findMany(),
       prisma.calendarEvent.findMany(),
-      prisma.appSetting.findMany(),
     ])
 
     const backup = {
-      version: '1.0',
+      version: '2.0',
       exportDate: new Date().toISOString(),
+      tenantId: auth.tenantId,
+      farmId: auth.farmId,
       data: {
+        tenant,
+        farms,
+        userFarms,
+        subscriptions,
         users,
         permissions,
         userPermissions,
@@ -92,13 +102,10 @@ export async function GET(request: NextRequest) {
         feedingSchedules,
         dailyFeedConsumptions,
         calendarEvents,
-        appSettings,
       },
       stats: {
+        farms: farms.length,
         users: users.length,
-        permissions: permissions.length,
-        userPermissions: userPermissions.length,
-        activityLogs: activityLogs.length,
         goatTypes: goatTypes.length,
         breeds: breeds.length,
         pens: pens.length,
@@ -118,7 +125,7 @@ export async function GET(request: NextRequest) {
         feedingSchedules: feedingSchedules.length,
         dailyFeedConsumptions: dailyFeedConsumptions.length,
         calendarEvents: calendarEvents.length,
-        appSettings: appSettings.length,
+        activityLogs: activityLogs.length,
       },
     }
 

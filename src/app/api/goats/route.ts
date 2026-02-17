@@ -119,6 +119,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
+    // Check goat limit
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    if (tenant) {
+      const goatCount = await prisma.goat.count()
+      if (goatCount >= tenant.maxGoats) {
+        return NextResponse.json(
+          { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { status: 403 }
+        )
+      }
+    }
+
     const userId = await getUserIdFromRequest(request)
     const goat = await prisma.goat.create({
       data: validation.data as any

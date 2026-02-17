@@ -71,6 +71,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'لا توجد بيانات للاستيراد' }, { status: 400 })
     }
 
+    // Check goat limit
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    if (tenant) {
+      const goatCount = await prisma.goat.count()
+      const remaining = tenant.maxGoats - goatCount
+      if (remaining <= 0) {
+        return NextResponse.json(
+          { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { status: 403 }
+        )
+      }
+      if (rows.length > remaining) {
+        return NextResponse.json(
+          { error: `يمكن إضافة ${remaining} رأس فقط من أصل ${rows.length}. الحد الأقصى ${tenant.maxGoats}.` },
+          { status: 403 }
+        )
+      }
+    }
+
     const breeds = await prisma.breed.findMany({
       select: { id: true, name: true, nameAr: true }
     })

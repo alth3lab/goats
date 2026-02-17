@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
 // Routes that don't require authentication
-const PUBLIC_PATHS = ['/', '/login', '/register', '/api/auth/login', '/api/auth/logout', '/api/auth/register']
+const PUBLIC_PATHS = ['/', '/login', '/register', '/terms', '/privacy', '/forgot-password', '/reset-password', '/api/auth/login', '/api/auth/logout', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password']
 
 // Static file extensions to skip
 const STATIC_EXTENSIONS = /\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot|map)$/

@@ -5,11 +5,40 @@ import { logActivity } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
 
-// GET /api/farms - list user's farms
+// GET /api/farms - list user's farms (SUPER_ADMIN sees ALL farms)
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
   if (auth.response) return auth.response
   const { user, tenantId } = auth
+
+  // SUPER_ADMIN: show ALL farms across ALL tenants
+  if (user.role === 'SUPER_ADMIN') {
+    const allFarms = await prisma.farm.findMany({
+      include: {
+        tenant: { select: { name: true, nameAr: true } },
+        _count: { select: { goats: true, pens: true, userFarms: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const farms = allFarms.map(f => ({
+      id: f.id,
+      name: f.name,
+      nameAr: f.nameAr,
+      phone: f.phone,
+      address: f.address,
+      currency: f.currency,
+      isActive: f.isActive,
+      role: 'SUPER_ADMIN',
+      tenantName: f.tenant?.nameAr || f.tenant?.name || '',
+      goatsCount: f._count.goats,
+      pensCount: f._count.pens,
+      usersCount: f._count.userFarms,
+      createdAt: f.createdAt,
+    }))
+
+    return NextResponse.json(farms)
+  }
 
   const userFarms = await prisma.userFarm.findMany({
     where: { userId: user.id },

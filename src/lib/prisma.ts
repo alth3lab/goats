@@ -13,7 +13,10 @@ const TENANT_FARM_MODELS = [
 ]
 
 // Models that need tenantId only (no farmId)
-const TENANT_ONLY_MODELS = ['Birth', 'Payment', 'FeedStock', 'InventoryTransaction']
+const TENANT_ONLY_MODELS = ['Birth', 'Payment', 'FeedStock', 'InventoryTransaction', 'User', 'Subscription']
+
+// Models that need tenantId + optional farmId filtering on reads
+const TENANT_OPTIONAL_FARM_MODELS = ['ActivityLog']
 
 // Prisma 5 يدعم MySQL مباشرة بدون adapter
 // MariaDB متوافق 100% مع MySQL
@@ -33,8 +36,9 @@ prisma.$use(async (params, next) => {
 
   const isTenantFarm = TENANT_FARM_MODELS.includes(model)
   const isTenantOnly = TENANT_ONLY_MODELS.includes(model)
+  const isTenantOptionalFarm = TENANT_OPTIONAL_FARM_MODELS.includes(model)
 
-  if (!isTenantFarm && !isTenantOnly) return next(params)
+  if (!isTenantFarm && !isTenantOnly && !isTenantOptionalFarm) return next(params)
 
   const { tenantId, farmId } = ctx
 
@@ -44,6 +48,9 @@ prisma.$use(async (params, next) => {
     params.args.where = params.args.where || {}
     params.args.where.tenantId = tenantId
     if (isTenantFarm) {
+      params.args.where.farmId = farmId
+    }
+    if (isTenantOptionalFarm && farmId) {
       params.args.where.farmId = farmId
     }
   }
@@ -56,6 +63,9 @@ prisma.$use(async (params, next) => {
     if (isTenantFarm) {
       params.args.data.farmId = farmId
     }
+    if (isTenantOptionalFarm && farmId) {
+      params.args.data.farmId = farmId
+    }
   }
 
   // UpdateMany/DeleteMany: scope by tenant
@@ -64,6 +74,9 @@ prisma.$use(async (params, next) => {
     params.args.where = params.args.where || {}
     params.args.where.tenantId = tenantId
     if (isTenantFarm) {
+      params.args.where.farmId = farmId
+    }
+    if (isTenantOptionalFarm && farmId) {
       params.args.where.farmId = farmId
     }
   }

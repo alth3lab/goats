@@ -5,7 +5,7 @@ import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
-// POST /api/settings/restore — Restore database from JSON backup
+// POST /api/settings/restore — Restore tenant data from JSON backup
 export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_settings')
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const backup = await request.json()
 
     // Validate backup structure
-    if (!backup.version || !backup.data) {
+    if (!backup.data) {
       return NextResponse.json(
         { error: 'ملف النسخة الاحتياطية غير صالح' },
         { status: 400 }
@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
 
     // Use a transaction to ensure atomicity
     await prisma.$transaction(async (tx) => {
-      // Delete all existing data in reverse dependency order
+      // Delete current tenant's data in reverse dependency order
+      // Note: with User/ActivityLog in middleware, deleteMany auto-scopes to current tenant
       await tx.activityLog.deleteMany()
       await tx.userPermission.deleteMany()
       await tx.dailyFeedConsumption.deleteMany()
@@ -46,29 +47,20 @@ export async function POST(request: NextRequest) {
       await tx.vaccinationProtocol.deleteMany()
       await tx.goat.deleteMany()
       await tx.pen.deleteMany()
-      await tx.breed.deleteMany()
-      await tx.goatType.deleteMany()
       await tx.expense.deleteMany()
-      await tx.user.deleteMany()
-      await tx.permission.deleteMany()
-      await tx.appSetting.deleteMany()
+      // Don't delete users to keep the current logged-in user
+      // Don't delete global tables (Permission, GoatType, Breed)
 
-      // Restore in dependency order
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const restoreTable = async (model: { create: (args: any) => Promise<any> }, items: Record<string, unknown>[], key: string) => {
         if (!items?.length) return
         for (const item of items) {
-          await model.create({ data: sanitizeDates(item) })
+          await model.create({ data: sanitizeDates(item) as any })
         }
         results[key] = items.length
       }
 
-      await restoreTable(tx.user, data.users, 'users')
-      await restoreTable(tx.permission, data.permissions, 'permissions')
-      await restoreTable(tx.userPermission, data.userPermissions, 'userPermissions')
-      await restoreTable(tx.activityLog, data.activityLogs, 'activityLogs')
-      await restoreTable(tx.goatType, data.goatTypes, 'goatTypes')
-      await restoreTable(tx.breed, data.breeds, 'breeds')
+      // Restore data tables (middleware auto-injects tenantId/farmId on create)
       await restoreTable(tx.pen, data.pens, 'pens')
       await restoreTable(tx.goat, data.goats, 'goats')
       await restoreTable(tx.healthRecord, data.healthRecords, 'healthRecords')
@@ -86,8 +78,28 @@ export async function POST(request: NextRequest) {
       await restoreTable(tx.feedingSchedule, data.feedingSchedules, 'feedingSchedules')
       await restoreTable(tx.dailyFeedConsumption, data.dailyFeedConsumptions, 'dailyFeedConsumptions')
       await restoreTable(tx.calendarEvent, data.calendarEvents, 'calendarEvents')
-      await restoreTable(tx.appSetting, data.appSettings, 'appSettings')
-    }, { timeout: 120000 }) // 2 minute timeout for large databases
+      await restoreTable(tx.activityLog, data.activityLogs, 'activityLogs')
+
+      // Restore global tables if present (skip existing)
+      if (data.goatTypes?.length) {
+        for (const item of data.goatTypes) {
+          const existing = await tx.goatType.findUnique({ where: { id: item.id as string } })
+          if (!existing) {
+            await tx.goatType.create({ data: sanitizeDates(item) as any })
+          }
+        }
+        results['goatTypes'] = data.goatTypes.length
+      }
+      if (data.breeds?.length) {
+        for (const item of data.breeds) {
+          const existing = await tx.breed.findUnique({ where: { id: item.id as string } })
+          if (!existing) {
+            await tx.breed.create({ data: sanitizeDates(item) as any })
+          }
+        }
+        results['breeds'] = data.breeds.length
+      }
+    }, { timeout: 120000 })
 
     return NextResponse.json({
       message: 'تمت الاستعادة بنجاح',

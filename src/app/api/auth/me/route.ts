@@ -36,6 +36,23 @@ export async function GET(request: NextRequest) {
 
     const currentFarm = user.userFarms.find(uf => uf.farmId === currentFarmId)?.farm
 
+    // SUPER_ADMIN: sees all farms in system
+    let farmsData
+    if (user.role === 'SUPER_ADMIN') {
+      const allFarms = await prisma.farm.findMany({
+        select: { id: true, name: true, nameAr: true },
+        orderBy: { createdAt: 'desc' },
+      })
+      farmsData = allFarms.map(f => ({ id: f.id, name: f.name, nameAr: f.nameAr, role: 'SUPER_ADMIN' }))
+    } else {
+      farmsData = user.userFarms.map(uf => ({
+        id: uf.farm.id,
+        name: uf.farm.name,
+        nameAr: uf.farm.nameAr,
+        role: uf.role,
+      }))
+    }
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -51,12 +68,7 @@ export async function GET(request: NextRequest) {
         nameAr: currentFarm.nameAr,
         currency: currentFarm.currency,
       } : null,
-      farms: user.userFarms.map(uf => ({
-        id: uf.farm.id,
-        name: uf.farm.name,
-        nameAr: uf.farm.nameAr,
-        role: uf.role,
-      })),
+      farms: farmsData,
       permissions
     })
   } catch (error) {

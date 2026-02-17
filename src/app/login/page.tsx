@@ -156,6 +156,10 @@ export default function LoginPage() {
             {loading ? 'جاري الدخول...' : 'دخول'}
           </Button>
 
+          <MuiLink component={Link} href="/forgot-password" variant="body2" underline="hover">
+            نسيت كلمة المرور؟
+          </MuiLink>
+
           <Typography variant="caption" color="text.secondary">
             بالضغط على دخول، أنت توافق على شروط الاستخدام
           </Typography>

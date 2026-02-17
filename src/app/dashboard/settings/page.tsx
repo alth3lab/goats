@@ -202,7 +202,7 @@ export default function SettingsPage() {
     feedingSchedules: 'جداول التغذية',
     dailyFeedConsumptions: 'استهلاك الأعلاف اليومي',
     calendarEvents: 'أحداث التقويم',
-    appSettings: 'الإعدادات',
+    farms: 'المزارع',
   }
 
   return (

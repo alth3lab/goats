@@ -91,8 +91,12 @@ const menuGroups = [
       { text: 'التقارير', icon: <ReportsIcon />, href: '/dashboard/reports' },
       { text: 'سجل النشاطات', icon: <HistoryIcon />, href: '/dashboard/activities' },
       { text: 'المستخدمين', icon: <UsersIcon />, href: '/dashboard/users' },
+      { text: 'فريق العمل', icon: <UsersIcon />, href: '/dashboard/team' },
+      { text: 'المزارع', icon: <FarmIcon />, href: '/dashboard/farms' },
+      { text: 'الاشتراك', icon: <SettingsIcon />, href: '/dashboard/billing' },
       { text: 'الأنواع والسلالات', icon: <TypesIcon />, href: '/dashboard/types' },
-      { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' }
+      { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' },
+      { text: 'إدارة النظام', icon: <SettingsIcon />, href: '/dashboard/admin' }
     ]
   }
 ]
@@ -104,7 +108,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [farmMenuAnchor, setFarmMenuAnchor] = useState<null | HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
-  const { can, loading: authLoading, farm, farms, switchFarm } = useAuth()
+  const { user, can, loading: authLoading, farm, farms, switchFarm } = useAuth()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
@@ -177,7 +181,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <List sx={{ px: 1, flexGrow: 1 }}>
         {menuGroups.map((group, index) => {
           const filteredItems = group.items.filter(
-            (item) => authLoading || can(menuPermissions[item.href])
+            (item) => {
+              if (authLoading) return true
+              const perm = menuPermissions[item.href]
+              if (perm === '__super_admin__') return user?.role === 'SUPER_ADMIN'
+              return can(perm)
+            }
           )
 
           if (filteredItems.length === 0) return null
