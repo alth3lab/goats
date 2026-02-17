@@ -188,6 +188,27 @@ model HealthRecord {
   @@index([date])
 }
 
+// قوالب بروتوكولات التطعيم
+model VaccinationProtocol {
+  id            String   @id @default(uuid())
+  name          String   // PPR, Brucellosis, etc.
+  nameAr        String   // طاعون المجترات، البروسيلا، إلخ
+  type          HealthType @default(VACCINATION)
+  ageMonths     Int      // العمر بالأشهر عند التطعيم (مثلاً 3 = عند 3 أشهر)
+  repeatMonths  Int?     // تكرار كل X شهر (null = مرة واحدة)
+  description   String?  @db.Text
+  medication    String?  // اسم اللقاح
+  dosage        String?  // الجرعة
+  gender        Gender?  // null = كلا الجنسين
+  isActive      Boolean  @default(true)
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([ageMonths])
+}
+
 model Breeding {
   id              String         @id @default(uuid())
   motherId        String
