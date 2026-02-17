@@ -1,16 +1,34 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 
 interface AuthUser {
   id: string
   fullName: string
   username: string
   role: string
+  tenantId: string
+  farmId: string
+}
+
+interface FarmInfo {
+  id: string
+  name: string
+  nameAr: string
+  currency?: string
+}
+
+interface UserFarm {
+  id: string
+  name: string
+  nameAr: string
+  role: string
 }
 
 interface AuthState {
   user: AuthUser | null
+  farm: FarmInfo | null
+  farms: UserFarm[]
   permissions: string[]
   loading: boolean
 }
@@ -18,6 +36,8 @@ interface AuthState {
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
+    farm: null,
+    farms: [],
     permissions: [],
     loading: true
   })
@@ -36,13 +56,15 @@ export function useAuth() {
         if (!active) return
         setState({
           user: data.user || null,
+          farm: data.farm || null,
+          farms: Array.isArray(data.farms) ? data.farms : [],
           permissions: Array.isArray(data.permissions) ? data.permissions : [],
           loading: false
         })
       })
       .catch(() => {
         if (!active) return
-        setState({ user: null, permissions: [], loading: false })
+        setState({ user: null, farm: null, farms: [], permissions: [], loading: false })
       })
 
     return () => {
@@ -53,13 +75,25 @@ export function useAuth() {
   const can = useMemo(() => {
     return (permission?: string) => {
       if (!permission) return true
-      if (state.user?.role === 'ADMIN') return true
+      if (['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(state.user?.role || '')) return true
       return state.permissions.includes(permission)
     }
   }, [state.permissions, state.user?.role])
 
+  const switchFarm = useCallback(async (farmId: string) => {
+    const res = await fetch('/api/farms/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ farmId })
+    })
+    if (res.ok) {
+      window.location.reload()
+    }
+  }, [])
+
   return {
     ...state,
-    can
+    can,
+    switchFarm,
   }
 }

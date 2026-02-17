@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_sales')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const [
       totalSales,
@@ -49,7 +51,9 @@ export async function GET(request: NextRequest) {
       totalPaidAmount,
       totalRemaining
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب الإحصائيات' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission, getUserIdFromRequest } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { logActivity } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_feeds')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const penId = searchParams.get('penId')
@@ -34,7 +36,9 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json(schedules)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب جداول التغذية' }, { status: 500 })
   }
 }
@@ -43,6 +47,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const createData = {
@@ -65,7 +70,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(schedule, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة الجدول' }, { status: 500 })
   }
 }
@@ -74,6 +81,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const userId = await getUserIdFromRequest(request)
     const deleted = await prisma.feedingSchedule.deleteMany({})
@@ -92,7 +100,9 @@ export async function DELETE(request: NextRequest) {
       message: 'تم حذف جميع جداول التغذية بنجاح',
       deletedCount: deleted.count
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف جميع الجداول' }, { status: 500 })
   }
 }

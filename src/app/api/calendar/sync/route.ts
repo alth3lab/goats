@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, getUserIdFromRequest } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const userId = await getUserIdFromRequest(request)
     let created = 0
@@ -306,7 +308,9 @@ export async function POST(request: NextRequest) {
       created,
       errors
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Sync error:', error)
     return NextResponse.json({ 
       error: 'فشل في مزامنة الأحداث',

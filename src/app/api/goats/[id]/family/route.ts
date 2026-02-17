@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_goats')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
 
@@ -72,7 +74,9 @@ export async function GET(
       siblings,
       offspring
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب بيانات العائلة' }, { status: 500 })
   }
 }

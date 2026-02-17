@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_settings')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     // Fetch all tables in dependency order
     const [
@@ -127,7 +129,9 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="goats-backup-${new Date().toISOString().split('T')[0]}.json"`,
       },
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Backup error:', error)
     return NextResponse.json({ error: 'فشل في إنشاء النسخة الاحتياطية' }, { status: 500 })
   }

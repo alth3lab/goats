@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
+import { getTenantContext, type TenantContext } from '@/lib/tenant'
 
 export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get(TOKEN_COOKIE)?.value
@@ -11,18 +12,18 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
 }
 
 export async function getUserWithPermissions(request: NextRequest) {
-  const userId = await getUserIdFromRequest(request)
-  if (!userId) return null
+  const ctx = await getTenantContext(request)
+  if (!ctx) return null
 
   const user = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: ctx.userId },
     include: { permissions: { include: { permission: true } } }
   })
 
   if (!user) return null
 
   const permissions = user.permissions.map((entry) => entry.permission.name)
-  return { user, permissions }
+  return { user, permissions, tenantId: ctx.tenantId, farmId: ctx.farmId }
 }
 
 export async function requireAuth(request: NextRequest) {
@@ -43,7 +44,8 @@ export async function requirePermission(request: NextRequest, permission: string
     }
   }
 
-  if (data.user.role === 'ADMIN') {
+  // SUPER_ADMIN, OWNER, ADMIN bypass permission checks
+  if (['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(data.user.role)) {
     return { response: null, ...data }
   }
 

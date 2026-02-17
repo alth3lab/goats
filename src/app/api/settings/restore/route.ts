@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_settings')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const backup = await request.json()
 
@@ -91,7 +93,9 @@ export async function POST(request: NextRequest) {
       message: 'تمت الاستعادة بنجاح',
       restored: results,
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Restore error:', error)
     return NextResponse.json(
       { error: 'فشل في استعادة النسخة الاحتياطية: ' + (error instanceof Error ? error.message : 'خطأ غير معروف') },

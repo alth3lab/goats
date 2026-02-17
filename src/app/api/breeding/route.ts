@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_breeding')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const records = await prisma.breeding.findMany({
       include: {
@@ -20,7 +22,9 @@ export async function GET(request: NextRequest) {
     })
     
     return NextResponse.json(records)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب سجلات التكاثر' }, { status: 500 })
   }
 }
@@ -29,6 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_breeding')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const userId = await getUserIdFromRequest(request)
@@ -90,7 +95,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // إنشاء حدث تزاوج في التقويم    try {
+    // إنشاء حدث تزاوج في التقويم
+    try {
       await prisma.calendarEvent.create({
         data: {
           eventType: 'BREEDING',
@@ -142,7 +148,9 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(record, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Breeding create error:', error)
     return NextResponse.json({ error: 'فشل في إضافة سجل التكاثر' }, { status: 500 })
   }

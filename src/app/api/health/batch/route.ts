@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const { 
@@ -97,7 +99,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ count: targetGoatIds.length })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Batch health error:', error)
     return NextResponse.json({ error: 'Failed to process batch health records' }, { status: 500 })
   }

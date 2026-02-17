@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const contentType = request.headers.get('content-type') || ''
     let rows: Record<string, string>[] = []
@@ -134,7 +136,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ created, errors })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في الاستيراد' }, { status: 500 })
   }
 }

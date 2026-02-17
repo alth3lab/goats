@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'edit_sale')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -88,7 +90,9 @@ export async function PUT(
       totalPaid: updatedTotalPaid,
       remaining
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error updating sale:', error)
     return NextResponse.json({ error: 'فشل في تعديل عملية البيع' }, { status: 500 })
   }
@@ -101,6 +105,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'edit_sale')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -183,7 +188,9 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  
+    })
+} catch (error) {
     if (error instanceof Error && error.message === 'NOT_FOUND') {
       return NextResponse.json({ error: 'عملية البيع غير موجودة' }, { status: 404 })
     }

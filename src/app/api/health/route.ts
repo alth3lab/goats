@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const goatId = searchParams.get('goatId')
@@ -20,7 +22,9 @@ export async function GET(request: NextRequest) {
     })
     
     return NextResponse.json(records)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب السجلات الصحية' }, { status: 500 })
   }
 }
@@ -29,6 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const { goatId, type, date, description, veterinarian, cost, nextDueDate, moveToIsolation } = body
@@ -119,7 +124,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(result, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة السجل الصحي' }, { status: 500 })
   }
 }

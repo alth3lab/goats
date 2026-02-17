@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_types')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const types = await prisma.goatType.findMany({
       include: {
@@ -21,7 +23,9 @@ export async function GET(request: NextRequest) {
     })
     
     return NextResponse.json(types)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json(
       {
         error: 'فشل في جلب الأنواع',
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_type')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const userId = await getUserIdFromRequest(request)
@@ -53,7 +58,9 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(type, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة النوع' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const yearParam = request.nextUrl.searchParams.get('year')
     const monthParam = request.nextUrl.searchParams.get('month')
@@ -68,8 +70,8 @@ export async function GET(request: NextRequest) {
 
     const feedConsumptionPromise = (async () => {
       const periodFilter = curStart && curEnd
-        ? Prisma.sql`WHERE \`date\` >= ${curStart} AND \`date\` < ${curEnd}`
-        : Prisma.empty
+        ? Prisma.sql`WHERE \`farmId\` = ${auth.farmId} AND \`date\` >= ${curStart} AND \`date\` < ${curEnd}`
+        : Prisma.sql`WHERE \`farmId\` = ${auth.farmId}`
 
       const rows = await prisma.$queryRaw<Array<{
         quantity: number | null
@@ -224,7 +226,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(stats)
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('GET /api/stats failed:', error)
     const details = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(

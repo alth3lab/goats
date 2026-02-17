@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: {
-        permissions: { include: { permission: true } }
+        permissions: { include: { permission: true } },
+        userFarms: { include: { farm: true } }
       }
     })
 
@@ -29,13 +30,33 @@ export async function GET(request: NextRequest) {
 
     const permissions = user.permissions.map((entry) => entry.permission.name)
 
+    // Current farm from JWT (or override)
+    const farmIdOverride = request.headers.get('x-farm-id')
+    const currentFarmId = farmIdOverride || payload.farmId
+
+    const currentFarm = user.userFarms.find(uf => uf.farmId === currentFarmId)?.farm
+
     return NextResponse.json({
       user: {
         id: user.id,
         fullName: user.fullName,
         username: user.username,
-        role: user.role
+        role: user.role,
+        tenantId: payload.tenantId,
+        farmId: currentFarmId,
       },
+      farm: currentFarm ? {
+        id: currentFarm.id,
+        name: currentFarm.name,
+        nameAr: currentFarm.nameAr,
+        currency: currentFarm.currency,
+      } : null,
+      farms: user.userFarms.map(uf => ({
+        id: uf.farm.id,
+        name: uf.farm.name,
+        nameAr: uf.farm.nameAr,
+        role: uf.role,
+      })),
       permissions
     })
   } catch (error) {

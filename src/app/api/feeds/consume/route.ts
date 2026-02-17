@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const actorId = await resolveActorId(request)
     if (!actorId) {
@@ -335,7 +337,9 @@ export async function POST(request: NextRequest) {
           : 'تعذر تنفيذ الصرف التلقائي بسبب نقص المخزون في الأيام المطلوبة'
         : 'تم تنفيذ صرف الأعلاف اليومي بنجاح'
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Feed consumption execution error:', error)
     return NextResponse.json({ error: 'فشل في تنفيذ صرف الأعلاف اليومي' }, { status: 500 })
   }

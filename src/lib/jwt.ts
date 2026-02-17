@@ -9,6 +9,8 @@ const TOKEN_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 export interface JWTPayload {
   userId: string
   role: string
+  tenantId: string
+  farmId: string
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {
@@ -25,6 +27,8 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     return {
       userId: payload.userId as string,
       role: payload.role as string,
+      tenantId: payload.tenantId as string,
+      farmId: payload.farmId as string,
     }
   } catch {
     return null

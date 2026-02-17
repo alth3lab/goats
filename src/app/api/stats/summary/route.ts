@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_reports')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const [
       totalGoats,
@@ -155,7 +157,9 @@ export async function GET(request: NextRequest) {
         occupancyRate: Math.round(occupancyRate * 10) / 10
       }
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error fetching statistics:', error)
     return NextResponse.json({ error: 'فشل في جلب الإحصائيات' }, { status: 500 })
   }

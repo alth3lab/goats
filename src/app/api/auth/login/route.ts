@@ -82,8 +82,21 @@ export async function POST(request: NextRequest) {
       data: { lastLogin: new Date() }
     })
 
+    // Get user's default farm
+    const userFarm = await prisma.userFarm.findFirst({
+      where: { userId: user.id },
+      include: { farm: true },
+      orderBy: { farm: { createdAt: 'asc' } }
+    })
+
+    if (!user.tenantId || !userFarm) {
+      return NextResponse.json({ error: 'لم يتم ربط الحساب بمزرعة' }, { status: 403 })
+    }
+
     await logActivity({
       userId: user.id,
+      tenantId: user.tenantId,
+      farmId: userFarm.farmId,
       action: 'LOGIN',
       entity: 'User',
       entityId: user.id,
@@ -92,13 +105,21 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent')
     })
 
-    // Sign JWT token
-    const token = await signToken({ userId: user.id, role: user.role })
+    // Sign JWT token with tenant context
+    const token = await signToken({
+      userId: user.id,
+      role: user.role,
+      tenantId: user.tenantId,
+      farmId: userFarm.farmId
+    })
 
     const response = NextResponse.json({
       id: user.id,
       fullName: user.fullName,
-      role: user.role
+      role: user.role,
+      tenantId: user.tenantId,
+      farmId: userFarm.farmId,
+      farmName: userFarm.farm.name,
     })
 
     response.cookies.set(TOKEN_COOKIE, token, {

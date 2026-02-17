@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission, getUserIdFromRequest } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { logActivity } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const userId = await getUserIdFromRequest(request)
     const body = await request.json().catch(() => ({}))
@@ -154,7 +156,9 @@ export async function POST(request: NextRequest) {
       processedPens,
       deletedCount
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إنشاء الجداول الشهرية الذكية' }, { status: 500 })
   }
 }

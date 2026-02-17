@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_search')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const q = String(searchParams.get('q') || '').trim()
@@ -117,7 +119,9 @@ export async function GET(request: NextRequest) {
     ]
 
     return NextResponse.json({ results })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في البحث' }, { status: 500 })
   }
 }

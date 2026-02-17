@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   try {
     const auth = await requirePermission(_request, 'manage_permissions')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const permissions = await prisma.userPermission.findMany({
@@ -16,7 +18,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       include: { permission: true }
     })
     return NextResponse.json(permissions)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب صلاحيات المستخدم' }, { status: 500 })
   }
 }
@@ -25,6 +29,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const auth = await requirePermission(request, 'manage_permissions')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -52,7 +57,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حفظ صلاحيات المستخدم' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission, getUserIdFromRequest } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { logActivity } from '@/lib/activityLogger'
 import { z } from 'zod'
 import { validateBody } from '@/lib/validators/schemas'
@@ -25,13 +26,16 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const protocols = await prisma.vaccinationProtocol.findMany({
       orderBy: [{ ageMonths: 'asc' }, { name: 'asc' }]
     })
 
     return NextResponse.json(protocols)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب البروتوكولات' }, { status: 500 })
   }
 }
@@ -40,6 +44,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const validation = validateBody(createProtocolSchema, body)
@@ -63,7 +68,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(protocol, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة البروتوكول' }, { status: 500 })
   }
 }
@@ -72,6 +79,7 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'edit_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const { id, ...rest } = body
@@ -99,7 +107,9 @@ export async function PUT(request: NextRequest) {
     })
 
     return NextResponse.json(protocol)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تحديث البروتوكول' }, { status: 500 })
   }
 }
@@ -108,6 +118,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'delete_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const { id } = body
@@ -127,7 +138,9 @@ export async function DELETE(request: NextRequest) {
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف البروتوكول' }, { status: 500 })
   }
 }

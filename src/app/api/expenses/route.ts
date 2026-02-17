@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { createExpenseSchema, validateBody, parsePagination, paginatedResponse } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_expenses')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const format = searchParams.get('format')
@@ -45,7 +47,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(paginatedResponse(expenses, total, page, limit))
     }
     return NextResponse.json(expenses)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المصروفات' }, { status: 500 })
   }
 }
@@ -54,6 +58,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_expense')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const validation = validateBody(createExpenseSchema, body)
@@ -74,7 +79,9 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(expense, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة المصروف' }, { status: 500 })
   }
 }

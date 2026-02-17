@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_sales')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const format = request.nextUrl.searchParams.get('format')
     const sales = await prisma.sale.findMany({
@@ -83,7 +85,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(salesWithPayments)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المبيعات' }, { status: 500 })
   }
 }
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_sale')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const userId = await getUserIdFromRequest(request)
@@ -205,7 +210,8 @@ export async function POST(request: NextRequest) {
       return { ...newSale, paymentStatus: finalStatus }
     })
 
-    // إنشاء حدث في التقويم للبيع    try {
+    // إنشاء حدث في التقويم للبيع
+    try {
       const goat = body.goatId ? await prisma.goat.findUnique({ where: { id: body.goatId } }) : null
       await prisma.calendarEvent.create({
         data: {
@@ -233,7 +239,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(sale, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error creating sale:', error)
     const message = error instanceof Error ? error.message : 'فشل في إضافة البيع'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -20,7 +20,9 @@ import {
   Stack,
   TextField,
   InputAdornment,
-  useMediaQuery
+  useMediaQuery,
+  Menu,
+  MenuItem,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -42,7 +44,9 @@ import {
   Grass as FeedsIcon,
   CalendarMonth as CalendarIcon,
   ChevronLeft as CollapseIcon,
-  ChevronRight as ExpandIcon
+  ChevronRight as ExpandIcon,
+  Agriculture as FarmIcon,
+  SwapHoriz as SwitchIcon,
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -97,9 +101,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [farmMenuAnchor, setFarmMenuAnchor] = useState<null | HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
-  const { can, loading: authLoading } = useAuth()
+  const { can, loading: authLoading, farm, farms, switchFarm } = useAuth()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
@@ -140,12 +145,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Stack direction="row" spacing={1} alignItems="center">
               <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
               <Box>
-                <Typography variant="h6" fontWeight="bold">
-                  إدارة الماعز
+                <Typography variant="h6" fontWeight="bold" noWrap>
+                  {farm?.name || 'إدارة الماعز'}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Goat Management
-                </Typography>
+                {farms.length > 1 && (
+                  <Typography 
+                    variant="caption" 
+                    color="primary" 
+                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                    onClick={(e) => setFarmMenuAnchor(e.currentTarget)}
+                  >
+                    <SwitchIcon sx={{ fontSize: 12, mr: 0.5 }} />
+                    تبديل المزرعة
+                  </Typography>
+                )}
+                {farms.length <= 1 && (
+                  <Typography variant="caption" color="text.secondary">
+                    Goat Management
+                  </Typography>
+                )}
               </Box>
             </Stack>
           )}
@@ -398,6 +416,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px', lg: '64px' } }} />
         <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>{children}</Box>
       </Box>
+
+      {/* Farm Switch Menu */}
+      <Menu
+        anchorEl={farmMenuAnchor}
+        open={Boolean(farmMenuAnchor)}
+        onClose={() => setFarmMenuAnchor(null)}
+      >
+        {farms.map((f) => (
+          <MenuItem
+            key={f.id}
+            selected={f.id === farm?.id}
+            onClick={() => {
+              setFarmMenuAnchor(null)
+              if (f.id !== farm?.id) switchFarm(f.id)
+            }}
+          >
+            <ListItemIcon><FarmIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>{f.name}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   )
 }

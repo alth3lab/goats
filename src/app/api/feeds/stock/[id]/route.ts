@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission, getUserIdFromRequest } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { logActivity } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
@@ -12,6 +13,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -46,7 +48,9 @@ export async function PUT(
     })
 
     return NextResponse.json(stock)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تحديث المخزون' }, { status: 500 })
   }
 }
@@ -58,6 +62,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'add_feed')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -87,7 +92,9 @@ export async function DELETE(
     })
 
     return NextResponse.json({ message: 'تم حذف المخزون بنجاح' })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف المخزون' }, { status: 500 })
   }
 }

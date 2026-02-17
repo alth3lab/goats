@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { updateGoatSchema, validateBody } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
@@ -14,6 +15,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_goats')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const goat = await prisma.goat.findUnique({
@@ -52,7 +54,9 @@ export async function GET(
     }
     
     return NextResponse.json(goatWithAge)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب البيانات' }, { status: 500 })
   }
 }
@@ -64,6 +68,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'edit_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -93,7 +98,9 @@ export async function PUT(
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(goat)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تحديث البيانات' }, { status: 500 })
   }
 }
@@ -105,6 +112,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'delete_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -141,7 +149,9 @@ export async function DELETE(
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json({ message: 'تم الحذف بنجاح' })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف الماعز' }, { status: 500 })
   }
 }
