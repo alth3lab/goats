@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
     // Use a transaction to ensure atomicity
     await prisma.$transaction(async (tx) => {
       // Delete all existing data in reverse dependency order
+      await tx.activityLog.deleteMany()
+      await tx.userPermission.deleteMany()
       await tx.dailyFeedConsumption.deleteMany()
       await tx.feedingSchedule.deleteMany()
       await tx.feedStock.deleteMany()
@@ -45,6 +47,8 @@ export async function POST(request: NextRequest) {
       await tx.breed.deleteMany()
       await tx.goatType.deleteMany()
       await tx.expense.deleteMany()
+      await tx.user.deleteMany()
+      await tx.permission.deleteMany()
       await tx.appSetting.deleteMany()
 
       // Restore in dependency order
@@ -57,6 +61,10 @@ export async function POST(request: NextRequest) {
         results[key] = items.length
       }
 
+      await restoreTable(tx.user, data.users, 'users')
+      await restoreTable(tx.permission, data.permissions, 'permissions')
+      await restoreTable(tx.userPermission, data.userPermissions, 'userPermissions')
+      await restoreTable(tx.activityLog, data.activityLogs, 'activityLogs')
       await restoreTable(tx.goatType, data.goatTypes, 'goatTypes')
       await restoreTable(tx.breed, data.breeds, 'breeds')
       await restoreTable(tx.pen, data.pens, 'pens')

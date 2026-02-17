@@ -12,6 +12,10 @@ export async function GET(request: NextRequest) {
 
     // Fetch all tables in dependency order
     const [
+      users,
+      permissions,
+      userPermissions,
+      activityLogs,
       goatTypes,
       breeds,
       pens,
@@ -33,6 +37,10 @@ export async function GET(request: NextRequest) {
       calendarEvents,
       appSettings,
     ] = await Promise.all([
+      prisma.user.findMany(),
+      prisma.permission.findMany(),
+      prisma.userPermission.findMany(),
+      prisma.activityLog.findMany(),
       prisma.goatType.findMany(),
       prisma.breed.findMany(),
       prisma.pen.findMany(),
@@ -59,6 +67,10 @@ export async function GET(request: NextRequest) {
       version: '1.0',
       exportDate: new Date().toISOString(),
       data: {
+        users,
+        permissions,
+        userPermissions,
+        activityLogs,
         goatTypes,
         breeds,
         pens,
@@ -81,6 +93,10 @@ export async function GET(request: NextRequest) {
         appSettings,
       },
       stats: {
+        users: users.length,
+        permissions: permissions.length,
+        userPermissions: userPermissions.length,
+        activityLogs: activityLogs.length,
         goatTypes: goatTypes.length,
         breeds: breeds.length,
         pens: pens.length,

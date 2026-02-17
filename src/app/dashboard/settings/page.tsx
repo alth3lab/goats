@@ -179,6 +179,10 @@ export default function SettingsPage() {
   }
 
   const statLabels: Record<string, string> = {
+    users: 'المستخدمين',
+    permissions: 'الصلاحيات',
+    userPermissions: 'صلاحيات المستخدمين',
+    activityLogs: 'سجل النشاطات',
     goatTypes: 'أنواع الحيوانات',
     breeds: 'السلالات',
     pens: 'الحظائر',
