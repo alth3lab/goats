@@ -23,6 +23,8 @@ interface UserFarm {
   name: string
   nameAr: string
   role: string
+  tenantName?: string
+  tenantId?: string
 }
 
 interface AuthState {

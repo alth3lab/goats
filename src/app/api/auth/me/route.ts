@@ -36,14 +36,30 @@ export async function GET(request: NextRequest) {
 
     const currentFarm = user.userFarms.find(uf => uf.farmId === currentFarmId)?.farm
 
-    // SUPER_ADMIN: sees all farms in system
+    // SUPER_ADMIN: resolve current farm from DB if not in userFarms, and list all farms grouped by tenant
     let farmsData
+    let resolvedFarm = currentFarm
     if (user.role === 'SUPER_ADMIN') {
+      // If SUPER_ADMIN switched to a farm they don't own via UserFarm, resolve it
+      if (!resolvedFarm && currentFarmId) {
+        resolvedFarm = await prisma.farm.findUnique({
+          where: { id: currentFarmId },
+          select: { id: true, name: true, nameAr: true, currency: true },
+        }) as typeof currentFarm
+      }
+
       const allFarms = await prisma.farm.findMany({
-        select: { id: true, name: true, nameAr: true },
+        include: { tenant: { select: { name: true, nameAr: true } } },
         orderBy: { createdAt: 'desc' },
       })
-      farmsData = allFarms.map(f => ({ id: f.id, name: f.name, nameAr: f.nameAr, role: 'SUPER_ADMIN' }))
+      farmsData = allFarms.map(f => ({
+        id: f.id,
+        name: f.name,
+        nameAr: f.nameAr,
+        role: 'SUPER_ADMIN',
+        tenantName: f.tenant?.nameAr || f.tenant?.name || '',
+        tenantId: f.tenantId,
+      }))
     } else {
       farmsData = user.userFarms.map(uf => ({
         id: uf.farm.id,
@@ -62,11 +78,11 @@ export async function GET(request: NextRequest) {
         tenantId: payload.tenantId,
         farmId: currentFarmId,
       },
-      farm: currentFarm ? {
-        id: currentFarm.id,
-        name: currentFarm.name,
-        nameAr: currentFarm.nameAr,
-        currency: currentFarm.currency,
+      farm: resolvedFarm ? {
+        id: resolvedFarm.id,
+        name: resolvedFarm.name,
+        nameAr: resolvedFarm.nameAr,
+        currency: resolvedFarm.currency,
       } : null,
       farms: farmsData,
       permissions

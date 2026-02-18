@@ -16,28 +16,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'معرّف المزرعة مطلوب' }, { status: 400 })
   }
 
-  // Verify user has access to this farm
-  const userFarm = await prisma.userFarm.findUnique({
-    where: { userId_farmId: { userId: user.id, farmId } },
-    include: { farm: true }
-  })
+  let targetFarm: { id: string; name: string; nameAr: string | null; tenantId: string } | null = null
 
-  if (!userFarm) {
+  if (user.role === 'SUPER_ADMIN') {
+    // SUPER_ADMIN can switch to ANY farm across all tenants
+    targetFarm = await prisma.farm.findUnique({
+      where: { id: farmId },
+      select: { id: true, name: true, nameAr: true, tenantId: true },
+    })
+  } else {
+    // Regular users - verify access via UserFarm
+    const userFarm = await prisma.userFarm.findUnique({
+      where: { userId_farmId: { userId: user.id, farmId } },
+      include: { farm: { select: { id: true, name: true, nameAr: true, tenantId: true } } }
+    })
+    targetFarm = userFarm?.farm || null
+  }
+
+  if (!targetFarm) {
     return NextResponse.json({ error: 'ليس لديك صلاحية الوصول لهذه المزرعة' }, { status: 403 })
   }
 
-  // Issue new JWT with updated farmId
+  // Issue new JWT with updated farmId and the target farm's tenantId
   const token = await signToken({
     userId: user.id,
     role: user.role,
-    tenantId,
-    farmId,
+    tenantId: targetFarm.tenantId,
+    farmId: targetFarm.id,
   })
 
   const res = NextResponse.json({
-    farmId: userFarm.farm.id,
-    farmName: userFarm.farm.name,
-    farmNameAr: userFarm.farm.nameAr,
+    farmId: targetFarm.id,
+    farmName: targetFarm.name,
+    farmNameAr: targetFarm.nameAr,
   })
 
   res.cookies.set(TOKEN_COOKIE, token, {

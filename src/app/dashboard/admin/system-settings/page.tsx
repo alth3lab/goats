@@ -38,7 +38,7 @@ export default function SystemSettingsPage() {
       const res = await fetch('/api/admin/system-settings')
       if (res.ok) {
         const data = await res.json()
-        setSettings(data.settings)
+        setSettings(data)
       }
     } catch (err) {
       console.error(err)
@@ -56,9 +56,11 @@ export default function SystemSettingsPage() {
       const res = await fetch('/api/admin/system-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings }),
+        body: JSON.stringify(settings),
       })
       if (res.ok) {
+        const data = await res.json()
+        setSettings(data)
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
       } else {

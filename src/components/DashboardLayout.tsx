@@ -23,6 +23,7 @@ import {
   useMediaQuery,
   Menu,
   MenuItem,
+  ListSubheader,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -430,20 +431,52 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         anchorEl={farmMenuAnchor}
         open={Boolean(farmMenuAnchor)}
         onClose={() => setFarmMenuAnchor(null)}
+        slotProps={{ paper: { sx: { maxHeight: 400, minWidth: 280 } } }}
       >
-        {farms.map((f) => (
-          <MenuItem
-            key={f.id}
-            selected={f.id === farm?.id}
-            onClick={() => {
-              setFarmMenuAnchor(null)
-              if (f.id !== farm?.id) switchFarm(f.id)
-            }}
-          >
-            <ListItemIcon><FarmIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>{f.name}</ListItemText>
-          </MenuItem>
-        ))}
+        {(() => {
+          // Group farms by tenant for SUPER_ADMIN
+          if (user?.role === 'SUPER_ADMIN' && farms.some(f => f.tenantName)) {
+            const grouped = farms.reduce<Record<string, typeof farms>>((acc, f) => {
+              const key = f.tenantName || 'غير محدد'
+              if (!acc[key]) acc[key] = []
+              acc[key].push(f)
+              return acc
+            }, {})
+            return Object.entries(grouped).map(([tenantName, tenantFarms]) => [
+              <ListSubheader key={`header-${tenantName}`} sx={{ fontWeight: 'bold', lineHeight: '32px', bgcolor: 'grey.100' }}>
+                {tenantName}
+              </ListSubheader>,
+              ...tenantFarms.map((f) => (
+                <MenuItem
+                  key={f.id}
+                  selected={f.id === farm?.id}
+                  onClick={() => {
+                    setFarmMenuAnchor(null)
+                    if (f.id !== farm?.id) switchFarm(f.id)
+                  }}
+                  sx={{ pr: 4 }}
+                >
+                  <ListItemIcon><FarmIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText>{f.nameAr || f.name}</ListItemText>
+                </MenuItem>
+              ))
+            ]).flat()
+          }
+          // Regular users - flat list
+          return farms.map((f) => (
+            <MenuItem
+              key={f.id}
+              selected={f.id === farm?.id}
+              onClick={() => {
+                setFarmMenuAnchor(null)
+                if (f.id !== farm?.id) switchFarm(f.id)
+              }}
+            >
+              <ListItemIcon><FarmIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>{f.nameAr || f.name}</ListItemText>
+            </MenuItem>
+          ))
+        })()}
       </Menu>
     </Box>
   )
