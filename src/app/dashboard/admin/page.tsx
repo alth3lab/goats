@@ -53,6 +53,7 @@ import LockResetIcon from '@mui/icons-material/LockReset'
 import DeleteIcon from '@mui/icons-material/Delete'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
 
@@ -131,6 +132,19 @@ export default function AdminPage() {
   const [editDialog, setEditDialog] = useState<TenantInfo | null>(null)
   const [editPlan, setEditPlan] = useState('')
   const [editActive, setEditActive] = useState(true)
+  const [editMaxFarms, setEditMaxFarms] = useState(1)
+  const [editMaxGoats, setEditMaxGoats] = useState(50)
+  const [editMaxUsers, setEditMaxUsers] = useState(2)
+
+  // Create tenant state
+  const [createDialog, setCreateDialog] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    name: '', nameAr: '', email: '', phone: '', plan: 'FREE',
+    ownerUsername: '', ownerPassword: '', ownerFullName: '', ownerEmail: '',
+  })
+
+  // Delete tenant state
+  const [deleteTenantDialog, setDeleteTenantDialog] = useState<TenantInfo | null>(null)
 
   // User management state
   const [selectedTenant, setSelectedTenant] = useState<TenantInfo | null>(null)
@@ -214,6 +228,9 @@ export default function AdminPage() {
     setEditDialog(t)
     setEditPlan(t.plan)
     setEditActive(t.isActive)
+    setEditMaxFarms(t.maxFarms)
+    setEditMaxGoats(t.maxGoats)
+    setEditMaxUsers(t.maxUsers)
   }
 
   const handleSave = async () => {
@@ -226,6 +243,9 @@ export default function AdminPage() {
           tenantId: editDialog.id,
           plan: editPlan,
           isActive: editActive,
+          maxFarms: editMaxFarms,
+          maxGoats: editMaxGoats,
+          maxUsers: editMaxUsers,
         }),
       })
       if (res.ok) {
@@ -246,6 +266,46 @@ export default function AdminPage() {
     BASIC: 'أساسي',
     PRO: 'احترافي',
     ENTERPRISE: 'مؤسسي',
+  }
+
+  const handleCreateTenant = async () => {
+    try {
+      const res = await fetch('/api/admin/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createForm),
+      })
+      if (res.ok) {
+        setSnackbar({ open: true, message: 'تم إنشاء المستأجر بنجاح', severity: 'success' })
+        setCreateDialog(false)
+        setCreateForm({ name: '', nameAr: '', email: '', phone: '', plan: 'FREE', ownerUsername: '', ownerPassword: '', ownerFullName: '', ownerEmail: '' })
+        fetchData()
+      } else {
+        const data = await res.json()
+        setSnackbar({ open: true, message: data.error, severity: 'error' })
+      }
+    } catch {
+      setSnackbar({ open: true, message: 'خطأ في الاتصال', severity: 'error' })
+    }
+  }
+
+  const handleDeleteTenant = async () => {
+    if (!deleteTenantDialog) return
+    try {
+      const res = await fetch(`/api/admin/tenants?tenantId=${deleteTenantDialog.id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        setSnackbar({ open: true, message: 'تم حذف المستأجر بنجاح', severity: 'success' })
+        setDeleteTenantDialog(null)
+        fetchData()
+      } else {
+        const data = await res.json()
+        setSnackbar({ open: true, message: data.error, severity: 'error' })
+      }
+    } catch {
+      setSnackbar({ open: true, message: 'خطأ في الاتصال', severity: 'error' })
+    }
   }
 
   const planColor: Record<string, 'default' | 'success' | 'primary' | 'secondary'> = {
@@ -508,10 +568,19 @@ export default function AdminPage() {
     <Box sx={{ width: '100%' }}>
       {/* Header */}
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <AdminPanelSettingsIcon color="error" sx={{ fontSize: 32 }} />
-          <Typography variant="h4" fontWeight="bold">لوحة إدارة النظام</Typography>
-          <Chip label="SUPER ADMIN" color="error" size="small" />
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+          <Stack direction="row" spacing={2} alignItems="center">
+            <AdminPanelSettingsIcon color="error" sx={{ fontSize: 32 }} />
+            <Typography variant="h4" fontWeight="bold">لوحة إدارة النظام</Typography>
+            <Chip label="SUPER ADMIN" color="error" size="small" />
+          </Stack>
+          <Button
+            variant="contained"
+            startIcon={<AddBusinessIcon />}
+            onClick={() => setCreateDialog(true)}
+          >
+            مستأجر جديد
+          </Button>
         </Stack>
       </Paper>
 
@@ -609,6 +678,15 @@ export default function AdminPage() {
                       >
                         المستخدمين
                       </Button>
+                      <Tooltip title="حذف المستأجر">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => setDeleteTenantDialog(t)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -636,9 +714,37 @@ export default function AdminPage() {
               control={<Switch checked={editActive} onChange={(e) => setEditActive(e.target.checked)} />}
               label="الحساب نشط"
             />
+            <Divider />
+            <Typography variant="subtitle2" color="text.secondary">تجاوز حدود الخطة (اختياري)</Typography>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="حد المزارع"
+                type="number"
+                value={editMaxFarms}
+                onChange={(e) => setEditMaxFarms(Number(e.target.value))}
+                fullWidth
+                slotProps={{ htmlInput: { min: 1 } }}
+              />
+              <TextField
+                label="حد الماعز"
+                type="number"
+                value={editMaxGoats}
+                onChange={(e) => setEditMaxGoats(Number(e.target.value))}
+                fullWidth
+                slotProps={{ htmlInput: { min: 1 } }}
+              />
+              <TextField
+                label="حد المستخدمين"
+                type="number"
+                value={editMaxUsers}
+                onChange={(e) => setEditMaxUsers(Number(e.target.value))}
+                fullWidth
+                slotProps={{ htmlInput: { min: 1 } }}
+              />
+            </Stack>
             {editDialog && (
               <Alert severity="info">
-                الاستخدام: {editDialog.goatsCount} ماعز، {editDialog.farmsCount} مزرعة، {editDialog.usersCount} مستخدم
+                الاستخدام الحالي: {editDialog.goatsCount} ماعز، {editDialog.farmsCount} مزرعة، {editDialog.usersCount} مستخدم
               </Alert>
             )}
           </Stack>
@@ -646,6 +752,65 @@ export default function AdminPage() {
         <DialogActions>
           <Button onClick={() => setEditDialog(null)}>إلغاء</Button>
           <Button variant="contained" onClick={handleSave}>حفظ</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Tenant Dialog */}
+      <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>إنشاء مستأجر جديد</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary">بيانات المستأجر</Typography>
+            <TextField label="اسم المؤسسة (إنجليزي) *" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} fullWidth />
+            <TextField label="اسم المؤسسة (عربي)" value={createForm.nameAr} onChange={(e) => setCreateForm({ ...createForm, nameAr: e.target.value })} fullWidth />
+            <TextField label="البريد الإلكتروني *" type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} fullWidth />
+            <TextField label="الهاتف" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>الخطة</InputLabel>
+              <Select value={createForm.plan} label="الخطة" onChange={(e) => setCreateForm({ ...createForm, plan: e.target.value })}>
+                <MenuItem value="FREE">مجاني</MenuItem>
+                <MenuItem value="BASIC">أساسي</MenuItem>
+                <MenuItem value="PRO">احترافي</MenuItem>
+                <MenuItem value="ENTERPRISE">مؤسسي</MenuItem>
+              </Select>
+            </FormControl>
+            <Divider />
+            <Typography variant="subtitle2" color="text.secondary">بيانات المالك (Owner)</Typography>
+            <TextField label="الاسم الكامل *" value={createForm.ownerFullName} onChange={(e) => setCreateForm({ ...createForm, ownerFullName: e.target.value })} fullWidth />
+            <TextField label="اسم المستخدم *" value={createForm.ownerUsername} onChange={(e) => setCreateForm({ ...createForm, ownerUsername: e.target.value })} fullWidth />
+            <TextField label="البريد الإلكتروني *" type="email" value={createForm.ownerEmail} onChange={(e) => setCreateForm({ ...createForm, ownerEmail: e.target.value })} fullWidth />
+            <TextField label="كلمة المرور *" type="text" value={createForm.ownerPassword} onChange={(e) => setCreateForm({ ...createForm, ownerPassword: e.target.value })} fullWidth helperText="6 أحرف على الأقل" />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialog(false)}>إلغاء</Button>
+          <Button
+            variant="contained"
+            disabled={!createForm.name || !createForm.email || !createForm.ownerUsername || createForm.ownerPassword.length < 6 || !createForm.ownerFullName || !createForm.ownerEmail}
+            onClick={handleCreateTenant}
+          >
+            إنشاء
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Tenant Confirmation Dialog */}
+      <Dialog open={!!deleteTenantDialog} onClose={() => setDeleteTenantDialog(null)} maxWidth="xs" fullWidth>
+        <DialogTitle color="error">حذف المستأجر</DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mt: 1 }}>
+            هل أنت متأكد من حذف <strong>{deleteTenantDialog?.nameAr || deleteTenantDialog?.name}</strong>؟
+            <br />
+            سيتم حذف جميع المزارع والمستخدمين والبيانات المرتبطة نهائياً.
+            <br />
+            <strong>هذا الإجراء لا يمكن التراجع عنه!</strong>
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTenantDialog(null)}>إلغاء</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteTenant}>
+            حذف نهائي
+          </Button>
         </DialogActions>
       </Dialog>
 

@@ -184,7 +184,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             (item) => {
               if (authLoading) return true
               const perm = menuPermissions[item.href]
-              if (perm === '__super_admin__') return user?.role === 'SUPER_ADMIN'
               return can(perm)
             }
           )

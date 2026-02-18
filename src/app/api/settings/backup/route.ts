@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       dailyFeedConsumptions,
       calendarEvents,
     ] = await Promise.all([
-      prisma.user.findMany(),
+      prisma.user.findMany({ select: { id: true, username: true, email: true, fullName: true, phone: true, role: true, isActive: true, tenantId: true, createdAt: true, updatedAt: true } }),
       prisma.permission.findMany(),
       prisma.userPermission.findMany(),
       prisma.activityLog.findMany(),

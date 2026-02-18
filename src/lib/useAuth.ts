@@ -75,6 +75,11 @@ export function useAuth() {
   const can = useMemo(() => {
     return (permission?: string) => {
       if (!permission) return true
+      // Super Admin only
+      if (permission === '__super_admin__') return state.user?.role === 'SUPER_ADMIN'
+      // Owner level: SUPER_ADMIN + OWNER only
+      if (permission === '__owner__') return ['SUPER_ADMIN', 'OWNER'].includes(state.user?.role || '')
+      // Admin level bypasses all other permissions
       if (['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(state.user?.role || '')) return true
       return state.permissions.includes(permission)
     }

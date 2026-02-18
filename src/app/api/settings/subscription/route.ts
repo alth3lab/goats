@@ -69,6 +69,11 @@ export async function GET(request: NextRequest) {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
 
+    // Only OWNER/SUPER_ADMIN can view subscription details
+    if (!['SUPER_ADMIN', 'OWNER'].includes(auth.user.role)) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    }
+
     const tenant = await prisma.tenant.findUnique({
       where: { id: auth.tenantId },
       include: {

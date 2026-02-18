@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
+import { logActivity } from '@/lib/activityLogger'
 import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
@@ -94,12 +95,22 @@ export async function PUT(
       return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 })
     }
 
+    const logAdminAction = (desc: string) => logActivity({
+      userId: auth.user.id,
+      tenantId,
+      action: 'ADMIN_ACTION',
+      entity: 'User',
+      entityId: userId,
+      description: desc,
+    })
+
     switch (action) {
       case 'toggleActive': {
         const updated = await prisma.user.update({
           where: { id: userId },
           data: { isActive: !user.isActive },
         })
+        await logAdminAction(`${updated.isActive ? 'تفعيل' : 'تعطيل'} المستخدم: ${user.username}`)
         return NextResponse.json({ message: updated.isActive ? 'تم تفعيل المستخدم' : 'تم تعطيل المستخدم', isActive: updated.isActive })
       }
 
@@ -108,6 +119,7 @@ export async function PUT(
           return NextResponse.json({ error: 'الدور غير صالح' }, { status: 400 })
         }
         await prisma.user.update({ where: { id: userId }, data: { role } })
+        await logAdminAction(`تغيير دور المستخدم ${user.username} من ${user.role} إلى ${role}`)
         return NextResponse.json({ message: `تم تغيير الدور إلى ${role}` })
       }
 
@@ -117,6 +129,7 @@ export async function PUT(
         }
         const hashed = await bcrypt.hash(newPassword, 12)
         await prisma.user.update({ where: { id: userId }, data: { password: hashed } })
+        await logAdminAction(`إعادة تعيين كلمة مرور المستخدم: ${user.username}`)
         return NextResponse.json({ message: 'تم إعادة تعيين كلمة المرور' })
       }
 
@@ -125,6 +138,7 @@ export async function PUT(
         await prisma.userFarm.deleteMany({ where: { userId } })
         await prisma.userPermission.deleteMany({ where: { userId } })
         await prisma.user.delete({ where: { id: userId } })
+        await logAdminAction(`حذف المستخدم: ${user.username} (${user.fullName})`)
         return NextResponse.json({ message: 'تم حذف المستخدم' })
       }
 
