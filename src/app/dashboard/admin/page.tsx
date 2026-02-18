@@ -55,6 +55,9 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import WarningIcon from '@mui/icons-material/Warning'
+import HistoryIcon from '@mui/icons-material/History'
+import SettingsIcon from '@mui/icons-material/Settings'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
 
@@ -613,6 +616,26 @@ export default function AdminPage() {
         </Stack>
       </Paper>
 
+      {/* Quick Navigation */}
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <Button
+          variant="outlined"
+          startIcon={<HistoryIcon />}
+          onClick={() => router.push('/dashboard/admin/audit')}
+          sx={{ borderRadius: 2 }}
+        >
+          سجل التدقيق
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<SettingsIcon />}
+          onClick={() => router.push('/dashboard/admin/system-settings')}
+          sx={{ borderRadius: 2 }}
+        >
+          إعدادات النظام
+        </Button>
+      </Stack>
+
       {/* Stats Cards */}
       {stats && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -761,6 +784,15 @@ export default function AdminPage() {
                       >
                         المستخدمين
                       </Button>
+                      <Tooltip title="عرض البيانات">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => router.push(`/dashboard/admin/tenants/${t.id}`)}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="حذف المستأجر">
                         <IconButton
                           size="small"

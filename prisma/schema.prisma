@@ -197,7 +197,15 @@ model ActivityLog {
   @@index([createdAt])
 }
 
-// ==================== Types & Breeds (shared) ====================
+// ==================== System Settings (SUPER_ADMIN) ====================
+
+model SystemSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== Types & Breeds ====================
 
 model GoatType {
   id          String   @id @default(uuid())
