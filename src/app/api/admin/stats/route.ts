@@ -69,6 +69,11 @@ export async function GET(request: NextRequest) {
         count: p._count.id,
       })),
       recentTenants,
+      pendingSubscriptions: await prisma.subscription.findMany({
+        where: { status: 'PENDING' },
+        include: { tenant: { select: { id: true, name: true, nameAr: true, email: true, plan: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
     })
   } catch (error) {
     console.error('Admin stats error:', error)

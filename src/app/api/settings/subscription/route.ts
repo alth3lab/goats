@@ -201,13 +201,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upgrade to paid plan: mark as pending (no Stripe yet)
     const isPaidUpgrade = targetIndex > currentIndex && planDetails.price > 0
+    const isSuperAdmin = auth.user.role === 'SUPER_ADMIN'
 
+    // Paid upgrade by non-SUPER_ADMIN: create PENDING request, don't change plan
+    if (isPaidUpgrade && !isSuperAdmin) {
+      // Check if there's already a pending request
+      const pendingSub = await prisma.subscription.findFirst({
+        where: { tenantId: auth.tenantId, status: 'PENDING' },
+      })
+      if (pendingSub) {
+        return NextResponse.json({ error: 'يوجد طلب ترقية معلّق بالفعل. انتظر موافقة الإدارة أو تواصل معنا.' }, { status: 400 })
+      }
+
+      await prisma.subscription.create({
+        data: {
+          tenantId: auth.tenantId,
+          plan: plan as any,
+          status: 'PENDING',
+          startDate: new Date(),
+          endDate: null,
+          amount: planDetails.price,
+          currency: 'AED',
+          notes: `طلب ترقية من ${PLANS[tenant.plan as keyof typeof PLANS]?.name || tenant.plan} إلى ${planDetails.name} — بانتظار الدفع/الموافقة`,
+        },
+      })
+
+      return NextResponse.json({
+        message: `تم إرسال طلب الترقية إلى ${planDetails.name}. يرجى التواصل مع الإدارة لإتمام الدفع وتفعيل الخطة.`,
+        pending: true,
+      })
+    }
+
+    // Free downgrade or SUPER_ADMIN direct activation
     // Cancel previous active subscriptions
     await prisma.subscription.updateMany({
       where: { tenantId: auth.tenantId, status: 'ACTIVE' },
       data: { status: 'CANCELLED', endDate: new Date() },
+    })
+    // Also clear any pending requests
+    await prisma.subscription.updateMany({
+      where: { tenantId: auth.tenantId, status: 'PENDING' },
+      data: { status: 'CANCELLED' },
     })
 
     // Calculate subscription period (30 days)
@@ -231,7 +266,7 @@ export async function POST(request: NextRequest) {
       data: {
         tenantId: auth.tenantId,
         plan: plan as any,
-        status: isPaidUpgrade ? 'ACTIVE' : 'ACTIVE',
+        status: 'ACTIVE',
         startDate,
         endDate: planDetails.price > 0 ? endDate : null,
         amount: planDetails.price > 0 ? planDetails.price : 0,
@@ -245,12 +280,88 @@ export async function POST(request: NextRequest) {
     const action = targetIndex > currentIndex ? 'ترقية' : 'تخفيض'
 
     return NextResponse.json({
-      message: `تم ${action} الخطة إلى ${planDetails.name} بنجاح${isPaidUpgrade ? '. الدفع سيكون متاحاً قريباً عبر بوابة الدفع.' : ''}`,
+      message: `تم ${action} الخطة إلى ${planDetails.name} بنجاح`,
       plan: planDetails,
     })
   } catch (error) {
     console.error('Plan change error:', error)
     return NextResponse.json({ error: 'فشل في تغيير الخطة' }, { status: 500 })
+  }
+}
+
+// PATCH /api/settings/subscription — Approve/reject a pending upgrade (SUPER_ADMIN only)
+export async function PATCH(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request)
+    if (auth.response) return auth.response
+
+    if (auth.user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { subscriptionId, action: approvalAction, tenantId: targetTenantId } = body
+
+    if (!subscriptionId || !approvalAction) {
+      return NextResponse.json({ error: 'البيانات مطلوبة' }, { status: 400 })
+    }
+
+    const subscription = await prisma.subscription.findUnique({ where: { id: subscriptionId } })
+    if (!subscription || subscription.status !== 'PENDING') {
+      return NextResponse.json({ error: 'الطلب غير موجود أو ليس معلقاً' }, { status: 404 })
+    }
+
+    if (approvalAction === 'approve') {
+      const planDetails = PLANS[subscription.plan as keyof typeof PLANS]
+      if (!planDetails) {
+        return NextResponse.json({ error: 'خطة غير صالحة' }, { status: 400 })
+      }
+
+      // Cancel previous active subscriptions
+      await prisma.subscription.updateMany({
+        where: { tenantId: subscription.tenantId, status: 'ACTIVE' },
+        data: { status: 'CANCELLED', endDate: new Date() },
+      })
+
+      const startDate = new Date()
+      const endDate = new Date()
+      endDate.setDate(endDate.getDate() + 30)
+
+      // Activate the subscription
+      await prisma.subscription.update({
+        where: { id: subscriptionId },
+        data: {
+          status: 'ACTIVE',
+          startDate,
+          endDate,
+          notes: (subscription.notes || '') + ' — تمت الموافقة من الإدارة',
+        },
+      })
+
+      // Update tenant plan & limits
+      await prisma.tenant.update({
+        where: { id: subscription.tenantId },
+        data: {
+          plan: subscription.plan as any,
+          maxFarms: planDetails.maxFarms,
+          maxGoats: planDetails.maxGoats,
+          maxUsers: planDetails.maxUsers,
+        },
+      })
+
+      return NextResponse.json({ message: 'تم تفعيل الترقية بنجاح' })
+    } else if (approvalAction === 'reject') {
+      await prisma.subscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'CANCELLED', notes: (subscription.notes || '') + ' — مرفوض من الإدارة' },
+      })
+      return NextResponse.json({ message: 'تم رفض طلب الترقية' })
+    }
+
+    return NextResponse.json({ error: 'إجراء غير معروف' }, { status: 400 })
+  } catch (error) {
+    console.error('Subscription approval error:', error)
+    return NextResponse.json({ error: 'فشل في معالجة الطلب' }, { status: 500 })
   }
 }
 

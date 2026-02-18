@@ -372,9 +372,9 @@ export default function BillingPage() {
             <strong>{actionDialog ? data.plans[actionDialog.plan]?.name : ''}</strong>؟
           </Typography>
           {actionDialog?.type === 'upgrade' && actionDialog.plan && data.plans[actionDialog.plan]?.price > 0 && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              سيتم تفعيل الخطة فوراً. سعر الخطة: {data.plans[actionDialog.plan]?.price} د.إ/شهر.
-              الدفع سيكون متاحاً قريباً عبر بوابة الدفع.
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              سعر الخطة: {data.plans[actionDialog.plan]?.price} د.إ/شهر.
+              سيتم إرسال طلب الترقية للإدارة. يجب إتمام الدفع والحصول على موافقة الإدارة لتفعيل الخطة.
             </Alert>
           )}
           {actionDialog?.type === 'downgrade' && (

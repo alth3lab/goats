@@ -54,6 +54,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
+import WarningIcon from '@mui/icons-material/Warning'
 import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
 
@@ -101,6 +102,15 @@ interface Stats {
   }
   planBreakdown: { plan: string; count: number }[]
   recentTenants: { id: string; name: string; email: string; plan: string; isActive: boolean; createdAt: string }[]
+  pendingSubscriptions: {
+    id: string
+    plan: string
+    amount: number
+    currency: string
+    notes: string | null
+    createdAt: string
+    tenant: { id: string; name: string; nameAr: string | null; email: string; plan: string }
+  }[]
 }
 
 const ROLES = ['OWNER', 'ADMIN', 'MANAGER', 'USER', 'VETERINARIAN', 'VIEWER']
@@ -301,6 +311,25 @@ export default function AdminPage() {
         fetchData()
       } else {
         const data = await res.json()
+        setSnackbar({ open: true, message: data.error, severity: 'error' })
+      }
+    } catch {
+      setSnackbar({ open: true, message: 'خطأ في الاتصال', severity: 'error' })
+    }
+  }
+
+  const handleSubscriptionAction = async (subscriptionId: string, action: 'approve' | 'reject') => {
+    try {
+      const res = await fetch('/api/settings/subscription', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId, action }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSnackbar({ open: true, message: data.message, severity: 'success' })
+        fetchData()
+      } else {
         setSnackbar({ open: true, message: data.error, severity: 'error' })
       }
     } catch {
@@ -620,6 +649,60 @@ export default function AdminPage() {
               />
             ))}
           </Stack>
+        </Paper>
+      )}
+
+      {/* Pending Subscription Requests */}
+      {stats && stats.pendingSubscriptions && stats.pendingSubscriptions.length > 0 && (
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, border: '2px solid', borderColor: 'warning.main' }}>
+          <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+            <WarningIcon color="warning" />
+            <Typography variant="h6" fontWeight="bold" color="warning.main">
+              طلبات ترقية معلّقة ({stats.pendingSubscriptions.length})
+            </Typography>
+          </Stack>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>المستأجر</TableCell>
+                  <TableCell>الخطة الحالية</TableCell>
+                  <TableCell>الخطة المطلوبة</TableCell>
+                  <TableCell>المبلغ</TableCell>
+                  <TableCell>التاريخ</TableCell>
+                  <TableCell>إجراءات</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {stats.pendingSubscriptions.map((sub) => (
+                  <TableRow key={sub.id} hover>
+                    <TableCell>
+                      <Typography fontWeight="bold">{sub.tenant.nameAr || sub.tenant.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{sub.tenant.email}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={planLabel[sub.tenant.plan] || sub.tenant.plan} color={planColor[sub.tenant.plan]} size="small" />
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={planLabel[sub.plan] || sub.plan} color={planColor[sub.plan]} size="small" />
+                    </TableCell>
+                    <TableCell>{sub.amount} {sub.currency}</TableCell>
+                    <TableCell>{new Date(sub.createdAt).toLocaleDateString('ar-AE')}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1}>
+                        <Button size="small" variant="contained" color="success" onClick={() => handleSubscriptionAction(sub.id, 'approve')}>
+                          موافقة
+                        </Button>
+                        <Button size="small" variant="outlined" color="error" onClick={() => handleSubscriptionAction(sub.id, 'reject')}>
+                          رفض
+                        </Button>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Paper>
       )}
 

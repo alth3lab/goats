@@ -106,6 +106,7 @@ enum Plan {
 
 enum SubscriptionStatus {
   ACTIVE
+  PENDING
   CANCELLED
   EXPIRED
   PAST_DUE
