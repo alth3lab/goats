@@ -79,6 +79,8 @@ export function useAuth() {
       if (permission === '__super_admin__') return state.user?.role === 'SUPER_ADMIN'
       // Owner level: SUPER_ADMIN + OWNER only
       if (permission === '__owner__') return ['SUPER_ADMIN', 'OWNER'].includes(state.user?.role || '')
+      // Owner + Admin level: SUPER_ADMIN + OWNER + ADMIN
+      if (permission === '__owner_admin__') return ['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(state.user?.role || '')
       // Admin level bypasses all other permissions
       if (['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(state.user?.role || '')) return true
       return state.permissions.includes(permission)

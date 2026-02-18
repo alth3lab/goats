@@ -27,8 +27,12 @@ import {
   Upload as UploadIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material'
+import { useAuth } from '@/lib/useAuth'
 
 export default function SettingsPage() {
+  const { user } = useAuth()
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const canEdit = ['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(user?.role || '')
   const [settings, setSettings] = useState({
     farmName: '',
     phone: '',
@@ -331,6 +335,7 @@ export default function SettingsPage() {
           </Box>
         </Box>
 
+        {canEdit && (
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="flex-end" mt={3}>
           <Button
             variant="contained"
@@ -342,9 +347,11 @@ export default function SettingsPage() {
             {saving ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
           </Button>
         </Stack>
+        )}
       </Paper>
 
-      {/* Section 3: Backup & Restore */}
+      {/* Section 3: Backup & Restore (SUPER_ADMIN only) */}
+      {isSuperAdmin && (
       <Paper sx={{ p: 3, borderRadius: 3 }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           النسخ الاحتياطي والاستعادة
@@ -388,6 +395,7 @@ export default function SettingsPage() {
           />
         </Stack>
       </Paper>
+      )}
 
       {/* Restore Confirmation Dialog */}
       <Dialog open={restoreConfirm} onClose={() => setRestoreConfirm(false)} maxWidth="sm" fullWidth>

@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requirePermission } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
-// POST /api/settings/restore — Restore tenant data from JSON backup
+// POST /api/settings/restore — Restore tenant data from JSON backup (SUPER_ADMIN only)
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'view_settings')
+    const auth = await requireAuth(request)
     if (auth.response) return auth.response
+
+    if (auth.user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'فقط مدير النظام يمكنه استعادة النسخة الاحتياطية' }, { status: 403 })
+    }
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const backup = await request.json()

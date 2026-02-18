@@ -37,11 +37,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT /api/settings - update current farm settings
+// PUT /api/settings - update current farm settings (OWNER/ADMIN only)
 export async function PUT(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_settings')
     if (auth.response) return auth.response
+
+    if (!['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(auth.user.role)) {
+      return NextResponse.json({ error: 'فقط المالك أو المدير يمكنه تعديل الإعدادات' }, { status: 403 })
+    }
 
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
       const body = await request.json()
