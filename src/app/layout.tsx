@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+export const dynamic = 'force-dynamic';
 import { Cairo } from "next/font/google";
 import { RTLThemeProvider } from "@/theme/RTLThemeProvider";
 import { AppNotifierProvider } from "@/components/AppNotifier";
