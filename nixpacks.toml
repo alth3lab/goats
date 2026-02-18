@@ -9,7 +9,6 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "npx prisma generate",
   "npm run build"
 ]
 
@@ -18,3 +17,4 @@ cmd = "npm run start"
 
 [variables]
 NODE_ENV = "production"
+NIXPACKS_PATH = "/opt/nixpacks"
