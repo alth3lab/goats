@@ -43,7 +43,7 @@ prisma.$use(async (params, next) => {
   const { tenantId, farmId } = ctx
 
   // Read operations: add tenantId (+ farmId) to where
-  if (['findMany', 'findFirst', 'count', 'aggregate', 'groupBy'].includes(params.action)) {
+  if (['findMany', 'findFirst', 'findFirstOrThrow', 'count', 'aggregate', 'groupBy'].includes(params.action)) {
     params.args = params.args || {}
     params.args.where = params.args.where || {}
     params.args.where.tenantId = tenantId
@@ -65,6 +65,19 @@ prisma.$use(async (params, next) => {
     }
     if (isTenantOptionalFarm && farmId) {
       params.args.data.farmId = farmId
+    }
+  }
+
+  // CreateMany: inject tenantId + farmId into each record
+  if (['createMany', 'createManyAndReturn'].includes(params.action)) {
+    params.args = params.args || {}
+    if (Array.isArray(params.args.data)) {
+      params.args.data = params.args.data.map((record: Record<string, unknown>) => ({
+        ...record,
+        tenantId,
+        ...(isTenantFarm ? { farmId } : {}),
+        ...(isTenantOptionalFarm && farmId ? { farmId } : {}),
+      }))
     }
   }
 
