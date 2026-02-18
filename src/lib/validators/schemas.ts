@@ -42,7 +42,7 @@ export const updateExpenseSchema = createExpenseSchema.partial()
 export const createUserSchema = z.object({
   username: z.string().min(3, 'اسم المستخدم قصير جداً'),
   email: z.string().email('البريد الإلكتروني غير صحيح'),
-  password: z.string().min(6, 'كلمة المرور قصيرة جداً'),
+  password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
   fullName: z.string().min(1, 'الاسم مطلوب'),
   phone: z.string().optional().nullable(),
   role: z.enum(['ADMIN', 'MANAGER', 'VETERINARIAN', 'USER', 'VIEWER']).optional(),

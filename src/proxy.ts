@@ -51,6 +51,18 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // CSRF protection: verify Origin header on mutating API requests
+  if (pathname.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+    const origin = request.headers.get('origin')
+    const host = request.headers.get('host')
+    if (origin && host) {
+      const originHost = new URL(origin).host
+      if (originHost !== host) {
+        return NextResponse.json({ error: 'طلب غير مصرح - CSRF' }, { status: 403 })
+      }
+    }
+  }
+
   // Check for session token
   const token = request.cookies.get(TOKEN_COOKIE)?.value
 

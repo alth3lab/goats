@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
         FROM InventoryItem
         WHERE minStock IS NOT NULL AND currentStock <= minStock
           AND farmId = ${auth.farmId}
+          AND tenantId = ${auth.tenantId}
       `.catch(() => []),
 
       // 8. Expiring Feeds

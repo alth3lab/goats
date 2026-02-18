@@ -30,9 +30,8 @@ export async function GET(request: NextRequest) {
 
     const permissions = user.permissions.map((entry) => entry.permission.name)
 
-    // Current farm from JWT (or override)
-    const farmIdOverride = request.headers.get('x-farm-id')
-    const currentFarmId = farmIdOverride || payload.farmId
+    // Current farm from JWT
+    const currentFarmId = payload.farmId
 
     const currentFarm = user.userFarms.find(uf => uf.farmId === currentFarmId)?.farm
 

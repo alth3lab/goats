@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { runWithTenant } from '@/lib/tenantContext'
 
-// TODO: MilkProduction model not found in schema.prisma
-// This API is temporarily disabled until the model is created
+// NOTE: MilkProduction model not in schema.prisma — API returns 501 until model is created
 
 export async function GET(request: NextRequest) {
   try {

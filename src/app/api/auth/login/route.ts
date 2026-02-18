@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { signToken, TOKEN_COOKIE, TOKEN_MAX_AGE } from '@/lib/jwt'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting check
     if (isRateLimited(clientIp)) {
+      logger.warn('Login rate limited', { ip: clientIp })
       return NextResponse.json(
         { error: 'تم تجاوز عدد المحاولات المسموح. حاول مرة أخرى بعد 15 دقيقة' },
         { status: 429 }
@@ -57,25 +59,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 })
     }
 
-    // Only accept bcrypt-hashed passwords
-    let isValid = false
-    if (user.password.startsWith('$2')) {
-      isValid = await bcrypt.compare(password, user.password)
-    } else {
-      // Migrate plaintext password to bcrypt on successful match
-      if (user.password === password) {
-        const hashed = await bcrypt.hash(password, 12)
-        await prisma.user.update({ where: { id: user.id }, data: { password: hashed } })
-        isValid = true
-      }
-    }
+    // Verify bcrypt-hashed password only
+    const isValid = user.password.startsWith('$2')
+      ? await bcrypt.compare(password, user.password)
+      : false
 
     if (!isValid) {
+      logger.warn('Login failed - invalid password', { ip: clientIp, identifier })
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 })
     }
 
     // Clear rate limit on successful login
     clearRateLimit(clientIp)
+    logger.info('Login successful', { userId: user.id, ip: clientIp })
 
     await prisma.user.update({
       where: { id: user.id },
@@ -139,6 +135,7 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
+    logger.error('Login error', { error: String(error) })
     return NextResponse.json({ error: 'فشل تسجيل الدخول' }, { status: 500 })
   }
 }

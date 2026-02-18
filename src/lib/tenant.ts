@@ -21,14 +21,13 @@ export async function getTenantContext(request: NextRequest): Promise<TenantCont
   const payload = await verifyToken(token)
   if (!payload) return null
 
-  // Allow farm switching via X-Farm-Id header
-  const farmIdOverride = request.headers.get('x-farm-id')
-
+  // X-Farm-Id override is only respected during farm switch (handled by /api/farms/switch)
+  // Do NOT allow arbitrary header override to prevent cross-farm access
   return {
     userId: payload.userId,
     role: payload.role,
     tenantId: payload.tenantId,
-    farmId: farmIdOverride || payload.farmId,
+    farmId: payload.farmId,
   }
 }
 

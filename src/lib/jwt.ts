@@ -1,10 +1,22 @@
 import { SignJWT, jwtVerify } from 'jose'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'goats-farm-default-secret-change-in-production'
-const secret = new TextEncoder().encode(JWT_SECRET)
+function getSecret(): Uint8Array {
+  const jwt = process.env.JWT_SECRET
+  if (!jwt && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production')
+  }
+  return new TextEncoder().encode(jwt || 'dev-only-secret-do-not-use-in-production')
+}
+
+// Lazy-init so the check runs at first use, not during build
+let _secret: Uint8Array | null = null
+function secret() {
+  if (!_secret) _secret = getSecret()
+  return _secret
+}
 
 const TOKEN_COOKIE = 'session'
-const TOKEN_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
+const TOKEN_MAX_AGE = 60 * 60 * 24 // 24 hours
 
 export interface JWTPayload {
   userId: string
@@ -18,12 +30,12 @@ export async function signToken(payload: JWTPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${TOKEN_MAX_AGE}s`)
-    .sign(secret)
+    .sign(secret())
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret)
+    const { payload } = await jwtVerify(token, secret())
     return {
       userId: payload.userId as string,
       role: payload.role as string,

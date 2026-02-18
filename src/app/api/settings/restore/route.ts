@@ -2,8 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { runWithTenant } from '@/lib/tenantContext'
+import { z } from 'zod'
 
 export const runtime = 'nodejs'
+
+// Schema for validating backup structure
+const recordArray = z.array(z.record(z.string(), z.unknown())).optional()
+const backupSchema = z.object({
+  data: z.object({
+    pens: recordArray,
+    goats: recordArray,
+    healthRecords: recordArray,
+    vaccinationProtocols: recordArray,
+    breedings: recordArray,
+    births: recordArray,
+    feedingRecords: recordArray,
+    sales: recordArray,
+    payments: recordArray,
+    expenses: recordArray,
+    inventoryItems: recordArray,
+    inventoryTransactions: recordArray,
+    feedTypes: recordArray,
+    feedStocks: recordArray,
+    feedingSchedules: recordArray,
+    dailyFeedConsumptions: recordArray,
+    calendarEvents: recordArray,
+    activityLogs: recordArray,
+    goatTypes: recordArray,
+    breeds: recordArray,
+  }),
+}).passthrough()
 
 // POST /api/settings/restore — Restore tenant data from JSON backup (SUPER_ADMIN only)
 export async function POST(request: NextRequest) {
@@ -16,17 +44,18 @@ export async function POST(request: NextRequest) {
     }
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
-    const backup = await request.json()
-
-    // Validate backup structure
-    if (!backup.data) {
+    const body = await request.json()
+    
+    // Validate backup structure with Zod
+    const parsed = backupSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'ملف النسخة الاحتياطية غير صالح' },
+        { error: 'ملف النسخة الاحتياطية غير صالح', details: parsed.error.issues.map(i => i.message) },
         { status: 400 }
       )
     }
 
-    const data = backup.data
+    const data = parsed.data.data
     const results: Record<string, number> = {}
 
     // Use a transaction to ensure atomicity
@@ -56,7 +85,7 @@ export async function POST(request: NextRequest) {
       // Don't delete global tables (Permission, GoatType, Breed)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const restoreTable = async (model: { create: (args: any) => Promise<any> }, items: Record<string, unknown>[], key: string) => {
+      const restoreTable = async (model: { create: (args: any) => Promise<any> }, items: Record<string, unknown>[] | undefined, key: string) => {
         if (!items?.length) return
         for (const item of items) {
           await model.create({ data: sanitizeDates(item) as any })
@@ -114,7 +143,7 @@ export async function POST(request: NextRequest) {
 } catch (error) {
     console.error('Restore error:', error)
     return NextResponse.json(
-      { error: 'فشل في استعادة النسخة الاحتياطية: ' + (error instanceof Error ? error.message : 'خطأ غير معروف') },
+      { error: 'فشل في استعادة النسخة الاحتياطية' },
       { status: 500 }
     )
   }

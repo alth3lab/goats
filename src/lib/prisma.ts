@@ -20,6 +20,7 @@ const TENANT_OPTIONAL_FARM_MODELS = ['ActivityLog']
 
 // Prisma 5 يدعم MySQL مباشرة بدون adapter
 // MariaDB متوافق 100% مع MySQL
+// Connection pooling: set ?connection_limit=10 in DATABASE_URL for production
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
@@ -47,6 +48,20 @@ prisma.$use(async (params, next) => {
     params.args = params.args || {}
     params.args.where = params.args.where || {}
     params.args.where.tenantId = tenantId
+    if (isTenantFarm) {
+      params.args.where.farmId = farmId
+    }
+    if (isTenantOptionalFarm && farmId) {
+      params.args.where.farmId = farmId
+    }
+  }
+
+  // findUnique/findUniqueOrThrow: convert to findFirst with tenant scope
+  if (['findUnique', 'findUniqueOrThrow'].includes(params.action)) {
+    const isOrThrow = params.action === 'findUniqueOrThrow'
+    params.action = isOrThrow ? 'findFirstOrThrow' : 'findFirst'
+    params.args = params.args || {}
+    params.args.where = { ...params.args.where, tenantId }
     if (isTenantFarm) {
       params.args.where.farmId = farmId
     }
@@ -91,6 +106,32 @@ prisma.$use(async (params, next) => {
     }
     if (isTenantOptionalFarm && farmId) {
       params.args.where.farmId = farmId
+    }
+  }
+
+  // Single update/delete/upsert: scope by tenant
+  if (['update', 'delete'].includes(params.action)) {
+    params.args = params.args || {}
+    params.args.where = { ...params.args.where, tenantId }
+    if (isTenantFarm) {
+      params.args.where.farmId = farmId
+    }
+    if (isTenantOptionalFarm && farmId) {
+      params.args.where.farmId = farmId
+    }
+  }
+
+  if (params.action === 'upsert') {
+    params.args = params.args || {}
+    params.args.where = { ...params.args.where, tenantId }
+    if (isTenantFarm) {
+      params.args.where.farmId = farmId
+    }
+    // Also inject into create data
+    params.args.create = params.args.create || {}
+    params.args.create.tenantId = tenantId
+    if (isTenantFarm) {
+      params.args.create.farmId = farmId
     }
   }
 

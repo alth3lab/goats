@@ -5,8 +5,28 @@ import { signToken, TOKEN_COOKIE, TOKEN_MAX_AGE } from '@/lib/jwt'
 
 export const runtime = 'nodejs'
 
+// Rate limit: 3 registrations per IP per 15 min
+const registerAttempts = new Map<string, { count: number; resetAt: number }>()
+const MAX_REG_ATTEMPTS = 3
+const REG_WINDOW_MS = 15 * 60 * 1000
+
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const now = Date.now()
+    const record = registerAttempts.get(clientIp)
+    if (record && now < record.resetAt && record.count >= MAX_REG_ATTEMPTS) {
+      return NextResponse.json(
+        { error: 'تم تجاوز عدد المحاولات. حاول مرة أخرى لاحقاً' },
+        { status: 429 }
+      )
+    }
+    if (!record || now > (record?.resetAt ?? 0)) {
+      registerAttempts.set(clientIp, { count: 1, resetAt: now + REG_WINDOW_MS })
+    } else {
+      record.count++
+    }
+
     const body = await request.json()
     const {
       farmName,
@@ -25,9 +45,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' },
+        { error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' },
+        { status: 400 }
+      )
+    }
+
+    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: 'كلمة المرور يجب أن تحتوي على حرف كبير ورقم على الأقل' },
         { status: 400 }
       )
     }

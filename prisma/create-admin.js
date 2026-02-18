@@ -12,11 +12,15 @@ async function main() {
     database: url.pathname.substring(1)
   })
 
-  const email = '6111139@gmail.com'
-  const fullName = 'سهيل الخييلي'
-  const username = 'suhail'
-  const password = 'Admin123'
-  const hashed = await bcrypt.hash(password, 10)
+  const email = process.env.ADMIN_EMAIL || '6111139@gmail.com'
+  const fullName = process.env.ADMIN_NAME || 'سهيل الخييلي'
+  const username = process.env.ADMIN_USERNAME || 'suhail'
+  const password = process.env.ADMIN_PASSWORD
+  if (!password) {
+    console.error('❌ ADMIN_PASSWORD environment variable is required')
+    process.exit(1)
+  }
+  const hashed = await bcrypt.hash(password, 12)
 
   try {
     const existing = await conn.query('SELECT id FROM User WHERE email = ? LIMIT 1', [email])

@@ -81,10 +81,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(pen)
   
     })
-} catch (error: any) {
+} catch (error: unknown) {
     console.error('Error creating pen:', error)
     // Check for unique constraint violation (P2002)
-    if (error.code === 'P2002') {
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === 'P2002') {
         return NextResponse.json({ error: 'اسم الحظيرة (الإنجليزي) مستخدم بالفعل' }, { status: 400 })
     }
     return NextResponse.json({ error: 'Error creating pen' }, { status: 500 })
