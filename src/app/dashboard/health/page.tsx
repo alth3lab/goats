@@ -967,10 +967,10 @@ export default function HealthPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <FormControl>
-              <InputLabel>الحيوان</InputLabel>
+              <InputLabel>الماعز</InputLabel>
               <Select
                 value={form.goatId}
-                label="الحيوان"
+                label="الماعز"
                 onChange={(e) => setForm({ ...form, goatId: e.target.value })}
               >
                 {goats.map(g => (
@@ -1015,7 +1015,7 @@ export default function HealthPage() {
                         onChange={(e) => setForm({...form, moveToIsolation: e.target.checked})}
                     />
                 }
-                label="نقل الحيوان إلى العزل الصحي تلقائياً"
+                label="نقل الماعز إلى العزل الصحي تلقائياً"
             />
 
             <TextField

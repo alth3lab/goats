@@ -19,6 +19,10 @@ import {
   Alert,
   Snackbar,
   Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import AgricultureIcon from '@mui/icons-material/Agriculture'
@@ -33,6 +37,7 @@ interface Farm {
   id: string
   name: string
   nameAr: string
+  farmType: string
   phone: string | null
   address: string | null
   currency: string
@@ -59,6 +64,7 @@ export default function FarmsPage() {
     phone: '',
     address: '',
     currency: 'AED',
+    farmType: 'GOAT',
   })
 
   const fetchFarms = async () => {
@@ -91,7 +97,7 @@ export default function FarmsPage() {
       if (res.ok) {
         setSnackbar({ open: true, message: 'تم إنشاء المزرعة بنجاح', severity: 'success' })
         setDialogOpen(false)
-        setForm({ name: '', nameAr: '', phone: '', address: '', currency: 'AED' })
+        setForm({ name: '', nameAr: '', phone: '', address: '', currency: 'AED', farmType: 'GOAT' })
         fetchFarms()
       } else {
         const data = await res.json()
@@ -170,6 +176,23 @@ export default function FarmsPage() {
                       {f.address}
                     </Typography>
                   )}
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                    <Chip
+                      label={{
+                        GOAT: 'ماعز',
+                        SHEEP: 'أغنام',
+                        CAMEL: 'إبل',
+                        MIXED: 'مختلطة',
+                      }[f.farmType] || 'ماعز'}
+                      size="small"
+                      color={{
+                        GOAT: 'success' as const,
+                        SHEEP: 'info' as const,
+                        CAMEL: 'warning' as const,
+                        MIXED: 'secondary' as const,
+                      }[f.farmType] || 'default' as const}
+                    />
+                  </Stack>
                   <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
                     <Chip icon={<PetsIcon />} label={`${f.goatsCount} رأس`} size="small" variant="outlined" />
                     <Chip icon={<HomeIcon />} label={`${f.pensCount} حظيرة`} size="small" variant="outlined" />
@@ -222,6 +245,19 @@ export default function FarmsPage() {
               onChange={(e) => setForm({ ...form, nameAr: e.target.value })}
               fullWidth
             />
+            <FormControl fullWidth>
+              <InputLabel>نوع المزرعة</InputLabel>
+              <Select
+                value={form.farmType}
+                label="نوع المزرعة"
+                onChange={(e) => setForm({ ...form, farmType: e.target.value })}
+              >
+                <MenuItem value="GOAT">ماعز</MenuItem>
+                <MenuItem value="SHEEP">أغنام</MenuItem>
+                <MenuItem value="CAMEL">إبل</MenuItem>
+                <MenuItem value="MIXED">مختلطة</MenuItem>
+              </Select>
+            </FormControl>
             <TextField
               label="الهاتف"
               value={form.phone}

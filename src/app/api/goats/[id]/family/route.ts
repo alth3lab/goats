@@ -24,7 +24,7 @@ export async function GET(
     })
 
     if (!goat) {
-      return NextResponse.json({ error: 'الحيوان غير موجود' }, { status: 404 })
+      return NextResponse.json({ error: 'الماعز غير موجود' }, { status: 404 })
     }
 
     const [mother, father] = await Promise.all([

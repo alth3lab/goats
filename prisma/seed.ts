@@ -35,7 +35,7 @@ async function main() {
     create: {
       name: 'CAMEL',
       nameAr: 'إبل',
-      description: 'الإبل حيوان ثديي يربى للحصول على اللحوم والحليب والسباقات'
+      description: 'الإبل حيوان ثديي يربى للحليب واللحم والسباقات'
     }
   })
 
@@ -196,58 +196,50 @@ async function main() {
     {
       name: 'Majaheem',
       nameAr: 'مجاهيم',
-      description: 'من أشهر سلالات الإبل في الجزيرة العربية، لونها أسود داكن',
+      description: 'من أشهر سلالات الإبل في الجزيرة العربية',
       avgWeight: 600,
-      avgHeight: 190,
-      characteristics: 'لون أسود، حجم كبير، إنتاج حليب عالي، تتحمل الحرارة'
-    },
-    {
-      name: 'Safar',
-      nameAr: 'صفر',
-      description: 'إبل صفراء اللون منتشرة في منطقة الخليج',
-      avgWeight: 550,
-      avgHeight: 185,
-      characteristics: 'لون أصفر فاتح، سريعة في السباقات، جسم رشيق'
-    },
-    {
-      name: 'Hamra',
-      nameAr: 'حمر',
-      description: 'إبل حمراء اللون تربى في المناطق الصحراوية',
-      avgWeight: 500,
       avgHeight: 180,
-      characteristics: 'لون بني محمر، قوية البنية، تتحمل الظروف القاسية'
+      characteristics: 'لون أسود غامق، إنتاج حليب عالي، حجم كبير'
+    },
+    {
+      name: 'Sufr',
+      nameAr: 'صفر',
+      description: 'سلالة عربية مميزة باللون الأصفر الفاتح',
+      avgWeight: 550,
+      avgHeight: 175,
+      characteristics: 'لون أصفر فاتح، سريعة، تتحمل الحرارة'
+    },
+    {
+      name: 'Humr',
+      nameAr: 'حمر',
+      description: 'سلالة عربية باللون الأحمر',
+      avgWeight: 520,
+      avgHeight: 172,
+      characteristics: 'لون أحمر مائل للبني، قوية البنية، متحملة'
     },
     {
       name: 'Wadha',
       nameAr: 'وضح',
-      description: 'إبل بيضاء نادرة ومميزة',
-      avgWeight: 520,
-      avgHeight: 185,
-      characteristics: 'لون أبيض ناصع، نادرة، قيمة عالية في المزايين'
+      description: 'سلالة عربية بيضاء اللون',
+      avgWeight: 500,
+      avgHeight: 170,
+      characteristics: 'لون أبيض ناصع، جميلة المنظر، مناسبة للسباقات'
     },
     {
-      name: 'Shaele',
+      name: 'Shaala',
       nameAr: 'شعل',
-      description: 'إبل ذات لون مميز بين الأشقر والأحمر',
-      avgWeight: 530,
-      avgHeight: 182,
-      characteristics: 'لون أشقر محمر، جميلة الشكل، سريعة'
-    },
-    {
-      name: 'Homor',
-      nameAr: 'هُمّر',
-      description: 'من السلالات المعروفة في الإمارات والسعودية',
+      description: 'سلالة محلية معروفة باللون الأشقر',
       avgWeight: 480,
-      avgHeight: 178,
-      characteristics: 'لون بني فاتح، متوسطة الحجم، جيدة للسباقات'
+      avgHeight: 168,
+      characteristics: 'لون أشقر، متوسطة الحجم، منتجة للحليب'
     },
     {
-      name: 'Omaniyah',
+      name: 'Omani',
       nameAr: 'عمانية',
-      description: 'سلالة عمانية أصيلة متأقلمة مع بيئة الخليج',
-      avgWeight: 490,
-      avgHeight: 175,
-      characteristics: 'قوية التحمل، هادئة الطبع، إنتاج حليب جيد'
+      description: 'سلالة من سلطنة عمان',
+      avgWeight: 530,
+      avgHeight: 173,
+      characteristics: 'متأقلمة مع المناخ الحار، قوية البنية'
     }
   ]
 
@@ -317,7 +309,12 @@ async function main() {
     // صلاحيات التقويم
     { name: 'view_calendar', nameAr: 'عرض التقويم', category: 'calendar', categoryAr: 'التقويم' },
     { name: 'add_event', nameAr: 'إضافة حدث', category: 'calendar', categoryAr: 'التقويم' },
-    { name: 'edit_event', nameAr: 'تعديل حدث', category: 'calendar', categoryAr: 'التقويم' }
+    { name: 'edit_event', nameAr: 'تعديل حدث', category: 'calendar', categoryAr: 'التقويم' },
+    // صلاحيات الإبل
+    { name: 'view_camels', nameAr: 'عرض الإبل', category: 'camels', categoryAr: 'الإبل' },
+    { name: 'add_camel', nameAr: 'إضافة بعير', category: 'camels', categoryAr: 'الإبل' },
+    { name: 'edit_camel', nameAr: 'تعديل بعير', category: 'camels', categoryAr: 'الإبل' },
+    { name: 'delete_camel', nameAr: 'حذف بعير', category: 'camels', categoryAr: 'الإبل' },
   ]
 
   for (const permission of permissions) {

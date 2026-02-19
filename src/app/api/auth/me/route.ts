@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       if (!resolvedFarm && currentFarmId) {
         resolvedFarm = await prisma.farm.findUnique({
           where: { id: currentFarmId },
-          select: { id: true, name: true, nameAr: true, currency: true },
+          select: { id: true, name: true, nameAr: true, currency: true, farmType: true },
         }) as typeof currentFarm
       }
 
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         id: f.id,
         name: f.name,
         nameAr: f.nameAr,
+        farmType: f.farmType || 'GOAT',
         role: 'SUPER_ADMIN',
         tenantName: f.tenant?.nameAr || f.tenant?.name || '',
         tenantId: f.tenantId,
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
         id: uf.farm.id,
         name: uf.farm.name,
         nameAr: uf.farm.nameAr,
+        farmType: uf.farm.farmType || 'GOAT',
         role: uf.role,
       }))
     }
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
         name: resolvedFarm.name,
         nameAr: resolvedFarm.nameAr,
         currency: resolvedFarm.currency,
+        farmType: resolvedFarm.farmType || 'GOAT',
       } : null,
       farms: farmsData,
       permissions

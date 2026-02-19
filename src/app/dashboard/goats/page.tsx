@@ -65,6 +65,14 @@ import * as XLSX from 'xlsx'
 import { generateArabicPDF } from '@/lib/pdfHelper'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
+import { useAuth } from '@/lib/useAuth'
+
+const farmTypePageLabels: Record<string, { title: string; animal: string; animalPlural: string }> = {
+  GOAT: { title: 'إدارة الماعز والخرفان', animal: 'ماعز', animalPlural: 'الماعز' },
+  SHEEP: { title: 'إدارة الأغنام', animal: 'أغنام', animalPlural: 'الأغنام' },
+  CAMEL: { title: 'إدارة الإبل', animal: 'إبل', animalPlural: 'الإبل' },
+  MIXED: { title: 'إدارة الحيوانات', animal: 'حيوان', animalPlural: 'الحيوانات' },
+}
 
 interface Goat {
   id: string
@@ -189,34 +197,11 @@ interface FamilyResponse {
   offspring: FamilyMember[]
 }
 
-export interface AnimalPageConfig {
-  animalType?: string        // e.g. 'GOAT', 'CAMEL' — undefined = all
-  title: string              // 'إدارة الماعز' or 'إدارة الإبل'
-  titleFull: string          // 'إدارة الماعز والخرفان' or 'إدارة الإبل'
-  singular: string           // 'الماعز' or 'الناقة'
-  singularAdd: string        // 'ماعز' or 'ناقة/جمل'
-  pluralActive: string       // 'القطيع' or 'القطيع'
-  reportTitle: string        // 'تقرير قطيع الماعز' or 'تقرير قطيع الإبل'
-  exportPrefix: string       // 'goats' or 'camels'
-  permission: string         // 'view_goats' or 'view_camels'
-  addPermission: string      // 'add_goat' or 'add_camel'
-}
-
-const DEFAULT_GOAT_CONFIG: AnimalPageConfig = {
-  title: 'إدارة الماعز',
-  titleFull: 'إدارة الماعز والخرفان',
-  singular: 'الماعز',
-  singularAdd: 'ماعز',
-  pluralActive: 'القطيع',
-  reportTitle: 'تقرير قطيع الماعز',
-  exportPrefix: 'goats',
-  permission: 'view_goats',
-  addPermission: 'add_goat',
-}
-
-export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: AnimalPageConfig }) {
+export default function GoatsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { farm } = useAuth()
+  const pageLabels = farmTypePageLabels[farm?.farmType || 'GOAT'] || farmTypePageLabels.GOAT
   const [goats, setGoats] = useState<Goat[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -236,7 +221,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
   const [selectedGoatIds, setSelectedGoatIds] = useState<string[]>([])
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
   const [batchPenId, setBatchPenId] = useState('')
-  const [types, setTypes] = useState<Array<{ id: string; name: string; nameAr: string }>>([])
+  const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
   const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
   
@@ -265,15 +250,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
 
   useEffect(() => {
     loadGoats()
-    loadTypes().then((allTypes) => {
-      // Auto-load breeds when page is filtered by animalType
-      if (config.animalType && allTypes.length > 0) {
-        const matchedType = allTypes.find((t: { name: string }) => t.name === config.animalType?.toUpperCase())
-        if (matchedType) {
-          loadBreeds(matchedType.id)
-        }
-      }
-    })
+    loadTypes()
     loadPens()
   }, [])
 
@@ -319,7 +296,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     })
     
     await generateArabicPDF({
-      title: config.reportTitle,
+      title: 'تقرير قطيع الماعز',
       date: new Date().toLocaleDateString('en-GB'),
       stats: [
         { label: 'إجمالي القطيع', value: stats.total },
@@ -341,7 +318,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
       ],
       data,
       totals: { tagId: 'الإجمالي', gender: `♂${stats.males} ♀${stats.females}` },
-      filename: `${config.exportPrefix}-report-${new Date().toISOString().split('T')[0]}.pdf`
+      filename: `goats-report-${new Date().toISOString().split('T')[0]}.pdf`
     })
   }
 
@@ -381,15 +358,14 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
-    XLSX.utils.book_append_sheet(wb, goatsSheet, config.title)
+    XLSX.utils.book_append_sheet(wb, goatsSheet, 'قائمة الماعز')
     
-    XLSX.writeFile(wb, `${config.exportPrefix}-report-${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const loadGoats = async () => {
     try {
-      const url = config.animalType ? `/api/goats?animalType=${config.animalType}` : '/api/goats'
-      const res = await fetch(url)
+      const res = await fetch('/api/goats')
       const data = await res.json()
       setGoats(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -404,12 +380,9 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     try {
       const res = await fetch('/api/types')
       const data = await res.json()
-      const allTypes = Array.isArray(data) ? data : []
-      setTypes(allTypes)
-      return allTypes
+      setTypes(Array.isArray(data) ? data : [])
     } catch {
       setTypes([])
-      return []
     }
   }
 
@@ -435,9 +408,9 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     }
   }
 
-  const handleOpen = async () => {
+  const handleOpen = () => {
     setEditMode(false)
-    setSelectedGoat(null)
+    setSelectedGoat(null) // Clear any selected goat
     setForm({ 
       tagId: '', 
       name: '', 
@@ -453,14 +426,8 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     })
     setOpen(true)
     loadPens()
-    const loadedTypes = types.length === 0 ? await loadTypes() : types
-    // Auto-select type when page is filtered by animalType
-    if (config.animalType && loadedTypes.length > 0) {
-      const matchedType = loadedTypes.find((t: { name: string }) => t.name === config.animalType?.toUpperCase())
-      if (matchedType) {
-        setForm(prev => ({ ...prev, typeId: matchedType.id }))
-        loadBreeds(matchedType.id)
-      }
+    if (types.length === 0) {
+      loadTypes()
     }
   }
 
@@ -576,7 +543,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
       setSelectedGoat(null)
       loadGoats()
     } catch (error) {
-      console.error('خطأ في الحذف:', error)
+      console.error('خطأ في حذف الماعز:', error)
     }
   }
 
@@ -940,7 +907,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {upcomingBirths} أنثى متوقع ولادتها خلال 7 أيام. انقر للعرض.
+                  يوجد {upcomingBirths} ماعز متوقع ولادتها خلال 7 أيام. انقر للعرض.
                 </Typography>
               </Paper>
             )}
@@ -954,7 +921,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {overdueBirths} أنثى تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
+                  يوجد {overdueBirths} ماعز تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
                 </Typography>
               </Paper>
             )}
@@ -1004,8 +971,8 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
              </Button>
            }
          >
-           <AlertTitle>الإناث الحوامل</AlertTitle>
-           يوجد <strong>{pregnantGoats}</strong> أنثى حامل 
+           <AlertTitle>الماعز الحوامل</AlertTitle>
+           يوجد <strong>{pregnantGoats}</strong> ماعز حامل 
            {upcomingBirths > 0 && <>, منها <strong>{upcomingBirths}</strong> متوقع ولادتها خلال أسبوع</>}.
          </Alert>
       )}
@@ -1014,7 +981,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={2} spacing={1.5}>
           <Box>
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold" gutterBottom>
-              {config.titleFull}
+              {pageLabels.title}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               إجمالي: {filteredGoats.length} حيوان
@@ -1176,7 +1143,6 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Select>
                 </FormControl>
               </Grid>
-              {!config.animalType && (
               <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>النوع</InputLabel>
@@ -1198,7 +1164,6 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Select>
                 </FormControl>
               </Grid>
-              )}
               <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>السلالة</InputLabel>
@@ -1206,7 +1171,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                     value={filterBreed}
                     label="السلالة"
                     onChange={(e) => setFilterBreed(e.target.value)}
-                    disabled={!config.animalType && filterType === 'ALL'}
+                    disabled={filterType === 'ALL'}
                   >
                     <MenuItem value="ALL">الكل</MenuItem>
                     {breeds.map(breed => (
@@ -1680,7 +1645,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
       />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
-        <DialogTitle>{editMode ? `تعديل ${config.singular}` : `إضافة ${config.singularAdd} جديد`}</DialogTitle>
+        <DialogTitle>{editMode ? 'تعديل الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <TextField
@@ -1713,7 +1678,6 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   }
                 }}
                 required
-                disabled={!!config.animalType}
               >
                 {types.map((t) => (
                   <MenuItem key={t.id} value={t.id}>
@@ -1866,7 +1830,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
         fullScreen={isMobile}
         scroll="paper"
       >
-        <DialogTitle>تفاصيل {config.singular}</DialogTitle>
+        <DialogTitle>تفاصيل الماعز</DialogTitle>
         <DialogContent dividers sx={{ maxHeight: '70vh' }}>
           {selectedGoat && (
             <Stack spacing={2} mt={2}>
@@ -2023,7 +1987,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <Alert severity="warning">
-              سيتم تغيير حالة {config.singular} <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
+              سيتم تغيير حالة الماعز <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
             </Alert>
             <TextField
               label="تاريخ النفوق"
@@ -2057,7 +2021,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
-            هل أنت متأكد من حذف {config.singular} <strong>{selectedGoat?.tagId}</strong>؟
+            هل أنت متأكد من حذف الماعز <strong>{selectedGoat?.tagId}</strong>؟
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             لا يمكن التراجع عن هذا الإجراء!
@@ -2114,8 +2078,4 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
       </Dialog>
     </Box>
   )
-}
-
-export default function GoatsPage() {
-  return <AnimalListPage />
 }

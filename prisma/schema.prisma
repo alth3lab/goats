@@ -36,6 +36,7 @@ model Farm {
   tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name                     String
   nameAr                   String
+  farmType                 FarmType @default(GOAT)
   phone                    String?
   address                  String?
   currency                 String   @default("AED")
@@ -102,6 +103,13 @@ enum Plan {
   BASIC
   PRO
   ENTERPRISE
+}
+
+enum FarmType {
+  GOAT
+  SHEEP
+  CAMEL
+  MIXED
 }
 
 enum SubscriptionStatus {

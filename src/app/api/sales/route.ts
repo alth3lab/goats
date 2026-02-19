@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         })
         const role = goat?.gender === 'FEMALE' ? 'أم' : 'أب'
         return NextResponse.json(
-          { error: `لا يمكن بيع الحيوان ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
+          { error: `لا يمكن بيع الماعز ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
           { status: 400 }
         )
       }

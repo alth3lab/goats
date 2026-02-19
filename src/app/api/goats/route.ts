@@ -17,19 +17,13 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const format = searchParams.get('format')
-    const animalType = searchParams.get('animalType') // GOAT, SHEEP, CAMEL etc.
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {}
-    if (status) where.status = status
-    if (animalType) {
-      where.breed = { type: { name: animalType.toUpperCase() } }
-    }
+    const where = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' } : undefined
 
     // CSV export returns all data without pagination
     if (format === 'csv') {
       const goats = await prisma.goat.findMany({
-        where: Object.keys(where).length > 0 ? where : undefined,
+        where,
         include: { breed: { include: { type: true } }, pen: true },
         orderBy: { createdAt: 'desc' }
       })
@@ -66,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     const [goats, total] = await Promise.all([
       prisma.goat.findMany({
-        where: Object.keys(where).length > 0 ? where : undefined,
+        where,
         include: {
           breed: { include: { type: true } },
           pen: true,
@@ -80,7 +74,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         ...(usePagination ? { skip, take } : {}),
       }),
-      usePagination ? prisma.goat.count({ where: Object.keys(where).length > 0 ? where : undefined }) : Promise.resolve(0)
+      usePagination ? prisma.goat.count({ where }) : Promise.resolve(0)
     ])
     
     const goatsWithAge = goats.map(goat => {
@@ -131,7 +125,7 @@ export async function POST(request: NextRequest) {
       const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
       if (goatCount >= tenant.maxGoats) {
         return NextResponse.json(
-          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },
           { status: 403 }
         )
       }
@@ -146,7 +140,7 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم إضافة حيوان: ${goat.tagId}`,
+      description: `تم إضافة الماعز: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
@@ -154,6 +148,6 @@ export async function POST(request: NextRequest) {
   
     })
 } catch (error) {
-    return NextResponse.json({ error: 'فشل في إضافة الحيوان' }, { status: 500 })
+    return NextResponse.json({ error: 'فشل في إضافة الماعز' }, { status: 500 })
   }
 }

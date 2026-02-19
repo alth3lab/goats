@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       id: f.id,
       name: f.name,
       nameAr: f.nameAr,
+      farmType: f.farmType || 'GOAT',
       phone: f.phone,
       address: f.address,
       currency: f.currency,
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
     id: uf.farm.id,
     name: uf.farm.name,
     nameAr: uf.farm.nameAr,
+    farmType: uf.farm.farmType || 'GOAT',
     phone: uf.farm.phone,
     address: uf.farm.address,
     currency: uf.farm.currency,
@@ -96,17 +98,21 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { name, nameAr, phone, address, currency } = body
+  const { name, nameAr, phone, address, currency, farmType } = body
 
   if (!name) {
     return NextResponse.json({ error: 'اسم المزرعة مطلوب' }, { status: 400 })
   }
+
+  const validFarmTypes = ['GOAT', 'SHEEP', 'CAMEL', 'MIXED']
+  const resolvedFarmType = validFarmTypes.includes(farmType) ? farmType : 'GOAT'
 
   const farm = await prisma.farm.create({
     data: {
       tenantId,
       name,
       nameAr: nameAr || name,
+      farmType: resolvedFarmType,
       phone: phone || null,
       address: address || null,
       currency: currency || 'AED',

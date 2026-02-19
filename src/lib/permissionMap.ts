@@ -1,7 +1,7 @@
 export const menuPermissions: Record<string, string | undefined> = {
   '/dashboard': undefined,
   '/dashboard/goats': 'view_goats',
-  '/dashboard/camels': 'view_goats',
+  '/dashboard/camels': 'view_camels',
   '/dashboard/pens': 'view_pens',
   '/dashboard/health': 'view_health',
   '/dashboard/breeding': 'view_breeding',

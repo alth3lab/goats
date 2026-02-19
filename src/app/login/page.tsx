@@ -96,7 +96,7 @@ export default function LoginPage() {
           </Box>
           <Box textAlign="center">
             <Typography variant="h4" fontWeight="bold">
-              نظام إدارة المواشي
+              نظام إدارة الماعز
             </Typography>
             <Typography variant="body2" color="text.secondary">
               تسجيل الدخول إلى لوحة التحكم

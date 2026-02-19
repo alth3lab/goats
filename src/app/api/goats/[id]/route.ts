@@ -36,7 +36,7 @@ export async function GET(
     })
     
     if (!goat) {
-      return NextResponse.json({ error: 'الحيوان غير موجود' }, { status: 404 })
+      return NextResponse.json({ error: 'الماعز غير موجود' }, { status: 404 })
     }
     
     // إضافة معلومات العمر
@@ -79,7 +79,7 @@ export async function PUT(
     const userId = await getUserIdFromRequest(request)
     
     const updateData = { ...validation.data } as Record<string, unknown>
-    // إذا تغيرت الحالة إلى مباع أو متوفى، قم بإزالة الحيوان من الحظيرة تلقائياً
+    // إذا تغيرت الحالة إلى مباع أو متوفى، قم بإزالة الماعز من الحظيرة تلقائياً
     if (updateData.status === 'SOLD' || updateData.status === 'DECEASED') {
       updateData.penId = null
     }
@@ -93,7 +93,7 @@ export async function PUT(
       action: 'UPDATE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم تعديل الحيوان: ${goat.tagId}`,
+      description: `تم تعديل الماعز: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
@@ -131,7 +131,7 @@ export async function DELETE(
     if (activeBreeding) {
       const goat = await prisma.goat.findUnique({ where: { id }, select: { tagId: true } })
       return NextResponse.json(
-        { error: `لا يمكن حذف الحيوان ${goat?.tagId || ''} لأنه في سجل تكاثر نشط` },
+        { error: `لا يمكن حذف الماعز ${goat?.tagId || ''} لأنه في سجل تكاثر نشط` },
         { status: 400 }
       )
     }
@@ -144,7 +144,7 @@ export async function DELETE(
       action: 'DELETE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم حذف الحيوان: ${goat.tagId}`,
+      description: `تم حذف الماعز: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
@@ -152,6 +152,6 @@ export async function DELETE(
   
     })
 } catch (error) {
-    return NextResponse.json({ error: 'فشل في حذف الحيوان' }, { status: 500 })
+    return NextResponse.json({ error: 'فشل في حذف الماعز' }, { status: 500 })
   }
 }

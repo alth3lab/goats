@@ -217,10 +217,10 @@ export default function PensPage() {
         setEditGoat(data)
         setEditDialogOpen(true)
       } else {
-        alert('تعذر تحميل بيانات الحيوان')
+        alert('تعذر تحميل بيانات الماعز')
       }
     } catch {
-      alert('تعذر تحميل بيانات الحيوان')
+      alert('تعذر تحميل بيانات الماعز')
     }
   }
 

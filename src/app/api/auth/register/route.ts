@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       username,
       password,
       phone,
+      farmType,
     } = body
 
     // Validation
@@ -109,11 +110,14 @@ export async function POST(request: NextRequest) {
       })
 
       // 2. Create default farm
+      const validFarmTypes = ['GOAT', 'SHEEP', 'CAMEL', 'MIXED']
+      const resolvedFarmType = validFarmTypes.includes(farmType) ? farmType : 'GOAT'
       const farm = await tx.farm.create({
         data: {
           tenantId: tenant.id,
           name: farmName,
           nameAr: farmName,
+          farmType: resolvedFarmType,
           phone: phone || null,
           currency: 'AED',
         }

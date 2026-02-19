@@ -58,8 +58,18 @@ import { alpha, useTheme } from '@mui/material/styles'
 const expandedDrawerWidth = 260
 const collapsedDrawerWidth = 86
 
-// تعريف المجموعات
-const menuGroups = [
+// Farm type labels
+const farmTypeLabels: Record<string, { herd: string; animal: string; icon: string }> = {
+  GOAT: { herd: 'إدارة الماعز', animal: 'ماعز', icon: '🐐' },
+  SHEEP: { herd: 'إدارة الأغنام', animal: 'أغنام', icon: '🐑' },
+  CAMEL: { herd: 'إدارة الإبل', animal: 'إبل', icon: '🐪' },
+  MIXED: { herd: 'إدارة الحيوانات', animal: 'حيوانات', icon: '🐾' },
+}
+
+// تعريف المجموعات - dynamic based on farm type
+const getMenuGroups = (farmType?: string) => {
+  const labels = farmTypeLabels[farmType || 'GOAT'] || farmTypeLabels.GOAT
+  return [
   {
     title: 'عام',
     items: [
@@ -71,8 +81,7 @@ const menuGroups = [
   {
     title: 'القطيع والإنتاج',
     items: [
-      { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
-      { text: 'إدارة الإبل', icon: <PetsIcon />, href: '/dashboard/camels' },
+      { text: labels.herd, icon: <PetsIcon />, href: '/dashboard/goats' },
       { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
       { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
       { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
@@ -102,6 +111,7 @@ const menuGroups = [
     ]
   }
 ]
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -117,6 +127,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const drawerWidth = collapsed ? collapsedDrawerWidth : expandedDrawerWidth
   const mobileAppBarHeight = '88px'
   const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
+
+  const menuGroups = getMenuGroups(farm?.farmType)
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -152,7 +164,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
               <Box>
                 <Typography variant="h6" fontWeight="bold" noWrap>
-                  {farm?.name || 'إدارة المواشي'}
+                  {farm?.name || 'إدارة الماعز'}
                 </Typography>
                 {farms.length > 1 && (
                   <Typography 
@@ -167,7 +179,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 )}
                 {farms.length <= 1 && (
                   <Typography variant="caption" color="text.secondary">
-                    Livestock Management
+                    Goat Management
                   </Typography>
                 )}
               </Box>
@@ -320,7 +332,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
             }}
           >
-            {isMobile ? 'نظام الإدارة' : 'نظام إدارة المواشي'}
+            {isMobile ? 'نظام الإدارة' : 'نظام إدارة الماعز والخرفان'}
           </Typography>
           {(authLoading || can('view_search')) && (
             <Box

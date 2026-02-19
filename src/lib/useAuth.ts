@@ -16,12 +16,14 @@ interface FarmInfo {
   name: string
   nameAr: string
   currency?: string
+  farmType?: string
 }
 
 interface UserFarm {
   id: string
   name: string
   nameAr: string
+  farmType?: string
   role: string
   tenantName?: string
   tenantId?: string

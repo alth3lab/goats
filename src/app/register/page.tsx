@@ -11,6 +11,10 @@ import {
   Alert,
   Stack,
   Link as MuiLink,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material'
 import { Agriculture as FarmIcon } from '@mui/icons-material'
 import Link from 'next/link'
@@ -24,6 +28,7 @@ export default function RegisterPage() {
     username: '',
     password: '',
     phone: '',
+    farmType: 'GOAT',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -90,6 +95,19 @@ export default function RegisterPage() {
                 required
                 fullWidth
               />
+              <FormControl fullWidth>
+                <InputLabel>نوع المزرعة</InputLabel>
+                <Select
+                  value={form.farmType}
+                  label="نوع المزرعة"
+                  onChange={(e) => setForm({ ...form, farmType: e.target.value })}
+                >
+                  <MenuItem value="GOAT">ماعز</MenuItem>
+                  <MenuItem value="SHEEP">أغنام</MenuItem>
+                  <MenuItem value="CAMEL">إبل</MenuItem>
+                  <MenuItem value="MIXED">مختلطة</MenuItem>
+                </Select>
+              </FormControl>
               <TextField
                 label="الاسم الكامل"
                 value={form.fullName}
