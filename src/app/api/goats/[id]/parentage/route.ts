@@ -51,7 +51,7 @@ export async function PATCH(
     })
 
     if (!goat) {
-      return NextResponse.json({ error: 'الماعز غير موجود' }, { status: 404 })
+      return NextResponse.json({ error: 'غير موجود' }, { status: 404 })
     }
 
     let motherId = body.motherId ?? null

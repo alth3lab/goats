@@ -13,8 +13,8 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   max_free_goats: '50',
   max_free_farms: '1',
   max_free_users: '2',
-  platform_name: 'منصة إدارة الماعز',
-  platform_name_en: 'Goat Management Platform',
+  platform_name: 'منصة إدارة المواشي',
+  platform_name_en: 'Livestock Management Platform',
 }
 
 // GET /api/admin/system-settings — Get all system settings (SUPER_ADMIN only)

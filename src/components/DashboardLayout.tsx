@@ -129,6 +129,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
 
   const menuGroups = getMenuGroups(farm?.farmType)
+  const labels = farmTypeLabels[farm?.farmType || 'GOAT'] || farmTypeLabels.GOAT
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -164,7 +165,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
               <Box>
                 <Typography variant="h6" fontWeight="bold" noWrap>
-                  {farm?.name || 'إدارة الماعز'}
+                  {farm?.name || labels.herd}
                 </Typography>
                 {farms.length > 1 && (
                   <Typography 
@@ -332,7 +333,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
             }}
           >
-            {isMobile ? 'نظام الإدارة' : 'نظام إدارة الماعز والخرفان'}
+            {isMobile ? 'نظام الإدارة' : `نظام ${labels.herd}`}
           </Typography>
           {(authLoading || can('view_search')) && (
             <Box

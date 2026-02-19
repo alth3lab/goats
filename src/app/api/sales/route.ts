@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const userId = await getUserIdFromRequest(request)
 
-    // التحقق من أن الماعز ليس في تكاثر نشط
+    // التحقق من عدم وجود تكاثر نشط
     if (body.goatId) {
       const activeBreeding = await prisma.breeding.findFirst({
         where: {
@@ -124,15 +124,15 @@ export async function POST(request: NextRequest) {
         })
         const role = goat?.gender === 'FEMALE' ? 'أم' : 'أب'
         return NextResponse.json(
-          { error: `لا يمكن بيع الماعز ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
+          { error: `لا يمكن بيع ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
           { status: 400 }
         )
       }
     }
 
-    // استخدام transaction لضمان إنشاء البيع وتحديث حالة الماعز معاً
+    // استخدام transaction لضمان إنشاء البيع وتحديث الحالة معاً
     const sale = await prisma.$transaction(async (tx) => {
-      // 0. التحقق من أن الماعز ليس مستخدماً في تكاثر نشط
+      // 0. التحقق من عدم وجود تكاثر نشط
       if (body.goatId) {
         const activeBreeding = await tx.breeding.findFirst({
           where: {
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
         if (activeBreeding) {
           const goatRole = activeBreeding.motherId === body.goatId ? 'أم' : 'أب'
-          throw new Error(`لا يمكن بيع هذا الماعز لأنه ${goatRole} في سجل تكاثر نشط`)
+          throw new Error(`لا يمكن البيع لأنه ${goatRole} في سجل تكاثر نشط`)
         }
       }
 
@@ -195,13 +195,13 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // 3. تحديث حالة الماعز إلى "مباع" وتصفير الحظيرة إذا كان البيع مرتبطاً بماعز
+      // 3. تحديث الحالة إلى "مباع" وتصفير الحظيرة
       if (body.goatId) {
         await tx.goat.update({
           where: { id: body.goatId },
           data: { 
             status: 'SOLD',
-            penId: null // إزالة الماعز من الحظيرة
+            penId: null // إزالة من الحظيرة
           }
         })
       }

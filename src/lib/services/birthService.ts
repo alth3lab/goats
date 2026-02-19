@@ -30,7 +30,7 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
   }
 
   if (breeding.mother.gender !== 'FEMALE') {
-    throw new Error(`الماعز ${breeding.mother.tagId} ليس أنثى`)
+    throw new Error(`${breeding.mother.tagId} ليس أنثى`)
   }
 
   if (breeding.mother.status !== 'ACTIVE') {
@@ -38,7 +38,7 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
   }
 
   if (breeding.father && breeding.father.gender !== 'MALE') {
-    throw new Error(`الماعز ${breeding.father.tagId} ليس ذكر`)
+    throw new Error(`${breeding.father.tagId} ليس ذكر`)
   }
 
   if (breeding.father && breeding.father.status !== 'ACTIVE') {

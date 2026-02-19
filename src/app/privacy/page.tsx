@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           <Typography variant="h6" fontWeight="bold" mt={3} mb={1}>1. البيانات التي نجمعها</Typography>
           <Typography variant="body1" paragraph>
             نجمع البيانات التالية عند إنشاء حسابك: الاسم الكامل، البريد الإلكتروني، اسم المستخدم، رقم الهاتف (اختياري).
-            كما نجمع بيانات المزرعة التي تدخلها (الماعز، السجلات الصحية، المبيعات، إلخ).
+            كما نجمع بيانات المزرعة التي تدخلها (الحيوانات، السجلات الصحية، المبيعات، إلخ).
           </Typography>
 
           <Typography variant="h6" fontWeight="bold" mt={3} mb={1}>2. كيف نستخدم البيانات</Typography>

@@ -296,7 +296,7 @@ export default function GoatsPage() {
     })
     
     await generateArabicPDF({
-      title: 'تقرير قطيع الماعز',
+      title: `تقرير ${pageLabels.title}`,
       date: new Date().toLocaleDateString('en-GB'),
       stats: [
         { label: 'إجمالي القطيع', value: stats.total },
@@ -358,7 +358,7 @@ export default function GoatsPage() {
     
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
-    XLSX.utils.book_append_sheet(wb, goatsSheet, 'قائمة الماعز')
+    XLSX.utils.book_append_sheet(wb, goatsSheet, `قائمة ${pageLabels.animalPlural}`)
     
     XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
@@ -543,7 +543,7 @@ export default function GoatsPage() {
       setSelectedGoat(null)
       loadGoats()
     } catch (error) {
-      console.error('خطأ في حذف الماعز:', error)
+      console.error('خطأ في الحذف:', error)
     }
   }
 
@@ -583,7 +583,7 @@ export default function GoatsPage() {
 
       if (!parentageRes.ok) {
         const errorData = await parentageRes.json()
-        alert(`تم حفظ الماعز ولكن فشل تحديث النسب: ${errorData.error}`)
+        alert(`تم الحفظ ولكن فشل تحديث النسب: ${errorData.error}`)
       }
     }
 
@@ -971,8 +971,8 @@ export default function GoatsPage() {
              </Button>
            }
          >
-           <AlertTitle>الماعز الحوامل</AlertTitle>
-           يوجد <strong>{pregnantGoats}</strong> ماعز حامل 
+           <AlertTitle>الإناث الحوامل</AlertTitle>
+           يوجد <strong>{pregnantGoats}</strong> حامل 
            {upcomingBirths > 0 && <>, منها <strong>{upcomingBirths}</strong> متوقع ولادتها خلال أسبوع</>}.
          </Alert>
       )}
@@ -1645,7 +1645,7 @@ export default function GoatsPage() {
       />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
-        <DialogTitle>{editMode ? 'تعديل الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
+        <DialogTitle>{editMode ? `تعديل ${pageLabels.animal}` : `إضافة ${pageLabels.animal} جديد`}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <TextField
@@ -1830,7 +1830,7 @@ export default function GoatsPage() {
         fullScreen={isMobile}
         scroll="paper"
       >
-        <DialogTitle>تفاصيل الماعز</DialogTitle>
+        <DialogTitle>تفاصيل {pageLabels.animal}</DialogTitle>
         <DialogContent dividers sx={{ maxHeight: '70vh' }}>
           {selectedGoat && (
             <Stack spacing={2} mt={2}>
@@ -1987,7 +1987,7 @@ export default function GoatsPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <Alert severity="warning">
-              سيتم تغيير حالة الماعز <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
+              سيتم تغيير حالة <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
             </Alert>
             <TextField
               label="تاريخ النفوق"
@@ -2021,7 +2021,7 @@ export default function GoatsPage() {
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
-            هل أنت متأكد من حذف الماعز <strong>{selectedGoat?.tagId}</strong>؟
+            هل أنت متأكد من حذف <strong>{selectedGoat?.tagId}</strong>؟
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             لا يمكن التراجع عن هذا الإجراء!

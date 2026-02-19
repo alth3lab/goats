@@ -51,6 +51,14 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@mui/material/styles'
 import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
+import { useAuth } from '@/lib/useAuth'
+
+const farmTypeSubtitle: Record<string, string> = {
+  GOAT: 'متابعة وإدارة قطيع الماعز والخرفان',
+  SHEEP: 'متابعة وإدارة قطيع الأغنام',
+  CAMEL: 'متابعة وإدارة قطيع الإبل',
+  MIXED: 'متابعة وإدارة الحيوانات',
+}
 
 const CHART_COLORS = ['#2196f3', '#ff9800', '#4caf50', '#f44336', '#9c27b0', '#00bcd4', '#ff5722', '#607d8b']
 
@@ -175,6 +183,8 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const theme = useTheme()
+  const { farm } = useAuth()
+  const subtitle = farmTypeSubtitle[farm?.farmType || 'GOAT'] || farmTypeSubtitle.GOAT
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
@@ -251,7 +261,7 @@ export default function DashboardPage() {
                 لوحة التحكم الرئيسية
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                متابعة وإدارة قطيع الماعز والخرفان
+                {subtitle}
               </Typography>
             </Box>
           </Stack>

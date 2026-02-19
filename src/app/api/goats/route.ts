@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
+import { calculateGoatAge, formatAge, AnimalSpecies } from '@/lib/ageCalculator'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
 import { runWithTenant } from '@/lib/tenantContext'
@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
     ])
     
     const goatsWithAge = goats.map(goat => {
-      const age = calculateGoatAge(goat.birthDate)
+      const species = (goat.breed?.type?.name === 'CAMEL' ? 'CAMEL' : 'GOAT') as AnimalSpecies
+      const age = calculateGoatAge(goat.birthDate, species)
       const currentBreeding = goat.breedingAsMother && goat.breedingAsMother.length > 0 ? goat.breedingAsMother[0] : null
       
       return {
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
       const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
       if (goatCount >= tenant.maxGoats) {
         return NextResponse.json(
-          { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
           { status: 403 }
         )
       }
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم إضافة الماعز: ${goat.tagId}`,
+      description: `تم إضافة: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
@@ -148,6 +149,6 @@ export async function POST(request: NextRequest) {
   
     })
 } catch (error) {
-    return NextResponse.json({ error: 'فشل في إضافة الماعز' }, { status: 500 })
+    return NextResponse.json({ error: 'فشل في الإضافة' }, { status: 500 })
   }
 }

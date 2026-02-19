@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'FeedingRecord',
       entityId: record.id,
-      description: `تم تسجيل تغذية: ${record.feedType} - ${record.quantity} ${record.unit}${record.goat ? ` للماعز ${record.goat.tagId}` : ''}`,
+      description: `تم تسجيل تغذية: ${record.feedType} - ${record.quantity} ${record.unit}${record.goat ? ` لـ ${record.goat.tagId}` : ''}`,
+
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })

@@ -21,6 +21,14 @@ import {
   DialogActions
 } from '@mui/material'
 import { formatDate } from '@/lib/formatters'
+import { useAuth } from '@/lib/useAuth'
+
+const animalLabel: Record<string, { file: string; edit: string; add: string }> = {
+  GOAT: { file: 'ملف الماعز', edit: 'تعديل بيانات الماعز', add: 'إضافة ماعز جديد' },
+  SHEEP: { file: 'ملف الأغنام', edit: 'تعديل بيانات الأغنام', add: 'إضافة أغنام جديد' },
+  CAMEL: { file: 'ملف البعير', edit: 'تعديل بيانات البعير', add: 'إضافة بعير جديد' },
+  MIXED: { file: 'ملف الحيوان', edit: 'تعديل بيانات الحيوان', add: 'إضافة حيوان جديد' },
+}
 
 interface Goat {
   id: string
@@ -114,6 +122,8 @@ interface GoatFormDialogProps {
 }
 
 export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly = false }: GoatFormDialogProps) {
+  const { farm } = useAuth()
+  const lbl = animalLabel[farm?.farmType || 'GOAT'] || animalLabel.GOAT
   const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
   const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
@@ -298,7 +308,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth={readOnly ? 'md' : 'sm'}>
-      <DialogTitle>{readOnly ? 'ملف الماعز' : goat ? 'تعديل بيانات الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
+      <DialogTitle>{readOnly ? lbl.file : goat ? lbl.edit : lbl.add}</DialogTitle>
       <DialogContent sx={{ pt: 2 }} dividers={readOnly}>
         {readOnly ? (
           goat ? (

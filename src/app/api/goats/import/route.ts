@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       const remaining = tenant.maxGoats - goatCount
       if (remaining <= 0) {
         return NextResponse.json(
-          { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
           { status: 403 }
         )
       }
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
         })
         created += 1
       } catch (error) {
-        errors.push({ row: i + 2, message: 'فشل في إنشاء الماعز (قد يكون رقم التاج مكرر)' })
+        errors.push({ row: i + 2, message: 'فشل في الإنشاء (قد يكون رقم التاج مكرر)' })
       }
     }
 

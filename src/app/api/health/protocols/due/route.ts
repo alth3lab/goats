@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { runWithTenant } from '@/lib/tenantContext'
-import { calculateGoatAge } from '@/lib/ageCalculator'
+import { calculateGoatAge, AnimalSpecies } from '@/lib/ageCalculator'
 
 export const runtime = 'nodejs'
 

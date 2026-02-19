@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'Health',
       entityId: result.id,
-      description: `تم إضافة سجل صحي للماعز: ${result.goat.tagId}`,
+      description: `تم إضافة سجل صحي: ${result.goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })

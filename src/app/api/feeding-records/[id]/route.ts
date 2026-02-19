@@ -82,7 +82,8 @@ export async function PUT(
       action: 'UPDATE',
       entity: 'FeedingRecord',
       entityId: record.id,
-      description: `تم تحديث سجل التغذية${record.goat ? ` للماعز ${record.goat.tagId}` : ''}`,
+      description: `تم تحديث سجل التغذية${record.goat ? ` لـ ${record.goat.tagId}` : ''}`,
+
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })

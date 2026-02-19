@@ -138,7 +138,7 @@ export default function LandingPage() {
         <Container maxWidth="md">
           <PetsIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
           <Typography variant="h3" fontWeight="bold" gutterBottom>
-            نظام إدارة الماعز والخرفان
+            نظام إدارة المواشي
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}>
             نظام سحابي شامل لإدارة مزرعتك — من التكاثر والصحة إلى المبيعات والتقارير.
@@ -161,7 +161,7 @@ export default function LandingPage() {
           كل ما تحتاجه لإدارة مزرعتك
         </Typography>
         <Typography variant="body1" color="text.secondary" textAlign="center" mb={6}>
-          أدوات متكاملة صممت خصيصاً لمربي الماعز والأغنام
+          أدوات متكاملة صممت خصيصاً لمربي الماعز والأغنام والإبل
         </Typography>
         <Grid container spacing={4}>
           {features.map((f, i) => (
@@ -253,7 +253,7 @@ export default function LandingPage() {
             <Button component={Link} href="/privacy" size="small" color="inherit">سياسة الخصوصية</Button>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            © {new Date().getFullYear()} رعاة — نظام إدارة الماعز والخرفان. جميع الحقوق محفوظة.
+            © {new Date().getFullYear()} رعاة — نظام إدارة المواشي. جميع الحقوق محفوظة.
           </Typography>
         </Container>
       </Box>

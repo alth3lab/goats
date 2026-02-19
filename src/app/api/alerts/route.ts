@@ -224,7 +224,8 @@ export async function GET(request: NextRequest) {
         type: 'HEALTH',
         severity: getSeverity(new Date(record.nextDueDate!), today),
         title: 'تطعيم/علاج مستحق',
-        message: `${record.type === 'VACCINATION' ? 'تطعيم' : 'علاج'} للماعز ${record.goat.tagId} - ${formatDate(record.nextDueDate!)}`,
+        message: `${record.type === 'VACCINATION' ? 'تطعيم' : 'علاج'} - ${record.goat.tagId} - ${formatDate(record.nextDueDate!)}`,
+
         date: record.nextDueDate
       })),
 
@@ -236,7 +237,7 @@ export async function GET(request: NextRequest) {
           type: 'WEANING',
           severity: 'info',
           title: 'فطام مقترح',
-          message: `الماعز ${kid.tagId} (عمر ${Math.floor(ageInDays/30)} شهر) - جاهز للفطام`,
+          message: `${kid.tagId} (عمر ${Math.floor(ageInDays/30)} شهر) - جاهز للفطام`,
           date: new Date() // Actionable now
         }
       }),

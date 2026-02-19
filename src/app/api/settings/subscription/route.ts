@@ -42,7 +42,7 @@ const PLANS = {
     maxGoats: 99999,
     maxUsers: 999,
     price: -1, // Custom pricing
-    features: ['مزارع غير محدودة', 'ماعز غير محدود', 'مستخدمين غير محدودين', 'دعم مخصص', 'تكامل كامل'],
+    features: ['مزارع غير محدودة', 'حيوانات غير محدودة', 'مستخدمين غير محدودين', 'دعم مخصص', 'تكامل كامل'],
   },
 }
 
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
 
       const violations: string[] = []
       if (goatCount > planDetails.maxGoats) {
-        violations.push(`لديك ${goatCount} رأس ماعز والحد الأقصى للخطة ${planDetails.maxGoats}`)
+        violations.push(`لديك ${goatCount} رأس والحد الأقصى للخطة ${planDetails.maxGoats}`)
       }
       if (farmCount > planDetails.maxFarms) {
         violations.push(`لديك ${farmCount} مزارع والحد الأقصى للخطة ${planDetails.maxFarms}`)
