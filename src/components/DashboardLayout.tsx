@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import {
   AppBar,
   Box,
@@ -24,6 +24,9 @@ import {
   Menu,
   MenuItem,
   ListSubheader,
+  Chip,
+  Backdrop,
+  CircularProgress,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -120,7 +123,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [farmMenuAnchor, setFarmMenuAnchor] = useState<null | HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
-  const { user, can, loading: authLoading, farm, farms, switchFarm } = useAuth()
+  const { user, can, loading: authLoading, farm, farms, switchFarm, switching } = useAuth()
+  const [farmSearch, setFarmSearch] = useState('')
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
@@ -130,6 +134,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const menuGroups = getMenuGroups(farm?.farmType)
   const labels = farmTypeLabels[farm?.farmType || 'GOAT'] || farmTypeLabels.GOAT
+
+  // Global auth guard: redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [authLoading, user, router])
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -162,7 +173,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%', justifyContent: collapsed ? 'center' : 'space-between' }}>
           {!collapsed && (
             <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
+              <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '1.3rem' }}>{labels.icon}</Avatar>
               <Box>
                 <Typography variant="h6" fontWeight="bold" noWrap>
                   {farm?.name || labels.herd}
@@ -180,13 +191,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 )}
                 {farms.length <= 1 && (
                   <Typography variant="caption" color="text.secondary">
-                    Goat Management
+                    {labels.herd}
                   </Typography>
                 )}
               </Box>
             </Stack>
           )}
-          {collapsed && <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>}
+          {collapsed && <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '1.3rem' }}>{labels.icon}</Avatar>}
           <IconButton size="small" onClick={() => setCollapsed(prev => !prev)} sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: 'rgba(79,122,87,0.08)' }}>
             {collapsed ? <ExpandIcon fontSize="small" /> : <CollapseIcon fontSize="small" />}
           </IconButton>
@@ -444,19 +455,53 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <Menu
         anchorEl={farmMenuAnchor}
         open={Boolean(farmMenuAnchor)}
-        onClose={() => setFarmMenuAnchor(null)}
-        slotProps={{ paper: { sx: { maxHeight: 400, minWidth: 280 } } }}
+        onClose={() => { setFarmMenuAnchor(null); setFarmSearch('') }}
+        slotProps={{ paper: { sx: { maxHeight: 480, minWidth: 300 } } }}
       >
+        {/* Search field for SUPER_ADMIN with many farms */}
+        {user?.role === 'SUPER_ADMIN' && farms.length > 5 && (
+          <Box sx={{ px: 2, py: 1, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+            <TextField
+              placeholder="بحث في المزارع..."
+              size="small"
+              fullWidth
+              value={farmSearch}
+              onChange={(e) => setFarmSearch(e.target.value)}
+              autoFocus
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
+        )}
         {(() => {
+          const searchTerm = farmSearch.trim().toLowerCase()
+          const filteredFarms = searchTerm
+            ? farms.filter(f => 
+                (f.nameAr || '').toLowerCase().includes(searchTerm) || 
+                f.name.toLowerCase().includes(searchTerm) ||
+                (f.tenantName || '').toLowerCase().includes(searchTerm)
+              )
+            : farms
+
+          const getFarmTypeIcon = (type?: string) => {
+            const t = farmTypeLabels[type || 'GOAT'] || farmTypeLabels.GOAT
+            return t.icon
+          }
+
           // Group farms by tenant for SUPER_ADMIN
-          if (user?.role === 'SUPER_ADMIN' && farms.some(f => f.tenantName)) {
-            const grouped = farms.reduce<Record<string, typeof farms>>((acc, f) => {
+          if (user?.role === 'SUPER_ADMIN' && filteredFarms.some(f => f.tenantName)) {
+            const grouped = filteredFarms.reduce<Record<string, typeof farms>>((acc, f) => {
               const key = f.tenantName || 'غير محدد'
               if (!acc[key]) acc[key] = []
               acc[key].push(f)
               return acc
             }, {})
-            return Object.entries(grouped).map(([tenantName, tenantFarms]) => [
+            const items = Object.entries(grouped).map(([tenantName, tenantFarms]) => [
               <ListSubheader key={`header-${tenantName}`} sx={{ fontWeight: 'bold', lineHeight: '32px', bgcolor: 'grey.100' }}>
                 {tenantName}
               </ListSubheader>,
@@ -466,32 +511,53 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   selected={f.id === farm?.id}
                   onClick={() => {
                     setFarmMenuAnchor(null)
+                    setFarmSearch('')
                     if (f.id !== farm?.id) switchFarm(f.id)
                   }}
-                  sx={{ pr: 4 }}
+                  sx={{ pr: 4, gap: 1 }}
                 >
-                  <ListItemIcon><FarmIcon fontSize="small" /></ListItemIcon>
+                  <Typography sx={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'center' }}>{getFarmTypeIcon(f.farmType)}</Typography>
                   <ListItemText>{f.nameAr || f.name}</ListItemText>
+                  <Chip label={farmTypeLabels[f.farmType || 'GOAT']?.animal || 'ماعز'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
                 </MenuItem>
               ))
             ]).flat()
+            if (items.length === 0 && searchTerm) {
+              return <MenuItem disabled><ListItemText>لا توجد نتائج</ListItemText></MenuItem>
+            }
+            return items
           }
           // Regular users - flat list
-          return farms.map((f) => (
+          const items = filteredFarms.map((f) => (
             <MenuItem
               key={f.id}
               selected={f.id === farm?.id}
               onClick={() => {
                 setFarmMenuAnchor(null)
+                setFarmSearch('')
                 if (f.id !== farm?.id) switchFarm(f.id)
               }}
+              sx={{ gap: 1 }}
             >
-              <ListItemIcon><FarmIcon fontSize="small" /></ListItemIcon>
+              <Typography sx={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'center' }}>{getFarmTypeIcon(f.farmType)}</Typography>
               <ListItemText>{f.nameAr || f.name}</ListItemText>
+              <Chip label={farmTypeLabels[f.farmType || 'GOAT']?.animal || 'ماعز'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
             </MenuItem>
           ))
+          if (items.length === 0 && searchTerm) {
+            return <MenuItem disabled><ListItemText>لا توجد نتائج</ListItemText></MenuItem>
+          }
+          return items
         })()}
       </Menu>
+
+      {/* Loading overlay during farm switch */}
+      <Backdrop open={switching} sx={{ zIndex: (theme) => theme.zIndex.modal + 300, bgcolor: 'rgba(255,255,255,0.85)' }}>
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress color="primary" />
+          <Typography variant="body1" fontWeight="bold" color="text.primary">جاري تبديل المزرعة...</Typography>
+        </Stack>
+      </Backdrop>
     </Box>
   )
 }

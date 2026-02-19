@@ -38,8 +38,10 @@ import {
   People as UsersIcon,
   Security as SecurityIcon
 } from '@mui/icons-material'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import { actionPermissions } from '@/lib/permissionMap'
+import LinearProgress from '@mui/material/LinearProgress'
 
 interface User {
   id: string
@@ -69,7 +71,15 @@ const roleLabels: Record<string, string> = {
 export default function UsersPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const { can } = useAuth()
+  const router = useRouter()
+  const { can, user, loading: authLoading } = useAuth()
+
+  useEffect(() => {
+    if (!authLoading && !['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(user?.role || '')) {
+      router.push('/dashboard')
+    }
+  }, [user, authLoading, router])
+
   const canAddUser = can(actionPermissions.addUser)
   const canManagePermissions = can(actionPermissions.manageUserPermissions)
   const [users, setUsers] = useState<User[]>([])
@@ -166,6 +176,9 @@ export default function UsersPage() {
     acc[key].push(permission)
     return acc
   }, {})
+
+  if (authLoading || !user) return <Box sx={{ p: 4 }}><LinearProgress /></Box>
+  if (!['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(user.role)) return null
 
   return (
     <Box sx={{ width: '100%', overflowX: 'hidden' }}>

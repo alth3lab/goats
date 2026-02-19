@@ -31,7 +31,9 @@ import HomeIcon from '@mui/icons-material/Home'
 import PeopleIcon from '@mui/icons-material/People'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
+import LinearProgress from '@mui/material/LinearProgress'
 
 interface Farm {
   id: string
@@ -50,7 +52,15 @@ interface Farm {
 }
 
 export default function FarmsPage() {
-  const { user, farm: currentFarm, switchFarm, can } = useAuth()
+  const { user, farm: currentFarm, switchFarm, can, loading: authLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!authLoading && !['SUPER_ADMIN', 'OWNER'].includes(user?.role || '')) {
+      router.push('/dashboard')
+    }
+  }, [user, authLoading, router])
+
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -125,6 +135,9 @@ export default function FarmsPage() {
     USER: 'مستخدم',
     VIEWER: 'مشاهد',
   }
+
+  if (authLoading || !user) return <Box sx={{ p: 4 }}><LinearProgress /></Box>
+  if (!['SUPER_ADMIN', 'OWNER'].includes(user.role)) return null
 
   return (
     <Box sx={{ width: '100%' }}>

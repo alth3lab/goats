@@ -27,12 +27,20 @@ import {
   Upload as UploadIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const canEdit = ['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(user?.role || '')
+
+  useEffect(() => {
+    if (!authLoading && !canEdit) {
+      router.push('/dashboard')
+    }
+  }, [authLoading, canEdit, router])
   const [settings, setSettings] = useState({
     farmName: '',
     phone: '',
@@ -208,6 +216,9 @@ export default function SettingsPage() {
     calendarEvents: 'أحداث التقويم',
     farms: 'المزارع',
   }
+
+  if (authLoading || !user) return <Box sx={{ p: 4 }}><CircularProgress /></Box>
+  if (!canEdit) return null
 
   return (
     <Box sx={{ width: '100%', overflowX: 'hidden' }}>

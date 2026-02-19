@@ -91,14 +91,23 @@ export function useAuth() {
     }
   }, [state.permissions, state.user?.role])
 
+  const [switching, setSwitching] = useState(false)
+
   const switchFarm = useCallback(async (farmId: string) => {
-    const res = await fetch('/api/farms/switch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ farmId })
-    })
-    if (res.ok) {
-      window.location.reload()
+    setSwitching(true)
+    try {
+      const res = await fetch('/api/farms/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmId })
+      })
+      if (res.ok) {
+        window.location.reload()
+      } else {
+        setSwitching(false)
+      }
+    } catch {
+      setSwitching(false)
     }
   }, [])
 
@@ -106,5 +115,6 @@ export function useAuth() {
     ...state,
     can,
     switchFarm,
+    switching,
   }
 }

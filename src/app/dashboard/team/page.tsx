@@ -31,7 +31,9 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import PeopleIcon from '@mui/icons-material/People'
 import DeleteIcon from '@mui/icons-material/Delete'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
+import LinearProgress from '@mui/material/LinearProgress'
 
 interface TeamMember {
   id: string
@@ -48,7 +50,15 @@ interface TeamMember {
 }
 
 export default function TeamPage() {
-  const { user, can } = useAuth()
+  const { user, can, loading: authLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!authLoading && !['SUPER_ADMIN', 'OWNER'].includes(user?.role || '')) {
+      router.push('/dashboard')
+    }
+  }, [user, authLoading, router])
+
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -123,6 +133,9 @@ export default function TeamPage() {
   }
 
   const isAdmin = user?.role === 'OWNER' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+
+  if (authLoading || !user) return <Box sx={{ p: 4 }}><LinearProgress /></Box>
+  if (!['SUPER_ADMIN', 'OWNER'].includes(user.role)) return null
 
   return (
     <Box sx={{ width: '100%' }}>

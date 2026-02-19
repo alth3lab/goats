@@ -42,6 +42,7 @@ import HistoryIcon from '@mui/icons-material/History'
 import WarningIcon from '@mui/icons-material/Warning'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 
 interface PlanInfo {
@@ -124,7 +125,15 @@ const statusLabels: Record<string, { label: string; color: 'success' | 'error' |
 }
 
 export default function BillingPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!authLoading && !['SUPER_ADMIN', 'OWNER'].includes(user?.role || '')) {
+      router.push('/dashboard')
+    }
+  }, [user, authLoading, router])
+
   const [data, setData] = useState<SubscriptionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState<{ plan: string; type: 'upgrade' | 'downgrade' } | null>(null)
@@ -183,6 +192,8 @@ export default function BillingPage() {
     ENTERPRISE: '#9c27b0',
   }
 
+  if (authLoading || !user) return <Box p={4}><LinearProgress /></Box>
+  if (!['SUPER_ADMIN', 'OWNER'].includes(user.role)) return null
   if (loading) return <Box p={4}><LinearProgress /></Box>
   if (!data) return <Alert severity="error">فشل في تحميل بيانات الاشتراك</Alert>
 
