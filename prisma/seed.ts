@@ -28,6 +28,19 @@ async function main() {
 
   console.log('تم إنشاء الأنواع:', goatType.nameAr, sheepType.nameAr)
 
+  // إنشاء نوع الإبل
+  const camelType = await prisma.goatType.upsert({
+    where: { name: 'CAMEL' },
+    update: {},
+    create: {
+      name: 'CAMEL',
+      nameAr: 'إبل',
+      description: 'الإبل حيوان ثديي يربى للحصول على اللحوم والحليب والسباقات'
+    }
+  })
+
+  console.log('تم إنشاء نوع الإبل:', camelType.nameAr)
+
   // سلالات الماعز
   const goatBreeds = [
     {
@@ -177,6 +190,85 @@ async function main() {
   }
 
   console.log(`تم إضافة ${sheepBreeds.length} سلالة من الخروف`)
+
+  // سلالات الإبل
+  const camelBreeds = [
+    {
+      name: 'Majaheem',
+      nameAr: 'مجاهيم',
+      description: 'من أشهر سلالات الإبل في الجزيرة العربية، لونها أسود داكن',
+      avgWeight: 600,
+      avgHeight: 190,
+      characteristics: 'لون أسود، حجم كبير، إنتاج حليب عالي، تتحمل الحرارة'
+    },
+    {
+      name: 'Safar',
+      nameAr: 'صفر',
+      description: 'إبل صفراء اللون منتشرة في منطقة الخليج',
+      avgWeight: 550,
+      avgHeight: 185,
+      characteristics: 'لون أصفر فاتح، سريعة في السباقات، جسم رشيق'
+    },
+    {
+      name: 'Hamra',
+      nameAr: 'حمر',
+      description: 'إبل حمراء اللون تربى في المناطق الصحراوية',
+      avgWeight: 500,
+      avgHeight: 180,
+      characteristics: 'لون بني محمر، قوية البنية، تتحمل الظروف القاسية'
+    },
+    {
+      name: 'Wadha',
+      nameAr: 'وضح',
+      description: 'إبل بيضاء نادرة ومميزة',
+      avgWeight: 520,
+      avgHeight: 185,
+      characteristics: 'لون أبيض ناصع، نادرة، قيمة عالية في المزايين'
+    },
+    {
+      name: 'Shaele',
+      nameAr: 'شعل',
+      description: 'إبل ذات لون مميز بين الأشقر والأحمر',
+      avgWeight: 530,
+      avgHeight: 182,
+      characteristics: 'لون أشقر محمر، جميلة الشكل، سريعة'
+    },
+    {
+      name: 'Homor',
+      nameAr: 'هُمّر',
+      description: 'من السلالات المعروفة في الإمارات والسعودية',
+      avgWeight: 480,
+      avgHeight: 178,
+      characteristics: 'لون بني فاتح، متوسطة الحجم، جيدة للسباقات'
+    },
+    {
+      name: 'Omaniyah',
+      nameAr: 'عمانية',
+      description: 'سلالة عمانية أصيلة متأقلمة مع بيئة الخليج',
+      avgWeight: 490,
+      avgHeight: 175,
+      characteristics: 'قوية التحمل، هادئة الطبع، إنتاج حليب جيد'
+    }
+  ]
+
+  // إضافة سلالات الإبل
+  for (const breed of camelBreeds) {
+    await prisma.breed.upsert({
+      where: { 
+        typeId_name: {
+          typeId: camelType.id,
+          name: breed.name
+        }
+      },
+      update: {},
+      create: {
+        ...breed,
+        typeId: camelType.id
+      }
+    })
+  }
+
+  console.log(`تم إضافة ${camelBreeds.length} سلالة من الإبل`)
 
   const permissions = [
     { name: 'view_goats', nameAr: 'عرض الماعز', category: 'goats', categoryAr: 'الماعز' },

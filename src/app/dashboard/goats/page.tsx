@@ -189,7 +189,32 @@ interface FamilyResponse {
   offspring: FamilyMember[]
 }
 
-export default function GoatsPage() {
+export interface AnimalPageConfig {
+  animalType?: string        // e.g. 'GOAT', 'CAMEL' — undefined = all
+  title: string              // 'إدارة الماعز' or 'إدارة الإبل'
+  titleFull: string          // 'إدارة الماعز والخرفان' or 'إدارة الإبل'
+  singular: string           // 'الماعز' or 'الناقة'
+  singularAdd: string        // 'ماعز' or 'ناقة/جمل'
+  pluralActive: string       // 'القطيع' or 'القطيع'
+  reportTitle: string        // 'تقرير قطيع الماعز' or 'تقرير قطيع الإبل'
+  exportPrefix: string       // 'goats' or 'camels'
+  permission: string         // 'view_goats' or 'view_camels'
+  addPermission: string      // 'add_goat' or 'add_camel'
+}
+
+const DEFAULT_GOAT_CONFIG: AnimalPageConfig = {
+  title: 'إدارة الماعز',
+  titleFull: 'إدارة الماعز والخرفان',
+  singular: 'الماعز',
+  singularAdd: 'ماعز',
+  pluralActive: 'القطيع',
+  reportTitle: 'تقرير قطيع الماعز',
+  exportPrefix: 'goats',
+  permission: 'view_goats',
+  addPermission: 'add_goat',
+}
+
+export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: AnimalPageConfig }) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [goats, setGoats] = useState<Goat[]>([])
@@ -286,7 +311,7 @@ export default function GoatsPage() {
     })
     
     await generateArabicPDF({
-      title: 'تقرير قطيع الماعز',
+      title: config.reportTitle,
       date: new Date().toLocaleDateString('en-GB'),
       stats: [
         { label: 'إجمالي القطيع', value: stats.total },
@@ -308,7 +333,7 @@ export default function GoatsPage() {
       ],
       data,
       totals: { tagId: 'الإجمالي', gender: `♂${stats.males} ♀${stats.females}` },
-      filename: `goats-report-${new Date().toISOString().split('T')[0]}.pdf`
+      filename: `${config.exportPrefix}-report-${new Date().toISOString().split('T')[0]}.pdf`
     })
   }
 
@@ -348,14 +373,15 @@ export default function GoatsPage() {
     
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
-    XLSX.utils.book_append_sheet(wb, goatsSheet, 'قائمة الماعز')
+    XLSX.utils.book_append_sheet(wb, goatsSheet, config.title)
     
     XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const loadGoats = async () => {
     try {
-      const res = await fetch('/api/goats')
+      const url = config.animalType ? `/api/goats?animalType=${config.animalType}` : '/api/goats'
+      const res = await fetch(url)
       const data = await res.json()
       setGoats(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -971,7 +997,7 @@ export default function GoatsPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={2} spacing={1.5}>
           <Box>
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold" gutterBottom>
-              إدارة الماعز والخرفان
+              {config.titleFull}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               إجمالي: {filteredGoats.length} حيوان
@@ -1635,7 +1661,7 @@ export default function GoatsPage() {
       />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
-        <DialogTitle>{editMode ? 'تعديل الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
+        <DialogTitle>{editMode ? `تعديل ${config.singular}` : `إضافة ${config.singularAdd} جديد`}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <TextField
@@ -1820,7 +1846,7 @@ export default function GoatsPage() {
         fullScreen={isMobile}
         scroll="paper"
       >
-        <DialogTitle>تفاصيل الماعز</DialogTitle>
+        <DialogTitle>تفاصيل {config.singular}</DialogTitle>
         <DialogContent dividers sx={{ maxHeight: '70vh' }}>
           {selectedGoat && (
             <Stack spacing={2} mt={2}>
@@ -2068,4 +2094,8 @@ export default function GoatsPage() {
       </Dialog>
     </Box>
   )
+}
+
+export default function GoatsPage() {
+  return <AnimalListPage />
 }

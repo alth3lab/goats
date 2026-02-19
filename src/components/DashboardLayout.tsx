@@ -72,6 +72,7 @@ const menuGroups = [
     title: 'القطيع والإنتاج',
     items: [
       { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
+      { text: 'إدارة الإبل', icon: <PetsIcon />, href: '/dashboard/camels' },
       { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
       { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
       { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
@@ -151,7 +152,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
               <Box>
                 <Typography variant="h6" fontWeight="bold" noWrap>
-                  {farm?.name || 'إدارة الماعز'}
+                  {farm?.name || 'إدارة المواشي'}
                 </Typography>
                 {farms.length > 1 && (
                   <Typography 
@@ -166,7 +167,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 )}
                 {farms.length <= 1 && (
                   <Typography variant="caption" color="text.secondary">
-                    Goat Management
+                    Livestock Management
                   </Typography>
                 )}
               </Box>
@@ -319,7 +320,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
             }}
           >
-            {isMobile ? 'نظام الإدارة' : 'نظام إدارة الماعز والخرفان'}
+            {isMobile ? 'نظام الإدارة' : 'نظام إدارة المواشي'}
           </Typography>
           {(authLoading || can('view_search')) && (
             <Box
