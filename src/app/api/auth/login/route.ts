@@ -85,11 +85,15 @@ export async function POST(request: NextRequest) {
       orderBy: { farm: { createdAt: 'asc' } }
     })
 
-    // SUPER_ADMIN can login without a farm; others need one
-    if (!user.tenantId && user.role !== 'SUPER_ADMIN') {
+    // Backward compatibility: legacy global admins created before multi-tenant may have no tenant/farm
+    const isLegacyGlobalAdmin = user.role === 'ADMIN' && !user.tenantId
+    const effectiveRole = isLegacyGlobalAdmin ? 'SUPER_ADMIN' : user.role
+
+    // SUPER_ADMIN (and legacy global admin) can login without tenant/farm; others need both
+    if (!user.tenantId && effectiveRole !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'لم يتم ربط الحساب بمستأجر' }, { status: 403 })
     }
-    if (!userFarm && user.role !== 'SUPER_ADMIN') {
+    if (!userFarm && effectiveRole !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'لم يتم ربط الحساب بمزرعة' }, { status: 403 })
     }
 
@@ -111,7 +115,7 @@ export async function POST(request: NextRequest) {
     // Sign JWT token with tenant context
     const token = await signToken({
       userId: user.id,
-      role: user.role,
+      role: effectiveRole,
       tenantId,
       farmId
     })
@@ -119,7 +123,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       id: user.id,
       fullName: user.fullName,
-      role: user.role,
+      role: effectiveRole,
       tenantId,
       farmId,
       farmName: userFarm?.farm.name || '',

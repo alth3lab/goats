@@ -27,13 +27,13 @@ async function main() {
     if (existing.length > 0) {
       await conn.query(
         'UPDATE User SET fullName = ?, username = ?, password = ?, role = ?, isActive = 1, updatedAt = NOW() WHERE email = ?',
-        [fullName, username, hashed, 'ADMIN', email]
+        [fullName, username, hashed, 'SUPER_ADMIN', email]
       )
       console.log('✅ تم تحديث حساب المدير')
     } else {
       await conn.query(
         'INSERT INTO User (id, username, email, password, fullName, role, isActive, createdAt, updatedAt) VALUES (UUID(), ?, ?, ?, ?, ?, 1, NOW(), NOW())',
-        [username, email, hashed, fullName, 'ADMIN']
+        [username, email, hashed, fullName, 'SUPER_ADMIN']
       )
       console.log('✅ تم إنشاء حساب المدير')
     }
