@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
+function isSecureRequest(request: NextRequest): boolean {
+  const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '')
+  return proto === 'https'
+}
+
 // Routes that don't require authentication
 const PUBLIC_PATHS = ['/', '/login', '/register', '/terms', '/privacy', '/forgot-password', '/reset-password', '/api/auth/login', '/api/auth/logout', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password']
 
@@ -86,7 +91,7 @@ export default async function proxy(request: NextRequest) {
     // Clear the invalid cookie
     response.cookies.set(TOKEN_COOKIE, '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureRequest(request),
       sameSite: 'lax',
       path: '/',
       expires: new Date(0),

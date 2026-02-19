@@ -27,6 +27,11 @@ function clearRateLimit(ip: string) {
   loginAttempts.delete(ip)
 }
 
+function isSecureRequest(request: NextRequest): boolean {
+  const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '')
+  return proto === 'https'
+}
+
 export async function POST(request: NextRequest) {
   try {
     const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
@@ -131,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set(TOKEN_COOKIE, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureRequest(request),
       sameSite: 'lax',
       path: '/',
       maxAge: TOKEN_MAX_AGE,

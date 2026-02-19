@@ -5,6 +5,11 @@ import { signToken, TOKEN_COOKIE, TOKEN_MAX_AGE } from '@/lib/jwt'
 
 export const runtime = 'nodejs'
 
+function isSecureRequest(request: NextRequest): boolean {
+  const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '')
+  return proto === 'https'
+}
+
 // POST /api/farms/switch - switch active farm
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request)
@@ -53,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   res.cookies.set(TOKEN_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureRequest(request),
     sameSite: 'lax',
     path: '/',
     maxAge: TOKEN_MAX_AGE,
