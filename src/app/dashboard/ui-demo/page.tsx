@@ -26,7 +26,7 @@ const columns: GridColDef<DemoRow>[] = [
   { field: 'tagId', headerName: 'رقم التاج', minWidth: 140, flex: 1 },
   {
     field: 'goatStatus',
-    headerName: 'حالة الماعز',
+    headerName: 'حالة الحيوان',
     minWidth: 170,
     flex: 1,
     renderCell: (params: GridRenderCellParams<DemoRow, DemoRow['goatStatus']>) => (

@@ -298,7 +298,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth={readOnly ? 'md' : 'sm'}>
-      <DialogTitle>{readOnly ? 'ملف الماعز' : goat ? 'تعديل بيانات الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
+      <DialogTitle>{readOnly ? 'ملف الحيوان' : goat ? 'تعديل البيانات' : 'إضافة حيوان جديد'}</DialogTitle>
       <DialogContent sx={{ pt: 2 }} dividers={readOnly}>
         {readOnly ? (
           goat ? (

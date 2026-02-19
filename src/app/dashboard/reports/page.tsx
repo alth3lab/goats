@@ -283,7 +283,7 @@ export default function ReportsPage() {
       goats: '/api/goats', sales: '/api/sales', expenses: '/api/expenses'
     }
     const labels: Record<string, string> = {
-      goats: 'الماعز', sales: 'المبيعات', expenses: 'المصروفات'
+      goats: 'الحيوانات', sales: 'المبيعات', expenses: 'المصروفات'
     }
     const res = await fetch(endpoints[type])
     const json = await res.json()
@@ -586,7 +586,7 @@ export default function ReportsPage() {
           </Stack>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <Button variant="outlined" onClick={() => handleExportData('goats')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
-              تصدير الماعز
+              تصدير الحيوانات
             </Button>
             <Button variant="outlined" onClick={() => handleExportData('sales')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
               تصدير المبيعات
@@ -599,7 +599,7 @@ export default function ReportsPage() {
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }} mt={3}>
           <Button component="label" variant="contained" startIcon={<UploadIcon />}>
-            استيراد الماعز (CSV)
+            استيراد الحيوانات (CSV)
             <input
               type="file"
               hidden

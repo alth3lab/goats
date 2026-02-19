@@ -251,7 +251,7 @@ export default function DashboardPage() {
                 لوحة التحكم الرئيسية
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                متابعة وإدارة قطيع الماعز والخرفان
+                متابعة وإدارة المواشي بكل أنواعها
               </Typography>
             </Box>
           </Stack>

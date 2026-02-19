@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
       if (goatCount >= tenant.maxGoats) {
         return NextResponse.json(
-          { error: `تم الوصول للحد الأقصى من الماعز (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
           { status: 403 }
         )
       }
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم إضافة الماعز: ${goat.tagId}`,
+      description: `تم إضافة حيوان: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
@@ -154,6 +154,6 @@ export async function POST(request: NextRequest) {
   
     })
 } catch (error) {
-    return NextResponse.json({ error: 'فشل في إضافة الماعز' }, { status: 500 })
+    return NextResponse.json({ error: 'فشل في إضافة الحيوان' }, { status: 500 })
   }
 }

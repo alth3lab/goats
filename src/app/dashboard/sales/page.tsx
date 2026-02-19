@@ -853,10 +853,10 @@ export default function SalesPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <FormControl>
-              <InputLabel>الماعز (اختياري)</InputLabel>
+              <InputLabel>الحيوان (اختياري)</InputLabel>
               <Select
                 value={form.goatId}
-                label="الماعز (اختياري)"
+                label="الحيوان (اختياري)"
                 onChange={(e) => setForm({ ...form, goatId: e.target.value })}
               >
                 <MenuItem value="">بدون</MenuItem>

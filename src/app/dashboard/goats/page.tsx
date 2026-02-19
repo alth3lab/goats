@@ -236,7 +236,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
   const [selectedGoatIds, setSelectedGoatIds] = useState<string[]>([])
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
   const [batchPenId, setBatchPenId] = useState('')
-  const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
+  const [types, setTypes] = useState<Array<{ id: string; name: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
   const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
   
@@ -265,7 +265,15 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
 
   useEffect(() => {
     loadGoats()
-    loadTypes()
+    loadTypes().then((allTypes) => {
+      // Auto-load breeds when page is filtered by animalType
+      if (config.animalType && allTypes.length > 0) {
+        const matchedType = allTypes.find((t: { name: string }) => t.name === config.animalType?.toUpperCase())
+        if (matchedType) {
+          loadBreeds(matchedType.id)
+        }
+      }
+    })
     loadPens()
   }, [])
 
@@ -375,7 +383,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
     XLSX.utils.book_append_sheet(wb, goatsSheet, config.title)
     
-    XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.writeFile(wb, `${config.exportPrefix}-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const loadGoats = async () => {
@@ -396,9 +404,12 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     try {
       const res = await fetch('/api/types')
       const data = await res.json()
-      setTypes(Array.isArray(data) ? data : [])
+      const allTypes = Array.isArray(data) ? data : []
+      setTypes(allTypes)
+      return allTypes
     } catch {
       setTypes([])
+      return []
     }
   }
 
@@ -424,9 +435,9 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     }
   }
 
-  const handleOpen = () => {
+  const handleOpen = async () => {
     setEditMode(false)
-    setSelectedGoat(null) // Clear any selected goat
+    setSelectedGoat(null)
     setForm({ 
       tagId: '', 
       name: '', 
@@ -442,8 +453,14 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
     })
     setOpen(true)
     loadPens()
-    if (types.length === 0) {
-      loadTypes()
+    const loadedTypes = types.length === 0 ? await loadTypes() : types
+    // Auto-select type when page is filtered by animalType
+    if (config.animalType && loadedTypes.length > 0) {
+      const matchedType = loadedTypes.find((t: { name: string }) => t.name === config.animalType?.toUpperCase())
+      if (matchedType) {
+        setForm(prev => ({ ...prev, typeId: matchedType.id }))
+        loadBreeds(matchedType.id)
+      }
     }
   }
 
@@ -559,7 +576,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
       setSelectedGoat(null)
       loadGoats()
     } catch (error) {
-      console.error('خطأ في حذف الماعز:', error)
+      console.error('خطأ في الحذف:', error)
     }
   }
 
@@ -923,7 +940,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {upcomingBirths} ماعز متوقع ولادتها خلال 7 أيام. انقر للعرض.
+                  يوجد {upcomingBirths} أنثى متوقع ولادتها خلال 7 أيام. انقر للعرض.
                 </Typography>
               </Paper>
             )}
@@ -937,7 +954,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {overdueBirths} ماعز تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
+                  يوجد {overdueBirths} أنثى تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
                 </Typography>
               </Paper>
             )}
@@ -987,8 +1004,8 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
              </Button>
            }
          >
-           <AlertTitle>الماعز الحوامل</AlertTitle>
-           يوجد <strong>{pregnantGoats}</strong> ماعز حامل 
+           <AlertTitle>الإناث الحوامل</AlertTitle>
+           يوجد <strong>{pregnantGoats}</strong> أنثى حامل 
            {upcomingBirths > 0 && <>, منها <strong>{upcomingBirths}</strong> متوقع ولادتها خلال أسبوع</>}.
          </Alert>
       )}
@@ -1159,6 +1176,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Select>
                 </FormControl>
               </Grid>
+              {!config.animalType && (
               <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>النوع</InputLabel>
@@ -1180,6 +1198,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   </Select>
                 </FormControl>
               </Grid>
+              )}
               <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>السلالة</InputLabel>
@@ -1187,7 +1206,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                     value={filterBreed}
                     label="السلالة"
                     onChange={(e) => setFilterBreed(e.target.value)}
-                    disabled={filterType === 'ALL'}
+                    disabled={!config.animalType && filterType === 'ALL'}
                   >
                     <MenuItem value="ALL">الكل</MenuItem>
                     {breeds.map(breed => (
@@ -1694,6 +1713,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
                   }
                 }}
                 required
+                disabled={!!config.animalType}
               >
                 {types.map((t) => (
                   <MenuItem key={t.id} value={t.id}>
@@ -2003,7 +2023,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <Alert severity="warning">
-              سيتم تغيير حالة الماعز <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
+              سيتم تغيير حالة {config.singular} <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
             </Alert>
             <TextField
               label="تاريخ النفوق"
@@ -2037,7 +2057,7 @@ export function AnimalListPage({ config = DEFAULT_GOAT_CONFIG }: { config?: Anim
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
-            هل أنت متأكد من حذف الماعز <strong>{selectedGoat?.tagId}</strong>؟
+            هل أنت متأكد من حذف {config.singular} <strong>{selectedGoat?.tagId}</strong>؟
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             لا يمكن التراجع عن هذا الإجراء!

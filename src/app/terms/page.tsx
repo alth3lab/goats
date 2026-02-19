@@ -27,20 +27,20 @@ export default function TermsPage() {
 
           <Typography variant="h6" fontWeight="bold" mt={3} mb={1}>1. قبول الشروط</Typography>
           <Typography variant="body1" paragraph>
-            باستخدامك لنظام "رعاة" لإدارة الماعز والخرفان، فإنك توافق على الالتزام بهذه الشروط والأحكام.
+            باستخدامك لنظام "رعاة" لإدارة المواشي، فإنك توافق على الالتزام بهذه الشروط والأحكام.
             إذا كنت لا توافق على أي جزء من هذه الشروط، يرجى عدم استخدام النظام.
           </Typography>
 
           <Typography variant="h6" fontWeight="bold" mt={3} mb={1}>2. وصف الخدمة</Typography>
           <Typography variant="body1" paragraph>
-            نظام رعاة هو منصة سحابية (SaaS) لإدارة مزارع الماعز والأغنام تشمل إدارة القطيع، السجلات الصحية،
+            نظام رعاة هو منصة سحابية (SaaS) لإدارة مزارع المواشي تشمل إدارة القطيع، السجلات الصحية،
             التكاثر، المبيعات، المخزون، والتقارير.
           </Typography>
 
           <Typography variant="h6" fontWeight="bold" mt={3} mb={1}>3. الحسابات والاشتراكات</Typography>
           <Typography variant="body1" paragraph>
             كل مستخدم مسؤول عن الحفاظ على سرية بيانات حسابه. الخطط المتاحة (مجاني، أساسي، احترافي، مؤسسي)
-            تحدد حدود الاستخدام من حيث عدد المزارع والماعز والمستخدمين.
+            تحدد حدود الاستخدام من حيث عدد المزارع والحيوانات والمستخدمين.
           </Typography>
 
           <Typography variant="h6" fontWeight="bold" mt={3} mb={1}>4. ملكية البيانات</Typography>
