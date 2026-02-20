@@ -61,7 +61,12 @@ import { EntityHistory } from '@/components/EntityHistory'
 import { generateArabicPDF } from '@/lib/pdfHelper'
 import * as XLSX from 'xlsx'
 import { useNotifier } from '@/components/AppNotifier'
-  import { useAuth } from '@/lib/useAuth'
+import { useAuth } from '@/lib/useAuth'
+
+interface BirthRecord {
+  id: string
+  kidTagId: string
+  kidGoatId?: string
   gender: 'MALE' | 'FEMALE'
   weight?: number
   status: 'ALIVE' | 'DEAD' | 'STILLBORN'
