@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer'
 export const runtime = 'nodejs'
 
 async function sendResetEmail(email: string, resetUrl: string) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, MAIL_FROM_NAME } = process.env
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     console.warn('[email] SMTP not configured — reset link logged to console')
     console.log(`🔑 Password reset for ${email}: ${resetUrl}`)
@@ -18,16 +18,32 @@ async function sendResetEmail(email: string, resetUrl: string) {
     secure: (Number(SMTP_PORT) || 587) === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   })
+  const fromAddress = SMTP_FROM || SMTP_USER
+  const from = MAIL_FROM_NAME
+    ? `"${MAIL_FROM_NAME}" <${fromAddress}>`
+    : fromAddress
+
   await transporter.sendMail({
-    from: SMTP_FROM || SMTP_USER,
+    from,
     to: email,
-    subject: 'إعادة تعيين كلمة المرور',
+    replyTo: fromAddress,
+    subject: 'إعادة تعيين كلمة المرور - نظام إدارة المواشي',
+    text: `تم طلب إعادة تعيين كلمة المرور لحسابك في نظام إدارة المواشي.
+
+استخدم الرابط التالي خلال ساعة واحدة:
+${resetUrl}
+
+إذا لم تطلب ذلك، تجاهل هذه الرسالة.`,
     html: `<div dir="rtl" style="font-family: sans-serif; padding: 20px;">
       <h2>إعادة تعيين كلمة المرور</h2>
       <p>لقد طلبت إعادة تعيين كلمة المرور. اضغط على الرابط أدناه:</p>
       <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#1976d2;color:white;text-decoration:none;border-radius:8px;">إعادة تعيين كلمة المرور</a>
       <p style="margin-top:16px;color:#666;">ينتهي هذا الرابط خلال ساعة واحدة. إذا لم تطلب ذلك، تجاهل هذه الرسالة.</p>
     </div>`,
+    headers: {
+      'X-Auto-Response-Suppress': 'All',
+      'Auto-Submitted': 'auto-generated',
+    },
   })
 }
 
@@ -62,13 +78,14 @@ export async function POST(request: NextRequest) {
     })
 
     const resetUrl = `${request.nextUrl.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
+    const exposeResetUrl = process.env.EXPOSE_RESET_URL === 'true'
     
     // Send password reset email (falls back to console if SMTP not configured)
     await sendResetEmail(email, resetUrl)
 
     return NextResponse.json({
       message: 'إذا كان البريد مسجلاً، سيتم إرسال رابط إعادة التعيين',
-      ...(process.env.NODE_ENV === 'development' ? { _dev_resetUrl: resetUrl } : {}),
+      ...((process.env.NODE_ENV === 'development' || exposeResetUrl) ? { _dev_resetUrl: resetUrl } : {}),
     })
   } catch (error) {
     console.error('Forgot password error:', error)
