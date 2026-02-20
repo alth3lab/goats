@@ -27,6 +27,7 @@ function ResetPasswordForm() {
   const theme = useTheme()
   const searchParams = useSearchParams()
   const token = searchParams.get('token') || ''
+  const email = searchParams.get('email') || ''
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -53,7 +54,7 @@ function ResetPasswordForm() {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ email, token, password }),
       })
 
       const data = await res.json()
@@ -69,7 +70,7 @@ function ResetPasswordForm() {
     }
   }
 
-  if (!token) {
+  if (!token || !email) {
     return (
       <Box
         sx={{
