@@ -20,7 +20,7 @@ type Section = typeof sections[number]
 
 const tabLabels: Record<Section, { label: string; icon: React.ReactElement }> = {
   summary: { label: 'الملخص', icon: <BusinessIcon /> },
-  goats: { label: 'الماعز', icon: <PetsIcon /> },
+  goats: { label: 'الحيوانات', icon: <PetsIcon /> },
   health: { label: 'الصحة', icon: <LocalHospitalIcon /> },
   sales: { label: 'المبيعات', icon: <PointOfSaleIcon /> },
   activities: { label: 'الأنشطة', icon: <HistoryIcon /> },
@@ -105,7 +105,7 @@ export default function TenantDataPage({ params }: { params: Promise<{ tenantId:
 function SummaryView({ data }: { data: Record<string, unknown> | null }) {
   if (!data) return null
   const stats = [
-    { label: 'الماعز', value: data.goatsCount, color: '#2196f3' },
+    { label: 'الحيوانات', value: data.goatsCount, color: '#2196f3' },
     { label: 'السجلات الصحية', value: data.healthCount, color: '#4caf50' },
     { label: 'المبيعات', value: data.salesCount, color: '#ff9800' },
     { label: 'المزارع', value: data.farmsCount, color: '#9c27b0' },
@@ -183,7 +183,7 @@ function HealthView({ data }: { data: Record<string, unknown> | null }) {
           <TableHead>
             <TableRow>
               <TableCell>التاريخ</TableCell>
-              <TableCell>الماعز</TableCell>
+              <TableCell>الحيوان</TableCell>
               <TableCell>النوع</TableCell>
               <TableCell>الوصف</TableCell>
               <TableCell>العلاج</TableCell>
@@ -228,7 +228,7 @@ function SalesView({ data }: { data: Record<string, unknown> | null }) {
           <TableHead>
             <TableRow>
               <TableCell>التاريخ</TableCell>
-              <TableCell>الماعز</TableCell>
+              <TableCell>الحيوان</TableCell>
               <TableCell>المشتري</TableCell>
               <TableCell>المبلغ</TableCell>
               <TableCell>حالة الدفع</TableCell>

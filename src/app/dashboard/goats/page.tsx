@@ -68,7 +68,6 @@ import { EntityHistory } from '@/components/EntityHistory'
 import { useAuth } from '@/lib/useAuth'
 
 const farmTypePageLabels: Record<string, { title: string; animal: string; animalPlural: string }> = {
-  GOAT: { title: 'إدارة الماعز والخرفان', animal: 'ماعز', animalPlural: 'الماعز' },
   SHEEP: { title: 'إدارة الأغنام', animal: 'أغنام', animalPlural: 'الأغنام' },
   CAMEL: { title: 'إدارة الإبل', animal: 'إبل', animalPlural: 'الإبل' },
   MIXED: { title: 'إدارة الحيوانات', animal: 'حيوان', animalPlural: 'الحيوانات' },
@@ -201,7 +200,7 @@ export default function GoatsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { farm } = useAuth()
-  const pageLabels = farmTypePageLabels[farm?.farmType || 'GOAT'] || farmTypePageLabels.GOAT
+  const pageLabels = farmTypePageLabels[farm?.farmType || 'SHEEP'] || farmTypePageLabels.SHEEP
   const [goats, setGoats] = useState<Goat[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -907,7 +906,7 @@ export default function GoatsPage() {
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {upcomingBirths} ماعز متوقع ولادتها خلال 7 أيام. انقر للعرض.
+                  يوجد {upcomingBirths} {pageLabels.animal} متوقع ولادتها خلال 7 أيام. انقر للعرض.
                 </Typography>
               </Paper>
             )}
@@ -921,7 +920,7 @@ export default function GoatsPage() {
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {overdueBirths} ماعز تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
+                  يوجد {overdueBirths} {pageLabels.animal} تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
                 </Typography>
               </Paper>
             )}

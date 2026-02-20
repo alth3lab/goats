@@ -63,7 +63,6 @@ const collapsedDrawerWidth = 86
 
 // Farm type labels
 const farmTypeLabels: Record<string, { herd: string; animal: string; icon: string }> = {
-  GOAT: { herd: 'إدارة الماعز', animal: 'ماعز', icon: '🐐' },
   SHEEP: { herd: 'إدارة الأغنام', animal: 'أغنام', icon: '🐑' },
   CAMEL: { herd: 'إدارة الإبل', animal: 'إبل', icon: '🐪' },
   MIXED: { herd: 'إدارة الحيوانات', animal: 'حيوانات', icon: '🐾' },
@@ -71,7 +70,7 @@ const farmTypeLabels: Record<string, { herd: string; animal: string; icon: strin
 
 // تعريف المجموعات - dynamic based on farm type
 const getMenuGroups = (farmType?: string) => {
-  const labels = farmTypeLabels[farmType || 'GOAT'] || farmTypeLabels.GOAT
+  const labels = farmTypeLabels[farmType || 'SHEEP'] || farmTypeLabels.SHEEP
   return [
   {
     title: 'عام',
@@ -133,7 +132,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
 
   const menuGroups = getMenuGroups(farm?.farmType)
-  const labels = farmTypeLabels[farm?.farmType || 'GOAT'] || farmTypeLabels.GOAT
+  const labels = farmTypeLabels[farm?.farmType || 'SHEEP'] || farmTypeLabels.SHEEP
 
   // Global auth guard: redirect to login if not authenticated
   useEffect(() => {
@@ -489,7 +488,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             : farms
 
           const getFarmTypeIcon = (type?: string) => {
-            const t = farmTypeLabels[type || 'GOAT'] || farmTypeLabels.GOAT
+            const t = farmTypeLabels[type || 'SHEEP'] || farmTypeLabels.SHEEP
             return t.icon
           }
 
@@ -518,7 +517,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 >
                   <Typography sx={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'center' }}>{getFarmTypeIcon(f.farmType)}</Typography>
                   <ListItemText>{f.nameAr || f.name}</ListItemText>
-                  <Chip label={farmTypeLabels[f.farmType || 'GOAT']?.animal || 'ماعز'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                  <Chip label={farmTypeLabels[f.farmType || 'SHEEP']?.animal || 'أغنام'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
                 </MenuItem>
               ))
             ]).flat()
@@ -541,7 +540,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             >
               <Typography sx={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'center' }}>{getFarmTypeIcon(f.farmType)}</Typography>
               <ListItemText>{f.nameAr || f.name}</ListItemText>
-              <Chip label={farmTypeLabels[f.farmType || 'GOAT']?.animal || 'ماعز'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+              <Chip label={farmTypeLabels[f.farmType || 'SHEEP']?.animal || 'أغنام'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
             </MenuItem>
           ))
           if (items.length === 0 && searchTerm) {

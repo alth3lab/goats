@@ -184,7 +184,7 @@ export default function ActivitiesPage() {
               <MenuItem value="UserPermission">صلاحيات المستخدم</MenuItem>
               <MenuItem value="GoatType">الأنواع</MenuItem>
               <MenuItem value="Breed">السلالات</MenuItem>
-              <MenuItem value="Goat">الماعز</MenuItem>
+              <MenuItem value="Goat">الحيوانات</MenuItem>
               <MenuItem value="Pen">الحظائر</MenuItem>
               <MenuItem value="Sale">المبيعات</MenuItem>
               <MenuItem value="Expense">المصروفات</MenuItem>

@@ -39,7 +39,7 @@ const entityLabels: Record<string, string> = {
   Tenant: 'مستأجر',
   User: 'مستخدم',
   Farm: 'مزرعة',
-  Goat: 'ماعز',
+  Goat: 'حيوان',
   HealthRecord: 'سجل صحي',
   Breeding: 'تكاثر',
   Sale: 'بيع',

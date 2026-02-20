@@ -1,6 +1,8 @@
 'use client'
 
 import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
+import { useAuth } from '@/lib/useAuth'
+import { getAnimalLabels } from '@/lib/animalLabels'
 import { generateArabicPDF } from '@/lib/pdfHelper'
 import * as XLSX from 'xlsx'
 import { useEffect, useState } from 'react'
@@ -102,6 +104,8 @@ export default function SalesPage() {
   const { notify } = useNotifier()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { farm } = useAuth()
+  const animalLbl = getAnimalLabels(farm?.farmType)
   const [sales, setSales] = useState<Sale[]>([])
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -853,10 +857,10 @@ export default function SalesPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <FormControl>
-              <InputLabel>الماعز (اختياري)</InputLabel>
+              <InputLabel>{`${animalLbl.plural} (اختياري)`}</InputLabel>
               <Select
                 value={form.goatId}
-                label="الماعز (اختياري)"
+                label={`${animalLbl.plural} (اختياري)`}
                 onChange={(e) => setForm({ ...form, goatId: e.target.value })}
               >
                 <MenuItem value="">بدون</MenuItem>

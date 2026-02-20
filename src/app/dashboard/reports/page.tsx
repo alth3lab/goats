@@ -43,6 +43,8 @@ import {
 } from 'recharts'
 import { formatCurrency, formatNumber } from '@/lib/formatters'
 import { generateArabicPDF } from '@/lib/pdfHelper'
+import { useAuth } from '@/lib/useAuth'
+import { getAnimalLabels } from '@/lib/animalLabels'
 import * as XLSX from 'xlsx'
 
 /* ───── Category labels ───── */
@@ -167,6 +169,8 @@ function ReportSkeleton() {
 /* ────────────────────── Main Page ────────────────────── */
 export default function ReportsPage() {
   const theme = useTheme()
+  const { farm } = useAuth()
+  const animalLbl = getAnimalLabels(farm?.farmType)
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7))
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -283,7 +287,7 @@ export default function ReportsPage() {
       goats: '/api/goats', sales: '/api/sales', expenses: '/api/expenses'
     }
     const labels: Record<string, string> = {
-      goats: 'الماعز', sales: 'المبيعات', expenses: 'المصروفات'
+      goats: animalLbl.plural, sales: 'المبيعات', expenses: 'المصروفات'
     }
     const res = await fetch(endpoints[type])
     const json = await res.json()
@@ -586,7 +590,7 @@ export default function ReportsPage() {
           </Stack>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <Button variant="outlined" onClick={() => handleExportData('goats')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
-              تصدير الماعز
+              تصدير {animalLbl.plural}
             </Button>
             <Button variant="outlined" onClick={() => handleExportData('sales')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
               تصدير المبيعات
@@ -599,7 +603,7 @@ export default function ReportsPage() {
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }} mt={3}>
           <Button component="label" variant="contained" startIcon={<UploadIcon />}>
-            استيراد الماعز (CSV)
+            استيراد {animalLbl.plural} (CSV)
             <input
               type="file"
               hidden

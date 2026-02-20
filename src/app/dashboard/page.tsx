@@ -54,7 +54,6 @@ import { formatCurrency, formatDate, formatNumber } from '@/lib/formatters'
 import { useAuth } from '@/lib/useAuth'
 
 const farmTypeSubtitle: Record<string, string> = {
-  GOAT: 'متابعة وإدارة قطيع الماعز والخرفان',
   SHEEP: 'متابعة وإدارة قطيع الأغنام',
   CAMEL: 'متابعة وإدارة قطيع الإبل',
   MIXED: 'متابعة وإدارة الحيوانات',
@@ -184,7 +183,7 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const theme = useTheme()
   const { farm } = useAuth()
-  const subtitle = farmTypeSubtitle[farm?.farmType || 'GOAT'] || farmTypeSubtitle.GOAT
+  const subtitle = farmTypeSubtitle[farm?.farmType || 'SHEEP'] || farmTypeSubtitle.SHEEP
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<AlertItem[]>([])

@@ -28,7 +28,7 @@ export default function RegisterPage() {
     username: '',
     password: '',
     phone: '',
-    farmType: 'GOAT',
+    farmType: 'SHEEP',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -102,10 +102,9 @@ export default function RegisterPage() {
                   label="نوع المزرعة"
                   onChange={(e) => setForm({ ...form, farmType: e.target.value })}
                 >
-                  <MenuItem value="GOAT">ماعز</MenuItem>
                   <MenuItem value="SHEEP">أغنام</MenuItem>
                   <MenuItem value="CAMEL">إبل</MenuItem>
-                  <MenuItem value="MIXED">مختلطة</MenuItem>
+                  <MenuItem value="MIXED">مختلط</MenuItem>
                 </Select>
               </FormControl>
               <TextField

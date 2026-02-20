@@ -643,7 +643,7 @@ export default function AdminPage() {
             { label: 'المستأجرين', value: stats.totals.tenants, icon: <PeopleIcon />, color: '#1976d2' },
             { label: 'المزارع', value: stats.totals.farms, icon: <AgricultureIcon />, color: '#4F7A57' },
             { label: 'المستخدمين', value: stats.totals.users, icon: <PeopleIcon />, color: '#ed6c02' },
-            { label: 'الماعز', value: stats.totals.goats, icon: <PetsIcon />, color: '#9c27b0' },
+            { label: 'الحيوانات', value: stats.totals.goats, icon: <PetsIcon />, color: '#9c27b0' },
           ].map((s, i) => (
             <Grid size={{ xs: 6, md: 3 }} key={i}>
               <Card sx={{ borderRadius: 3, borderTop: `3px solid ${s.color}` }}>
@@ -742,7 +742,7 @@ export default function AdminPage() {
                 <TableCell>البريد</TableCell>
                 <TableCell>الخطة</TableCell>
                 <TableCell>المزارع</TableCell>
-                <TableCell>الماعز</TableCell>
+                <TableCell>الحيوانات</TableCell>
                 <TableCell>المستخدمين</TableCell>
                 <TableCell>الحالة</TableCell>
                 <TableCell>التاريخ</TableCell>
@@ -841,7 +841,7 @@ export default function AdminPage() {
                 slotProps={{ htmlInput: { min: 1 } }}
               />
               <TextField
-                label="حد الماعز"
+                label="حد الحيوانات"
                 type="number"
                 value={editMaxGoats}
                 onChange={(e) => setEditMaxGoats(Number(e.target.value))}

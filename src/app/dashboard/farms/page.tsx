@@ -74,7 +74,7 @@ export default function FarmsPage() {
     phone: '',
     address: '',
     currency: 'AED',
-    farmType: 'GOAT',
+    farmType: 'SHEEP',
   })
 
   const fetchFarms = async () => {
@@ -107,7 +107,7 @@ export default function FarmsPage() {
       if (res.ok) {
         setSnackbar({ open: true, message: 'تم إنشاء المزرعة بنجاح', severity: 'success' })
         setDialogOpen(false)
-        setForm({ name: '', nameAr: '', phone: '', address: '', currency: 'AED', farmType: 'GOAT' })
+        setForm({ name: '', nameAr: '', phone: '', address: '', currency: 'AED', farmType: 'SHEEP' })
         fetchFarms()
       } else {
         const data = await res.json()
@@ -192,11 +192,11 @@ export default function FarmsPage() {
                   <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                     <Chip
                       label={{
-                        GOAT: 'ماعز',
+                        GOAT: 'أغنام',
                         SHEEP: 'أغنام',
                         CAMEL: 'إبل',
-                        MIXED: 'مختلطة',
-                      }[f.farmType] || 'ماعز'}
+                        MIXED: 'مختلط',
+                      }[f.farmType] || 'أغنام'}
                       size="small"
                       color={{
                         GOAT: 'success' as const,
@@ -265,10 +265,9 @@ export default function FarmsPage() {
                 label="نوع المزرعة"
                 onChange={(e) => setForm({ ...form, farmType: e.target.value })}
               >
-                <MenuItem value="GOAT">ماعز</MenuItem>
                 <MenuItem value="SHEEP">أغنام</MenuItem>
                 <MenuItem value="CAMEL">إبل</MenuItem>
-                <MenuItem value="MIXED">مختلطة</MenuItem>
+                <MenuItem value="MIXED">مختلط</MenuItem>
               </Select>
             </FormControl>
             <TextField

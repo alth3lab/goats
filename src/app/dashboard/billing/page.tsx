@@ -44,6 +44,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
+import { getAnimalLabels } from '@/lib/animalLabels'
 
 interface PlanInfo {
   name: string
@@ -125,8 +126,9 @@ const statusLabels: Record<string, { label: string; color: 'success' | 'error' |
 }
 
 export default function BillingPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, farm } = useAuth()
   const router = useRouter()
+  const animalLbl = getAnimalLabels(farm?.farmType)
 
   useEffect(() => {
     if (!authLoading && !['SUPER_ADMIN', 'OWNER'].includes(user?.role || '')) {
@@ -240,7 +242,7 @@ export default function BillingPage() {
           )}
         </Stack>
         <Stack spacing={2}>
-          <UsageBar label="الماعز" icon={<PetsIcon fontSize="small" />} used={data.usage.goats} max={data.limits.goats} />
+          <UsageBar label={animalLbl.plural} icon={<PetsIcon fontSize="small" />} used={data.usage.goats} max={data.limits.goats} />
           <UsageBar label="المزارع" icon={<HomeIcon fontSize="small" />} used={data.usage.farms} max={data.limits.farms} />
           <UsageBar label="المستخدمين" icon={<PeopleIcon fontSize="small" />} used={data.usage.users} max={data.limits.users} />
         </Stack>

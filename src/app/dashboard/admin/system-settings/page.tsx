@@ -185,7 +185,7 @@ export default function SystemSettingsPage() {
             onChange={(e) => update('trial_days', e.target.value)}
           />
           <TextField
-            label="حد الماعز"
+            label="حد الحيوانات"
             type="number"
             size="small"
             fullWidth
