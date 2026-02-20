@@ -6,45 +6,113 @@ import nodemailer from 'nodemailer'
 export const runtime = 'nodejs'
 
 async function sendResetEmail(email: string, resetUrl: string) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, MAIL_FROM_NAME } = process.env
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+  const {
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_USER,
+    SMTP_PASS,
+    SMTP_FROM,
+    MAIL_FROM_NAME,
+    EMAIL_USERNAME,
+    EMAIL_PASSWORD,
+    GMAIL_USER,
+    GMAIL_APP_PASSWORD,
+  } = process.env
+
+  const smtpPass = SMTP_PASS?.replace(/\s+/g, '')
+  const emailPass = EMAIL_PASSWORD?.replace(/\s+/g, '')
+  const gmailPass = GMAIL_APP_PASSWORD?.replace(/\s+/g, '')
+
+  const smtpCandidates: Array<{ name: string; host: string; port: number; secure: boolean; user: string; pass: string }> = []
+
+  if (SMTP_HOST && SMTP_USER && smtpPass) {
+    const port = Number(SMTP_PORT) || 587
+    smtpCandidates.push({
+      name: 'smtp',
+      host: SMTP_HOST,
+      port,
+      secure: port === 465,
+      user: SMTP_USER,
+      pass: smtpPass,
+    })
+  }
+
+  if (EMAIL_USERNAME && emailPass) {
+    const isGmail = /@gmail\.com$/i.test(EMAIL_USERNAME)
+    smtpCandidates.push({
+      name: isGmail ? 'email-gmail' : 'email-fallback',
+      host: isGmail ? 'smtp.gmail.com' : (SMTP_HOST || 'smtp.gmail.com'),
+      port: isGmail ? 465 : (Number(SMTP_PORT) || 587),
+      secure: isGmail ? true : ((Number(SMTP_PORT) || 587) === 465),
+      user: EMAIL_USERNAME,
+      pass: emailPass,
+    })
+  }
+
+  if (GMAIL_USER && gmailPass) {
+    smtpCandidates.push({
+      name: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      user: GMAIL_USER,
+      pass: gmailPass,
+    })
+  }
+
+  if (smtpCandidates.length === 0) {
     console.warn('[email] SMTP not configured — reset link logged to console')
     console.log(`🔑 Password reset for ${email}: ${resetUrl}`)
     return
   }
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 587,
-    secure: (Number(SMTP_PORT) || 587) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  })
-  const fromAddress = SMTP_FROM || SMTP_USER
-  const from = MAIL_FROM_NAME
-    ? `"${MAIL_FROM_NAME}" <${fromAddress}>`
-    : fromAddress
 
-  await transporter.sendMail({
-    from,
-    to: email,
-    replyTo: fromAddress,
-    subject: 'إعادة تعيين كلمة المرور - نظام إدارة المواشي',
-    text: `تم طلب إعادة تعيين كلمة المرور لحسابك في نظام إدارة المواشي.
+  let lastError: unknown = null
+  for (const candidate of smtpCandidates) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: candidate.host,
+        port: candidate.port,
+        secure: candidate.secure,
+        auth: { user: candidate.user, pass: candidate.pass },
+      })
+
+      const fromAddress = SMTP_FROM || candidate.user
+      const from = MAIL_FROM_NAME
+        ? `"${MAIL_FROM_NAME}" <${fromAddress}>`
+        : fromAddress
+
+      await transporter.sendMail({
+        from,
+        to: email,
+        replyTo: fromAddress,
+        subject: 'إعادة تعيين كلمة المرور - نظام إدارة المواشي',
+        text: `تم طلب إعادة تعيين كلمة المرور لحسابك في نظام إدارة المواشي.
 
 استخدم الرابط التالي خلال ساعة واحدة:
 ${resetUrl}
 
 إذا لم تطلب ذلك، تجاهل هذه الرسالة.`,
-    html: `<div dir="rtl" style="font-family: sans-serif; padding: 20px;">
+        html: `<div dir="rtl" style="font-family: sans-serif; padding: 20px;">
       <h2>إعادة تعيين كلمة المرور</h2>
       <p>لقد طلبت إعادة تعيين كلمة المرور. اضغط على الرابط أدناه:</p>
       <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#1976d2;color:white;text-decoration:none;border-radius:8px;">إعادة تعيين كلمة المرور</a>
       <p style="margin-top:16px;color:#666;">ينتهي هذا الرابط خلال ساعة واحدة. إذا لم تطلب ذلك، تجاهل هذه الرسالة.</p>
     </div>`,
-    headers: {
-      'X-Auto-Response-Suppress': 'All',
-      'Auto-Submitted': 'auto-generated',
-    },
-  })
+        headers: {
+          'X-Auto-Response-Suppress': 'All',
+          'Auto-Submitted': 'auto-generated',
+        },
+      })
+
+      console.info(`[email] Reset mail sent via ${candidate.name}`)
+      return
+    } catch (error) {
+      lastError = error
+      console.warn(`[email] Provider failed (${candidate.name})`, error)
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('All email providers failed')
 }
 
 // POST /api/auth/forgot-password — Request password reset
