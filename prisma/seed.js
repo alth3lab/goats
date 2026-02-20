@@ -48,6 +48,19 @@ async function main(prisma) {
 
   console.log('✅ تم إنشاء الأنواع:', goatType.nameAr, sheepType.nameAr)
 
+  // نوع الإبل
+  const camelType = await prisma.goatType.upsert({
+    where: { name: 'CAMEL' },
+    update: {},
+    create: {
+      name: 'CAMEL',
+      nameAr: 'إبل',
+      description: 'الإبل من أهم الحيوانات في الجزيرة العربية، تربى للحليب واللحم والسباقات'
+    }
+  })
+
+  console.log('✅ تم إنشاء نوع الإبل:', camelType.nameAr)
+
   // سلالات الماعز
   const goatBreeds = [
     {
@@ -165,6 +178,76 @@ async function main(prisma) {
   }
 
   console.log(`✅ تم إضافة ${sheepBreeds.length} سلالة من الخروف`)
+
+  // سلالات الإبل
+  const camelBreeds = [
+    {
+      name: 'Majaheem',
+      nameAr: 'مجاهيم',
+      description: 'من أشهر وأضخم سلالات الإبل في الجزيرة العربية',
+      avgWeight: 600,
+      avgHeight: 190,
+      characteristics: 'لون أسود داكن، ضخمة الحجم، إنتاج حليب عالي'
+    },
+    {
+      name: 'Maghateer',
+      nameAr: 'مغاتير',
+      description: 'سلالة مميزة بلونها الأبيض، للجمال والسباقات',
+      avgWeight: 500,
+      avgHeight: 185,
+      characteristics: 'لون أبيض فاتح، رشيقة، سريعة'
+    },
+    {
+      name: 'Safra',
+      nameAr: 'صفراء',
+      description: 'سلالة ذات لون أصفر ذهبي، منتشرة في الخليج',
+      avgWeight: 520,
+      avgHeight: 180,
+      characteristics: 'لون أصفر ذهبي، إنتاج حليب جيد'
+    },
+    {
+      name: 'Hamra',
+      nameAr: 'حمراء',
+      description: 'سلالة ذات لون أحمر بني',
+      avgWeight: 480,
+      avgHeight: 175,
+      characteristics: 'لون أحمر بني، متحملة للظروف الصحراوية'
+    },
+    {
+      name: 'Shaalah',
+      nameAr: 'شعلة',
+      description: 'سلالة مخصصة للسباقات',
+      avgWeight: 450,
+      avgHeight: 180,
+      characteristics: 'خفيفة الوزن، سريعة، أرجل طويلة'
+    },
+    {
+      name: 'Waddah',
+      nameAr: 'وضح',
+      description: 'سلالة بيضاء ناصعة للجمال والحليب',
+      avgWeight: 500,
+      avgHeight: 182,
+      characteristics: 'لون أبيض ناصع، جميلة المظهر، هادئة'
+    }
+  ]
+
+  for (const breed of camelBreeds) {
+    await prisma.breed.upsert({
+      where: {
+        typeId_name: {
+          typeId: camelType.id,
+          name: breed.name
+        }
+      },
+      update: {},
+      create: {
+        ...breed,
+        typeId: camelType.id
+      }
+    })
+  }
+
+  console.log(`✅ تم إضافة ${camelBreeds.length} سلالة من الإبل`)
   console.log('✅ تم إضافة جميع البيانات الأولية بنجاح!')
 }
 

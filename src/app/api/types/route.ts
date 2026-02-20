@@ -6,14 +6,26 @@ import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
-// Get all goat types
+// Get all goat types (optionally filtered by farmType)
 export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_types')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
+    const { searchParams } = new URL(request.url)
+    const farmType = searchParams.get('farmType')
+
+    // Map farmType to allowed species
+    const speciesMap: Record<string, string[]> = {
+      SHEEP: ['SHEEP', 'GOAT'],
+      CAMEL: ['CAMEL'],
+      // MIXED = all types (no filter)
+    }
+    const allowedSpecies = farmType ? speciesMap[farmType] : undefined
+
     const types = await prisma.goatType.findMany({
+      where: allowedSpecies ? { name: { in: allowedSpecies } } : undefined,
       include: {
         breeds: {
           orderBy: { name: 'asc' }

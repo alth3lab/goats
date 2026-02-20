@@ -152,7 +152,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
       loadPens()
       loadGoats() // Need all goats for parent selection
     }
-  }, [open])
+  }, [open, farm?.farmType])
 
   useEffect(() => {
     if (open && goat && readOnly) {
@@ -212,7 +212,8 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
 
   const loadTypes = async () => {
     try {
-      const res = await fetch('/api/types')
+      const params = farm?.farmType ? `?farmType=${farm.farmType}` : ''
+      const res = await fetch(`/api/types${params}`)
       const data = await res.json()
       setTypes(Array.isArray(data) ? data : [])
     } catch { setTypes([]) }

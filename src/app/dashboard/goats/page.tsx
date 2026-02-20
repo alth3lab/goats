@@ -377,7 +377,8 @@ export default function GoatsPage() {
 
   const loadTypes = async () => {
     try {
-      const res = await fetch('/api/types')
+      const params = farm?.farmType ? `?farmType=${farm.farmType}` : ''
+      const res = await fetch(`/api/types${params}`)
       const data = await res.json()
       setTypes(Array.isArray(data) ? data : [])
     } catch {
