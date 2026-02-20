@@ -343,7 +343,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
             }}
           >
-            {isMobile ? 'نظام الإدارة' : `نظام ${labels.herd}`}
+              {isMobile ? 'وبر وصوف' : `وبر وصوف — ${labels.herd}`}
           </Typography>
           {(authLoading || can('view_search')) && (
             <Box

@@ -13,8 +13,8 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "نظام إدارة المواشي",
-  description: "نظام شامل لإدارة الأغنام والإبل والمواشي",
+  title: "وبر وصوف — نظام إدارة المواشي",
+  description: "وبر وصوف: نظام سحابي شامل لإدارة مزارع الإبل والأغنام والمواشي في الوطن العربي",
   icons: {
     icon: "/favicon.svg",
   },

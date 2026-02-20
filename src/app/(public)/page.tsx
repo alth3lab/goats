@@ -100,7 +100,7 @@ export default function LandingPage() {
             <Box sx={{ bgcolor: pc, borderRadius: 2, p: 0.6, display: 'flex', alignItems: 'center' }}>
               <PetsIcon sx={{ fontSize: 22, color: '#fff' }} />
             </Box>
-            <Typography variant="h6" fontWeight="bold" color="primary">رعاة</Typography>
+            <Typography variant="h6" fontWeight="bold" color="primary">وبر وصوف</Typography>
             <Chip label="إبل  أغنام  مواشي" size="small" sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: alpha(pc, 0.1), color: pc, fontSize: 11, fontWeight: 600 }} />
           </Stack>
           <Stack direction="row" spacing={1}>
@@ -301,7 +301,7 @@ export default function LandingPage() {
               <Box sx={{ bgcolor: pc, borderRadius: 1.5, p: 0.5, display: 'flex', alignItems: 'center' }}>
                 <PetsIcon sx={{ fontSize: 20, color: '#fff' }} />
               </Box>
-              <Typography variant="subtitle1" fontWeight={700} color="grey.100">رعاة</Typography>
+              <Typography variant="subtitle1" fontWeight={700} color="grey.100">وبر وصوف</Typography>
               <Typography variant="body2" color="grey.500"> نظام إدارة المواشي</Typography>
             </Stack>
             <Stack direction="row" spacing={2}>
@@ -312,7 +312,7 @@ export default function LandingPage() {
           </Stack>
           <Divider sx={{ my: 3, borderColor: 'grey.800' }} />
           <Typography variant="body2" color="grey.600" textAlign="center">
-             {new Date().getFullYear()} رعاة  جميع الحقوق محفوظة. صنع بـ  لمربي المواشي في الوطن العربي
+             {new Date().getFullYear()} وبر وصوف  جميع الحقوق محفوظة. صُنع بـ ❤️ لمربي المواشي في الوطن العربي
           </Typography>
         </Container>
       </Box>
