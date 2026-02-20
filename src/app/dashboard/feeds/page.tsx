@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material'
 import * as XLSX from 'xlsx'
 import { generateArabicPDF } from '@/lib/pdfHelper'
+import { useAuth } from '@/lib/useAuth'
 
 const Grid = MuiGrid as any
 
@@ -54,14 +55,20 @@ interface FeedSuggestion {
   avgWeight: number
 }
 
-function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status: string; weight?: number }[], feedCategory: string): FeedSuggestion | null {
+function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status: string; weight?: number }[], feedCategory: string, farmType?: string): FeedSuggestion | null {
   if (!penGoats || penGoats.length === 0) return null
+
+  const isCamel = farmType === 'CAMEL'
 
   const now = Date.now()
   const ages = penGoats.map(g => (now - new Date(g.birthDate).getTime()) / (365.25 * 86400000))
   const avgAge = ages.reduce((a, b) => a + b, 0) / ages.length
   const weights = penGoats.filter(g => g.weight).map(g => g.weight!)
-  const avgWeight = weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : (avgAge < 0.5 ? 15 : avgAge < 1 ? 30 : avgAge < 2 ? 45 : 55)
+  // Default weight estimates: camels are much heavier than sheep/goats
+  const defaultWeight = isCamel
+    ? (avgAge < 0.5 ? 50 : avgAge < 1 ? 100 : avgAge < 2 ? 180 : avgAge < 4 ? 280 : 420)
+    : (avgAge < 0.5 ? 15 : avgAge < 1 ? 30 : avgAge < 2 ? 45 : 55)
+  const avgWeight = weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : defaultWeight
 
   let ageGroup: string
   if (avgAge < 0.25) ageGroup = 'رضيع (أقل من 3 أشهر)'
@@ -71,8 +78,8 @@ function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status
   else ageGroup = 'بالغ (أكبر من سنتين)'
 
   // Feed recommendations (kg/head/day) by category and age group
-  // Based on standard goat nutrition guidelines
-  const matrix: Record<string, Record<string, { amount: number; meals: number; note: string }>> = {
+  // Sheep/Goat norms (standard small ruminant guidelines)
+  const sheepMatrix: Record<string, Record<string, { amount: number; meals: number; note: string }>> = {
     HAY: {
       'رضيع': { amount: 0.1, meals: 3, note: 'كمية قليلة كتعويد' },
       'فطيم': { amount: 0.3, meals: 3, note: 'تدريجي مع الفطام' },
@@ -117,14 +124,65 @@ function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status
     }
   }
 
+  // Camel norms (kg/head/day) — camels are 6-10x heavier and eat proportionally more
+  const camelMatrix: Record<string, Record<string, { amount: number; meals: number; note: string }>> = {
+    HAY: {
+      'رضيع': { amount: 0.5, meals: 3, note: 'بداية تعويد' },
+      'فطيم': { amount: 2.5, meals: 3, note: 'تدريجي مع الفطام' },
+      'صغير': { amount: 5.0, meals: 2, note: 'أساسي للنمو' },
+      'شاب': { amount: 8.0, meals: 2, note: 'نسبة 2-3% من الوزن' },
+      'بالغ': { amount: 10.0, meals: 2, note: 'نسبة 2% من الوزن' }
+    },
+    GRAINS: {
+      'رضيع': { amount: 0.1, meals: 2, note: 'كمية رمزية' },
+      'فطيم': { amount: 0.5, meals: 2, note: 'لدعم النمو' },
+      'صغير': { amount: 1.0, meals: 2, note: 'تدريجي' },
+      'شاب': { amount: 2.0, meals: 2, note: 'للطاقة والنمو' },
+      'بالغ': { amount: 3.0, meals: 2, note: 'حسب النشاط' }
+    },
+    CONCENTRATE: {
+      'رضيع': { amount: 0.0, meals: 0, note: 'غير مناسب للرضّع' },
+      'فطيم': { amount: 0.3, meals: 2, note: 'كمية بسيطة' },
+      'صغير': { amount: 0.8, meals: 2, note: 'لدعم النمو' },
+      'شاب': { amount: 1.5, meals: 2, note: 'للبروتين' },
+      'بالغ': { amount: 2.0, meals: 2, note: 'للإنتاج والصحة' }
+    },
+    SUPPLEMENTS: {
+      'رضيع': { amount: 0.0, meals: 0, note: 'غير مطلوب' },
+      'فطيم': { amount: 0.1, meals: 1, note: 'فيتامينات أساسية' },
+      'صغير': { amount: 0.15, meals: 1, note: 'مكملات نمو' },
+      'شاب': { amount: 0.25, meals: 1, note: 'دعم المناعة' },
+      'بالغ': { amount: 0.3, meals: 1, note: 'صيانة عامة' }
+    },
+    MINERALS: {
+      'رضيع': { amount: 0.0, meals: 0, note: 'غير مطلوب' },
+      'فطيم': { amount: 0.05, meals: 1, note: 'كالسيوم وفوسفور' },
+      'صغير': { amount: 0.1, meals: 1, note: 'لبناء العظام' },
+      'شاب': { amount: 0.15, meals: 1, note: 'للنمو السليم' },
+      'بالغ': { amount: 0.2, meals: 1, note: 'وقائي' }
+    },
+    OTHER: {
+      'رضيع': { amount: 0.3, meals: 2, note: 'حسب النوع' },
+      'فطيم': { amount: 1.0, meals: 2, note: 'حسب النوع' },
+      'صغير': { amount: 2.0, meals: 2, note: 'حسب النوع' },
+      'شاب': { amount: 3.0, meals: 2, note: 'حسب النوع' },
+      'بالغ': { amount: 4.0, meals: 2, note: 'حسب النوع' }
+    }
+  }
+
+  const matrix = isCamel ? camelMatrix : sheepMatrix
+
   const ageKey = avgAge < 0.25 ? 'رضيع' : avgAge < 0.5 ? 'فطيم' : avgAge < 1 ? 'صغير' : avgAge < 2 ? 'شاب' : 'بالغ'
   const rec = matrix[feedCategory]?.[ageKey] || matrix['OTHER'][ageKey]
 
   // Adjust by weight if available (heavier → slightly more)
   let adjustedAmount = rec.amount
-  if (avgWeight > 60) adjustedAmount *= 1.15
-  else if (avgWeight > 40) adjustedAmount *= 1.0
-  else if (avgWeight < 20) adjustedAmount *= 0.85
+  const heavyThreshold = isCamel ? 450 : 60
+  const medThreshold = isCamel ? 250 : 40
+  const lightThreshold = isCamel ? 100 : 20
+  if (avgWeight > heavyThreshold) adjustedAmount *= 1.15
+  else if (avgWeight > medThreshold) adjustedAmount *= 1.0
+  else if (avgWeight < lightThreshold) adjustedAmount *= 0.85
 
   // Pregnant females get 20% more
   const femaleCount = penGoats.filter(g => g.gender === 'FEMALE').length
@@ -143,6 +201,7 @@ type View = 'today' | 'stock' | 'schedules'
 export default function FeedsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { farm } = useAuth()
   const isTabletOrBelow = useMediaQuery(theme.breakpoints.down('lg'))
   const categoryColors = useMemo<Record<string, string>>(() => ({
     HAY: theme.palette.warning.dark,
@@ -405,7 +464,7 @@ export default function FeedsPage() {
     const pen = pens.find(p => p.id === penId)
     const feed = feedTypes.find(f => f.id === feedTypeId)
     if (pen?.goats && pen.goats.length > 0 && feed) {
-      setAiSuggestion(suggestFeedAmount(pen.goats, feed.category))
+      setAiSuggestion(suggestFeedAmount(pen.goats, feed.category, farm?.farmType))
     } else {
       setAiSuggestion(null)
     }
