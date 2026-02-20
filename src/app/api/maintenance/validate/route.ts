@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     })
     const goatsWithoutBreed = allGoats - goatsWithBreed
     if (goatsWithoutBreed > 0) {
-      issues.push(`${goatsWithoutBreed} ماعز بدون سلالة محددة`)
+      issues.push(`${goatsWithoutBreed} حيوان بدون سلالة محددة`)
     }
 
     // 2. births بدون kidGoatId
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     })
     const birthsWithoutKid = allBirths - birthsWithKid
     if (birthsWithoutKid > 0) {
-      issues.push(`${birthsWithoutKid} سجل ولادة بدون ربط بالماعز`)
+      issues.push(`${birthsWithoutKid} سجل ولادة بدون ربط بالحيوان`)
     }
 
     // 3. breeding delivered بدون births
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       }
     })
     if (soldInPen > 0) {
-      issues.push(`${soldInPen} ماعز مباع لا يزال في حظيرة`)
+      issues.push(`${soldInPen} حيوان مباع لا يزال في حظيرة`)
     }
 
     // 6. health records بـ nextDueDate في الماضي
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     })
     const goatsWithMismatchedParents = goatsWithMotherTagOnly + goatsWithFatherTagOnly
     if (goatsWithMismatchedParents > 0) {
-      issues.push(`${goatsWithMismatchedParents} ماعز: معلومات الأبوين غير متطابقة`)
+      issues.push(`${goatsWithMismatchedParents} حيوان: معلومات الأبوين غير متطابقة`)
     }
 
     return NextResponse.json({

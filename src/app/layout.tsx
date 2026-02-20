@@ -14,7 +14,7 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   title: "نظام إدارة المواشي",
-  description: "نظام شامل لإدارة الماعز والأغنام والإبل",
+  description: "نظام شامل لإدارة الأغنام والإبل والمواشي",
   icons: {
     icon: "/favicon.svg",
   },

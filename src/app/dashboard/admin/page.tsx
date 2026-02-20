@@ -859,7 +859,7 @@ export default function AdminPage() {
             </Stack>
             {editDialog && (
               <Alert severity="info">
-                الاستخدام الحالي: {editDialog.goatsCount} ماعز، {editDialog.farmsCount} مزرعة، {editDialog.usersCount} مستخدم
+                الاستخدام الحالي: {editDialog.goatsCount} حيوان، {editDialog.farmsCount} مزرعة، {editDialog.usersCount} مستخدم
               </Alert>
             )}
           </Stack>

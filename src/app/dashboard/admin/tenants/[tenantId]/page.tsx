@@ -163,7 +163,7 @@ function GoatsView({ data }: { data: Record<string, unknown> | null }) {
             {goats.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} align="center">
-                  <Typography color="text.secondary" sx={{ py: 3 }}>لا توجد ماعز</Typography>
+                  <Typography color="text.secondary" sx={{ py: 3 }}>لا توجد حيوانات</Typography>
                 </TableCell>
               </TableRow>
             )}

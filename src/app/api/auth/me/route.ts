@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         id: f.id,
         name: f.name,
         nameAr: f.nameAr,
-        farmType: f.farmType || 'GOAT',
+        farmType: f.farmType || 'SHEEP',
         role: 'SUPER_ADMIN',
         tenantName: f.tenant?.nameAr || f.tenant?.name || '',
         tenantId: f.tenantId,
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         id: uf.farm.id,
         name: uf.farm.name,
         nameAr: uf.farm.nameAr,
-        farmType: uf.farm.farmType || 'GOAT',
+        farmType: uf.farm.farmType || 'SHEEP',
         role: uf.role,
       }))
     }
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
         name: resolvedFarm.name,
         nameAr: resolvedFarm.nameAr,
         currency: resolvedFarm.currency,
-        farmType: resolvedFarm.farmType || 'GOAT',
+        farmType: resolvedFarm.farmType || 'SHEEP',
       } : null,
       farms: farmsData,
       permissions

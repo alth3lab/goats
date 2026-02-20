@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
       })
 
       // 2. Create default farm
-      const validFarmTypes = ['GOAT', 'SHEEP', 'CAMEL', 'MIXED']
-      const resolvedFarmType = validFarmTypes.includes(farmType) ? farmType : 'GOAT'
+      const validFarmTypes = ['SHEEP', 'CAMEL', 'MIXED']
+      const resolvedFarmType = validFarmTypes.includes(farmType) ? farmType : 'SHEEP'
       const farm = await tx.farm.create({
         data: {
           tenantId: tenant.id,

@@ -98,7 +98,7 @@ const plans = [
     price: -1,
     color: '#9c27b0',
     icon: <BusinessIcon />,
-    features: ['مزارع غير محدودة', 'ماعز غير محدود', 'مستخدمين غير محدودين', 'دعم مخصص', 'تكامل كامل'],
+    features: ['مزارع غير محدودة', 'رؤوس غير محدودة', 'مستخدمين غير محدودين', 'دعم مخصص', 'تكامل كامل'],
   },
 ]
 
@@ -161,7 +161,7 @@ export default function LandingPage() {
           كل ما تحتاجه لإدارة مزرعتك
         </Typography>
         <Typography variant="body1" color="text.secondary" textAlign="center" mb={6}>
-          أدوات متكاملة صممت خصيصاً لمربي الماعز والأغنام والإبل
+          أدوات متكاملة صممت خصيصاً لمربي الأغنام والإبل والمواشي
         </Typography>
         <Grid container spacing={4}>
           {features.map((f, i) => (
