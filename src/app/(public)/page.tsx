@@ -36,7 +36,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite'
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
 import CloudDoneIcon from '@mui/icons-material/CloudDone'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration'
 import SettingsIcon from '@mui/icons-material/Settings'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
@@ -91,7 +91,7 @@ export default function LandingPage() {
   const pc = theme.palette.primary.main
 
   return (
-    <Box sx={{ direction: 'rtl' }}>
+    <Box>
 
       {/* Navbar */}
       <AppBar position="sticky" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider', backdropFilter: 'blur(12px)', bgcolor: alpha('#fff', 0.92) }}>
@@ -130,7 +130,7 @@ export default function LandingPage() {
             من التكاثر والصحة إلى الأعلاف والمبيعات  كل ما تحتاجه في مكان واحد مع دعم كامل للغة العربية.
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center" mb={8}>
-            <Button component={Link} href="/register" variant="contained" size="large" endIcon={<ArrowForwardIcon />} sx={{ px: 5, py: 1.8, fontSize: '1.05rem', fontWeight: 700, borderRadius: 3, boxShadow: `0 8px 24px ${alpha(pc, 0.35)}` }}>
+            <Button component={Link} href="/register" variant="contained" size="large" endIcon={<ArrowBackIcon />} sx={{ px: 5, py: 1.8, fontSize: '1.05rem', fontWeight: 700, borderRadius: 3, boxShadow: `0 8px 24px ${alpha(pc, 0.35)}` }}>
               ابدأ مجانا الآن
             </Button>
             <Button href="#features" variant="outlined" size="large" sx={{ px: 4, py: 1.8, fontSize: '1.05rem', fontWeight: 600, borderRadius: 3 }}>
@@ -287,7 +287,7 @@ export default function LandingPage() {
           <Typography sx={{ fontSize: 52, mb: 1 }}></Typography>
           <Typography variant="h4" fontWeight={800} mb={1.5}>جاهز لتحويل مزرعتك</Typography>
           <Typography variant="body1" sx={{ opacity: 0.88, mb: 4, lineHeight: 1.8 }}>انضم الآن وابدأ مجانا  لا بطاقة ائتمان مطلوبة</Typography>
-          <Button component={Link} href="/register" variant="contained" size="large" endIcon={<ArrowForwardIcon />} sx={{ bgcolor: '#fff', color: pc, fontWeight: 800, px: 5, py: 1.8, fontSize: '1.05rem', borderRadius: 3, '&:hover': { bgcolor: alpha('#fff', 0.9) }, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+          <Button component={Link} href="/register" variant="contained" size="large" endIcon={<ArrowBackIcon />} sx={{ bgcolor: '#fff', color: pc, fontWeight: 800, px: 5, py: 1.8, fontSize: '1.05rem', borderRadius: 3, '&:hover': { bgcolor: alpha('#fff', 0.9) }, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
             أنشئ حسابك الآن
           </Button>
         </Container>
