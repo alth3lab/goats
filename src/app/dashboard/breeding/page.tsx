@@ -61,11 +61,7 @@ import { EntityHistory } from '@/components/EntityHistory'
 import { generateArabicPDF } from '@/lib/pdfHelper'
 import * as XLSX from 'xlsx'
 import { useNotifier } from '@/components/AppNotifier'
-
-interface BirthRecord {
-  id: string
-  kidTagId: string
-  kidGoatId?: string
+  import { useAuth } from '@/lib/useAuth'
   gender: 'MALE' | 'FEMALE'
   weight?: number
   status: 'ALIVE' | 'DEAD' | 'STILLBORN'
@@ -106,7 +102,12 @@ const statusLabels: Record<string, string> = {
 export default function BreedingPage() {
   const theme = useTheme()
   const { notify } = useNotifier()
+  const { farm } = useAuth()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
+  // مدة الحمل: الإبل ~365 يوم (12 شهر)، الأغنام ~150 يوم (5 أشهر)
+  const gestationDays = farm?.farmType === 'CAMEL' ? 365 : 150
+  const gestationLabel = farm?.farmType === 'CAMEL' ? '12 شهراً' : '5 أشهر'
   const [records, setRecords] = useState<BreedingRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -156,11 +157,11 @@ export default function BreedingPage() {
     ]
   })
 
-  // حساب تاريخ الولادة المتوقع (5 أشهر = 150 يوم من تاريخ التلقيح)
-  const calculateDueDate = (matingDate: string): string => {
-    if (!matingDate) return ''
-    const date = new Date(matingDate)
-    date.setDate(date.getDate() + 150) // 5 أشهر تقريباً
+// حساب تاريخ الولادة المتوقع (الإبل: ~390 يوم / الأغنام: ~150 يوم)
+    const calculateDueDate = (matingDate: string): string => {
+      if (!matingDate) return ''
+      const date = new Date(matingDate)
+      date.setDate(date.getDate() + gestationDays)
     return date.toISOString().split('T')[0]
   }
 
@@ -1219,14 +1220,14 @@ export default function BreedingPage() {
               </Select>
             </FormControl>
             <TextField
-              label="تاريخ الولادة المتوقع (يُحسب تلقائياً بعد 5 أشهر)"
+              label={`تاريخ الولادة المتوقع (يُحسب تلقائياً بعد ${gestationLabel})`}
               type="date"
               InputLabelProps={{ shrink: true }}
               value={form.dueDate}
               InputProps={{
                 readOnly: true,
               }}
-              helperText="يتم الحساب تلقائياً بعد إدخال تاريخ التلقيح"
+              helperText={`يتم الحساب تلقائياً بعد إدخال تاريخ التلقيح (مدة الحمل: ${gestationDays} يوم)`}
               disabled
             />
             <TextField
