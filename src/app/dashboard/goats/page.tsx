@@ -65,6 +65,7 @@ import * as XLSX from 'xlsx'
 import { generateArabicPDF } from '@/lib/pdfHelper'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
+import FamilyTree from '@/components/FamilyTree'
 import { useAuth } from '@/lib/useAuth'
 
 const farmTypePageLabels: Record<string, { title: string; animal: string; animalPlural: string }> = {
@@ -107,17 +108,7 @@ interface Goat {
   dueDate?: string | null
 }
 
-interface FamilyMember {
-  id: string
-  tagId: string
-  name?: string
-  gender: 'MALE' | 'FEMALE'
-  birthDate: string
-  status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
-  breed: { nameAr: string }
-  mother?: FamilyMember | null
-  father?: FamilyMember | null
-}
+
 
 const maleIconColor = 'info.main'
 const femaleIconColor = '#EC4899'
@@ -153,50 +144,7 @@ const formatDaysRemaining = (days: number | null): string => {
   return `${weeks} أسبوع متبقي`
 }
 
-const GoatNode = ({ member, label, color = "default" }: { member?: FamilyMember | null | Goat, label: string, color?: "default" | "primary" | "secondary" }) => (
-  <Paper 
-    elevation={member ? 2 : 0} 
-    sx={{ 
-      p: 1.5, 
-      textAlign: 'center', 
-      minWidth: 120, 
-      bgcolor: member ? (color === "primary" ? 'primary.light' : color === "secondary" ? 'secondary.light' : 'background.paper') : 'action.hover',
-      border: member ? 1 : 1,
-      borderColor: member ? 'divider' : 'transparent',
-      borderStyle: member ? 'solid' : 'dashed'
-    }}
-  >
-    <Typography variant="caption" display="block" color="text.secondary" gutterBottom>
-      {label}
-    </Typography>
-    {member ? (
-      <>
-        <Typography variant="body2" fontWeight="bold">
-          {member.tagId}
-        </Typography>
-        <Typography variant="caption" display="block" noWrap sx={{ maxWidth: 100, mx: 'auto' }}>
-          {member.name || '-'}
-        </Typography>
-        <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-          {member.breed?.nameAr}
-        </Typography>
-      </>
-    ) : (
-      <Typography variant="caption" color="text.disabled">
-        غير معروف
-      </Typography>
-    )}
-  </Paper>
-)
 
-
-interface FamilyResponse {
-  goat: Goat
-  mother?: FamilyMember | null
-  father?: FamilyMember | null
-  siblings: FamilyMember[]
-  offspring: FamilyMember[]
-}
 
 export default function GoatsPage() {
   const theme = useTheme()
@@ -213,9 +161,6 @@ export default function GoatsPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedGoat, setSelectedGoat] = useState<Goat | null>(null)
-  const [familyData, setFamilyData] = useState<FamilyResponse | null>(null)
-  const [familyLoading, setFamilyLoading] = useState(false)
-  const [familyError, setFamilyError] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [deathDialogOpen, setDeathDialogOpen] = useState(false)
   const [deathForm, setDeathForm] = useState({ date: new Date().toISOString().split('T')[0], notes: '' })
@@ -470,27 +415,9 @@ export default function GoatsPage() {
     })
   }
 
-  const handleView = async (goat: Goat) => {
+  const handleView = (goat: Goat) => {
     setSelectedGoat(goat)
     setViewDialogOpen(true)
-    setFamilyLoading(true)
-    setFamilyData(null)
-    setFamilyError(null)
-    try {
-      const res = await fetch(`/api/goats/${goat.id}/family`)
-      const data = await res.json()
-      if (!res.ok) {
-        setFamilyError(data?.error || 'تعذر تحميل بيانات العائلة')
-        setFamilyData(null)
-        return
-      }
-      setFamilyData(data)
-    } catch {
-      setFamilyError('تعذر الاتصال بخدمة العائلة')
-      setFamilyData(null)
-    } finally {
-      setFamilyLoading(false)
-    }
   }
 
   const handleAddOffspring = async (mother: Goat) => {
@@ -1885,8 +1812,6 @@ export default function GoatsPage() {
         open={viewDialogOpen}
         onClose={() => {
           setViewDialogOpen(false)
-          setFamilyData(null)
-          setFamilyError(null)
         }}
         maxWidth="md"
         fullWidth
@@ -1929,99 +1854,38 @@ export default function GoatsPage() {
               </Paper>
 
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>العائلة</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="h6">شجرة الأنساب</Typography>
+                  <Stack direction="row" spacing={1}>
+                    {selectedGoat.gender === 'FEMALE' && (
+                      <Button
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={() => selectedGoat && handleAddOffspring(selectedGoat)}
+                      >
+                        إضافة ابن
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => window.open(`/dashboard/goats/family?id=${selectedGoat.id}`, '_blank')}
+                    >
+                      عرض الشجرة كاملة
+                    </Button>
+                  </Stack>
+                </Stack>
                 <Divider sx={{ mb: 2 }} />
-                {familyLoading ? (
-                  <Stack alignItems="center" py={2}>
-                    <CircularProgress size={28} />
-                    <Typography variant="body2" sx={{ mt: 1 }}>جاري تحميل بيانات العائلة...</Typography>
-                  </Stack>
-                ) : familyError ? (
-                  <Typography variant="body2" color="error">{familyError}</Typography>
-                ) : familyData ? (
-                  <Stack spacing={2}>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', overflowX: 'auto' }}>
-                      <Stack spacing={3} alignItems="center" minWidth={500}>
-                        {/* الأجداد */}
-                        <Stack direction="row" spacing={4} justifyContent="center">
-                          <Stack spacing={1} alignItems="center">
-                            <Typography variant="caption" color="text.secondary">أهل الأب</Typography>
-                            <Stack direction="row" spacing={1}>
-                              <GoatNode member={familyData.father?.father} label="أب الأب" />
-                              <GoatNode member={familyData.father?.mother} label="أم الأب" />
-                            </Stack>
-                          </Stack>
-                          <Stack spacing={1} alignItems="center">
-                            <Typography variant="caption" color="text.secondary">أهل الأم</Typography>
-                            <Stack direction="row" spacing={1}>
-                              <GoatNode member={familyData.mother?.father} label="أب الأم" />
-                              <GoatNode member={familyData.mother?.mother} label="أم الأم" />
-                            </Stack>
-                          </Stack>
-                        </Stack>
-
-                        {/* الآباء */}
-                        <Stack direction="row" spacing={12} position="relative">
-                          <GoatNode member={familyData.father} label="الأب" color="secondary" />
-                          <GoatNode member={familyData.mother} label="الأم" color="secondary" />
-                        </Stack>
-
-                        {/* الماعز الحالي */}
-                        <GoatNode member={selectedGoat} label="الحيوان المختار" color="primary" />
-                      </Stack>
-                    </Paper>
-                    
-                    <Divider />
-
-                    <Stack spacing={1}>
-                      <Typography fontWeight="bold">الإخوة (نفس الأم ونفس الولادة)</Typography>
-                      {familyData.siblings.length > 0 ? (
-                        <Stack direction="row" flexWrap="wrap" gap={1}>
-                          {familyData.siblings.map((sibling) => (
-                            <Chip
-                              key={sibling.id}
-                              label={`${sibling.tagId} - ${sibling.breed.nameAr}`}
-                              size="small"
-                            />
-                          ))}
-                        </Stack>
-                      ) : (
-                        <Typography variant="body2">لا يوجد</Typography>
-                      )}
-                    </Stack>
-
-                    <Stack spacing={1}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography fontWeight="bold">الأبناء (من الأم)</Typography>
-                        <Button 
-                          size="small" 
-                          startIcon={<AddIcon />}
-                          onClick={() => selectedGoat && handleAddOffspring(selectedGoat)}
-                          disabled={selectedGoat?.gender !== 'FEMALE'}
-                        >
-                          إضافة ابن
-                        </Button>
-                      </Stack>
-                      {familyData.offspring.length > 0 ? (
-                        <Stack direction="row" flexWrap="wrap" gap={1}>
-                          {familyData.offspring.map((kid) => (
-                            <Chip
-                              key={kid.id}
-                              label={`${kid.tagId} - ${kid.breed.nameAr}`}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                            />
-                          ))}
-                        </Stack>
-                      ) : (
-                        <Typography variant="body2">لا يوجد</Typography>
-                      )}
-                    </Stack>
-                  </Stack>
-                ) : (
-                  <Typography variant="body2">تعذر تحميل بيانات العائلة</Typography>
-                )}
+                <FamilyTree
+                  goatId={selectedGoat.id}
+                  compact
+                  onNavigate={(id) => {
+                    const g = goats.find(g => g.id === id)
+                    if (g) {
+                      setSelectedGoat(g)
+                    }
+                  }}
+                />
               </Paper>
 
               <Paper sx={{ p: 2 }}>
