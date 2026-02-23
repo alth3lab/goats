@@ -15,9 +15,13 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams
     const format = searchParams.get('format')
+    const ownerId = searchParams.get('ownerId')
+
+    const where: Record<string, unknown> = {}
+    if (ownerId) where.ownerId = ownerId === 'none' ? null : ownerId
 
     if (format === 'csv') {
-      const expenses = await prisma.expense.findMany({ orderBy: { date: 'desc' } })
+      const expenses = await prisma.expense.findMany({ where, orderBy: { date: 'desc' }, include: { owner: { select: { id: true, name: true } } } })
       const header = ['date', 'category', 'amount', 'description', 'notes']
       const rows = expenses.map((expense) => [
         new Date(expense.date).toISOString().slice(0, 10),
@@ -40,8 +44,8 @@ export async function GET(request: NextRequest) {
     const usePagination = searchParams.has('page')
     const { skip, take, page, limit } = parsePagination(searchParams)
     const [expenses, total] = await Promise.all([
-      prisma.expense.findMany({ orderBy: { date: 'desc' }, ...(usePagination ? { skip, take } : {}) }),
-      usePagination ? prisma.expense.count() : Promise.resolve(0)
+      prisma.expense.findMany({ where, orderBy: { date: 'desc' }, include: { owner: { select: { id: true, name: true } } }, ...(usePagination ? { skip, take } : {}) }),
+      usePagination ? prisma.expense.count({ where }) : Promise.resolve(0)
     ])
     if (usePagination) {
       return NextResponse.json(paginatedResponse(expenses, total, page, limit))

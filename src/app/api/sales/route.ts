@@ -13,7 +13,12 @@ export async function GET(request: NextRequest) {
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const format = request.nextUrl.searchParams.get('format')
+    const ownerId = request.nextUrl.searchParams.get('ownerId')
+    const salesWhere: Record<string, unknown> = {}
+    if (ownerId) salesWhere.ownerId = ownerId === 'none' ? null : ownerId
+
     const sales = await prisma.sale.findMany({
+      where: salesWhere,
       include: { 
         goat: {
           include: {
@@ -21,7 +26,8 @@ export async function GET(request: NextRequest) {
               include: {
                 type: true
               }
-            }
+            },
+            owner: { select: { id: true, name: true } }
           }
         },
         payments: {
@@ -152,9 +158,20 @@ export async function POST(request: NextRequest) {
       }
 
       // 1. إنشاء سجل البيع مبدئياً بحالة معلق
+      // Auto-resolve ownerId from goat if not provided
+      let resolvedOwnerId = body.ownerId || null
+      if (!resolvedOwnerId && body.goatId) {
+        const goatOwner = await tx.goat.findUnique({
+          where: { id: body.goatId },
+          select: { ownerId: true }
+        })
+        resolvedOwnerId = goatOwner?.ownerId || null
+      }
+
       const newSale = await tx.sale.create({
         data: {
           goatId: body.goatId || null,
+          ownerId: resolvedOwnerId,
           date: new Date(body.date),
           buyerName: body.buyerName,
           buyerPhone: body.buyerPhone,

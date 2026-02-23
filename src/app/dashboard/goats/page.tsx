@@ -83,6 +83,8 @@ interface Goat {
   status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
   motherTagId?: string | null
   fatherTagId?: string | null
+  ownerId?: string | null
+  owner?: { id: string; name: string; phone?: string } | null
   notes?: string | null
   pen?: { nameAr: string } | null
   breed: {
@@ -231,8 +233,10 @@ export default function GoatsPage() {
   const [filterBreed, setFilterBreed] = useState('ALL')
   const [filterPen, setFilterPen] = useState('ALL')
   const [filterPregnant, setFilterPregnant] = useState(false)
+  const [filterOwner, setFilterOwner] = useState('ALL')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([]) 
   const [form, setForm] = useState({
     tagId: '',
     name: '',
@@ -244,18 +248,20 @@ export default function GoatsPage() {
     status: 'ACTIVE',
     motherTagId: '',
     fatherTagId: '',
-    penId: ''
+    penId: '',
+    ownerId: ''
   })
 
   useEffect(() => {
     loadGoats()
     loadTypes()
     loadPens()
+    loadOwners()
   }, [])
 
   useEffect(() => {
     setPage(0)
-  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant])
+  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant, filterOwner])
 
   // Calculate statistics
   const activeGoats = goats.filter(g => ['ACTIVE', 'QUARANTINE'].includes(g.status))
@@ -408,6 +414,18 @@ export default function GoatsPage() {
     }
   }
 
+  const loadOwners = async () => {
+    try {
+      const res = await fetch('/api/owners?active=true')
+      if (res.ok) {
+        const data = await res.json()
+        setOwners(data.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })))
+      }
+    } catch {
+      setOwners([])
+    }
+  }
+
   const handleOpen = () => {
     setEditMode(false)
     setSelectedGoat(null) // Clear any selected goat
@@ -422,7 +440,8 @@ export default function GoatsPage() {
       status: 'ACTIVE', 
       motherTagId: '', 
       fatherTagId: '',
-      penId: ''
+      penId: '',
+      ownerId: ''
     })
     setOpen(true)
     loadPens()
@@ -446,7 +465,8 @@ export default function GoatsPage() {
       status: 'ACTIVE',
       motherTagId: '',
       fatherTagId: '',
-      penId: ''
+      penId: '',
+      ownerId: ''
     })
   }
 
@@ -495,7 +515,8 @@ export default function GoatsPage() {
       status: 'ACTIVE',
       motherTagId: mother.tagId,
       fatherTagId: '',
-      penId: (mother as any).penId || ''
+      penId: (mother as any).penId || '',
+      ownerId: (mother as any).ownerId || ''
     })
     setOpen(true)
   }
@@ -522,7 +543,8 @@ export default function GoatsPage() {
       status: goat.status,
       motherTagId: goat.motherTagId || '',
       fatherTagId: goat.fatherTagId || '',
-      penId: (goat as any).penId || ''
+      penId: (goat as any).penId || '',
+      ownerId: goat.ownerId || ''
     })
     setOpen(true)
   }
@@ -556,7 +578,8 @@ export default function GoatsPage() {
       breedId: form.breedId,
       weight: form.weight ? Number(form.weight) : null,
       status: form.status,
-      penId: form.penId || null
+      penId: form.penId || null,
+      ownerId: form.ownerId || null
     }
 
     const url = editMode && selectedGoat ? `/api/goats/${selectedGoat.id}` : '/api/goats'
@@ -587,7 +610,7 @@ export default function GoatsPage() {
       }
     }
 
-    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '', penId: '' })
+    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '', penId: '', ownerId: '' })
     setOpen(false)
     setEditMode(false)
     setSelectedGoat(null)
@@ -624,11 +647,12 @@ export default function GoatsPage() {
     const matchesType = filterType === 'ALL' || goat.breed.type.id === filterType
     const matchesBreed = filterBreed === 'ALL' || goat.breed.id === filterBreed
     const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
+    const matchesOwner = filterOwner === 'ALL' || (filterOwner === 'NONE' ? !(goat as any).ownerId : (goat as any).ownerId === filterOwner)
     
     // Pregnancy filter
     const matchesPregnancy = !filterPregnant || (goat.gender === 'FEMALE' && goat.pregnancyStatus)
 
-    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesPregnancy
+    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesOwner && matchesPregnancy
   }).sort((a, b) => {
     // ترتيب تنازلي حسب تاريخ الولادة المتوقع (الماعز الحوامل أولاً)
     if (a.dueDate && b.dueDate) {
@@ -1195,6 +1219,22 @@ export default function GoatsPage() {
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>المالك</InputLabel>
+                  <Select
+                    value={filterOwner}
+                    label="المالك"
+                    onChange={(e) => setFilterOwner(e.target.value)}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    <MenuItem value="NONE">بدون مالك</MenuItem>
+                    {owners.map(owner => (
+                      <MenuItem key={owner.id} value={owner.id}>{owner.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
           )}
         </Box>
@@ -1486,6 +1526,7 @@ export default function GoatsPage() {
               <TableCell><strong>الحمل</strong></TableCell>
               <TableCell><strong>العمر</strong></TableCell>
               <TableCell><strong>الحظيرة</strong></TableCell>
+              <TableCell><strong>المالك</strong></TableCell>
               <TableCell><strong>الحالة</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
@@ -1493,11 +1534,11 @@ export default function GoatsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">جاري التحميل...</TableCell>
+                <TableCell colSpan={10} align="center">جاري التحميل...</TableCell>
               </TableRow>
             ) : filteredGoats.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">لا توجد بيانات</TableCell>
+                <TableCell colSpan={10} align="center">لا توجد بيانات</TableCell>
               </TableRow>
             ) : (
               paginatedGoats.map((goat) => (
@@ -1572,6 +1613,11 @@ export default function GoatsPage() {
                   <TableCell>
                     {goat.pen ? (
                       <Chip label={goat.pen.nameAr} size="small" variant="outlined" />
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {goat.owner ? (
+                      <Chip label={goat.owner.name} size="small" variant="outlined" color="secondary" />
                     ) : '-'}
                   </TableCell>
                   <TableCell>
@@ -1792,6 +1838,23 @@ export default function GoatsPage() {
                 {pens.map((pen) => (
                   <MenuItem key={pen.id} value={pen.id}>
                     {pen.nameAr}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <InputLabel>المالك</InputLabel>
+              <Select
+                value={form.ownerId}
+                label="المالك"
+                onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+              >
+                <MenuItem value="">
+                  <em>غير محدد</em>
+                </MenuItem>
+                {owners.map((owner) => (
+                  <MenuItem key={owner.id} value={owner.id}>
+                    {owner.name}
                   </MenuItem>
                 ))}
               </Select>

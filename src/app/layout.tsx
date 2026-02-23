@@ -17,10 +17,7 @@ export const metadata: Metadata = {
   description: "وبر وصوف: نظام سحابي شامل لإدارة مزارع الإبل والأغنام والمواشي في الوطن العربي",
   icons: {
     icon: "/favicon.svg",
-    apple: "/favicon.svg",
-    shortcut: "/favicon.svg",
   },
-  themeColor: "#4F7A57",
 };
 
 export default function RootLayout({

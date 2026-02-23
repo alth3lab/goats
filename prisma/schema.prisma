@@ -52,6 +52,7 @@ model Farm {
   userFarms            UserFarm[]
   pens                 Pen[]
   goats                Goat[]
+  owners               Owner[]
   healthRecords        HealthRecord[]
   breedings            Breeding[]
   sales                Sale[]
@@ -213,6 +214,30 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 }
 
+// ==================== Owners (Multi-owner per farm) ====================
+
+model Owner {
+  id        String   @id @default(uuid())
+  tenantId  String   @default("")
+  farmId    String   @default("")
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  idNumber  String?
+  address   String?
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  goats    Goat[]
+  expenses Expense[]
+
+  @@index([tenantId])
+  @@index([farmId])
+  @@index([isActive])
+}
+
 // ==================== Types & Breeds ====================
 
 model GoatType {
@@ -300,10 +325,12 @@ model Goat {
   originFarm    String?
   sireLineage   String?    @db.Text
   damLineage    String?    @db.Text
+  ownerId       String?
   notes         String?    @db.Text
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  owner        Owner?  @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   pen          Pen?    @relation(fields: [penId], references: [id], onDelete: SetNull)
   mother       Goat?   @relation("GoatMother", fields: [motherId], references: [id], onDelete: SetNull)
   father       Goat?   @relation("GoatFather", fields: [fatherId], references: [id], onDelete: SetNull)
@@ -326,6 +353,7 @@ model Goat {
   @@index([motherId])
   @@index([fatherId])
   @@index([birthId])
+  @@index([ownerId])
 }
 
 // ==================== Health ====================
@@ -463,6 +491,7 @@ model Sale {
   farm          Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
   goatId        String?
   goat          Goat?         @relation(fields: [goatId], references: [id], onDelete: SetNull)
+  ownerId       String?
   date          DateTime
   buyerName     String
   buyerPhone    String?
@@ -476,6 +505,7 @@ model Sale {
   @@index([tenantId])
   @@index([farmId])
   @@index([goatId])
+  @@index([ownerId])
   @@index([date])
 }
 
@@ -503,6 +533,8 @@ model Expense {
   tenantId      String          @default("")
   farmId        String          @default("")
   farm          Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  ownerId       String?
+  owner         Owner?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   date          DateTime
   category      ExpenseCategory
   description   String
@@ -514,6 +546,7 @@ model Expense {
 
   @@index([tenantId])
   @@index([farmId])
+  @@index([ownerId])
   @@index([date])
   @@index([category])
 }

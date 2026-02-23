@@ -9,6 +9,7 @@ export const menuPermissions: Record<string, string | undefined> = {
   '/dashboard/types': 'view_types',
   '/dashboard/users': '__owner_admin__',
   '/dashboard/expenses': 'view_expenses',
+  '/dashboard/owners': 'view_goats',
   '/dashboard/reports': 'view_reports',
   '/dashboard/activities': 'view_activities',
   '/dashboard/search': 'view_search',

@@ -92,6 +92,7 @@ const getMenuGroups = (farmType?: string) => {
   {
     title: 'الموارد والمالية',
     items: [
+      { text: 'الملاك', icon: <UsersIcon />, href: '/dashboard/owners' },
       { text: 'المخزون', icon: <InventoryIcon />, href: '/dashboard/inventory' },
       { text: 'الأعلاف', icon: <FeedsIcon />, href: '/dashboard/feeds' },
       { text: 'المبيعات', icon: <SalesIcon />, href: '/dashboard/sales' },

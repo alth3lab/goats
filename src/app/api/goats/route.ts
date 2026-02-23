@@ -17,8 +17,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const format = searchParams.get('format')
+    const ownerId = searchParams.get('ownerId')
 
-    const where = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' | 'EXTERNAL' } : { status: { not: 'EXTERNAL' as const } }
+    const where: Record<string, unknown> = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' | 'EXTERNAL' } : { status: { not: 'EXTERNAL' as const } }
+    if (ownerId) where.ownerId = ownerId === 'none' ? null : ownerId
 
     // CSV export returns all data without pagination
     if (format === 'csv') {
@@ -64,6 +66,7 @@ export async function GET(request: NextRequest) {
         include: {
           breed: { include: { type: true } },
           pen: true,
+          owner: { select: { id: true, name: true, phone: true } },
           healthRecords: { take: 5, orderBy: { date: 'desc' } },
           breedingAsMother: {
             where: { pregnancyStatus: 'PREGNANT' },

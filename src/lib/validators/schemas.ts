@@ -24,6 +24,7 @@ export const createGoatSchema = z.object({
   originFarm: z.string().optional().nullable(),
   sireLineage: z.string().optional().nullable(),
   damLineage: z.string().optional().nullable(),
+  ownerId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 
@@ -37,6 +38,7 @@ export const createExpenseSchema = z.object({
   description: z.string().min(1, 'الوصف مطلوب'),
   amount: z.number().positive('المبلغ يجب أن يكون موجب'),
   paymentMethod: z.string().optional().nullable(),
+  ownerId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 

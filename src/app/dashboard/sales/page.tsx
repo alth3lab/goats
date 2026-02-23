@@ -72,6 +72,10 @@ interface Sale {
         nameAr: string
       }
     }
+    owner?: {
+      id: string
+      name: string
+    } | null
   }
   date: string
   buyerName: string
@@ -82,6 +86,7 @@ interface Sale {
   payments: Payment[]
   totalPaid: number
   remaining: number
+  ownerId?: string | null
 }
 
 interface Stats {
@@ -118,6 +123,8 @@ export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [goats, setGoats] = useState<Array<{ id: string; tagId: string }>>([])
+  const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([])
+  const [filterOwner, setFilterOwner] = useState('ALL')
   const [form, setForm] = useState({
     goatId: '',
     date: '',
@@ -153,11 +160,12 @@ export default function SalesPage() {
   useEffect(() => {
     loadSales()
     loadStats()
+    loadOwners()
   }, [])
 
   useEffect(() => {
     filterSales()
-  }, [sales, searchTerm, filterStatus])
+  }, [sales, searchTerm, filterStatus, filterOwner])
 
   const loadSales = async () => {
     try {
@@ -190,6 +198,18 @@ export default function SalesPage() {
     }
   }
 
+  const loadOwners = async () => {
+    try {
+      const res = await fetch('/api/owners?active=true')
+      if (res.ok) {
+        const data = await res.json()
+        setOwners(data.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })))
+      }
+    } catch {
+      setOwners([])
+    }
+  }
+
   const filterSales = () => {
     let filtered = sales
 
@@ -203,6 +223,14 @@ export default function SalesPage() {
 
     if (filterStatus !== 'ALL') {
       filtered = filtered.filter(s => s.paymentStatus === filterStatus)
+    }
+
+    if (filterOwner !== 'ALL') {
+      if (filterOwner === 'NONE') {
+        filtered = filtered.filter(s => !s.goat?.owner)
+      } else {
+        filtered = filtered.filter(s => s.goat?.owner?.id === filterOwner)
+      }
     }
 
     setFilteredSales(filtered)
@@ -635,6 +663,20 @@ export default function SalesPage() {
               <MenuItem value="PAID">مدفوع</MenuItem>
             </Select>
           </FormControl>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 180 } }}>
+            <InputLabel>المالك</InputLabel>
+            <Select
+              value={filterOwner}
+              label="المالك"
+              onChange={(e) => setFilterOwner(e.target.value)}
+            >
+              <MenuItem value="ALL">الكل</MenuItem>
+              <MenuItem value="NONE">بدون مالك</MenuItem>
+              {owners.map(o => (
+                <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Stack>
       </Paper>
 
@@ -768,14 +810,15 @@ export default function SalesPage() {
               <TableCell><strong>المدفوع</strong></TableCell>
               <TableCell><strong>المتبقي</strong></TableCell>
               <TableCell><strong>حالة الدفع</strong></TableCell>
+              <TableCell><strong>المالك</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={9} align="center">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} align="center">جاري التحميل...</TableCell></TableRow>
             ) : filteredSales.length === 0 ? (
-              <TableRow><TableCell colSpan={9} align="center">لا توجد بيانات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} align="center">لا توجد بيانات</TableCell></TableRow>
             ) : (
               filteredSales.map(s => (
                 <TableRow key={s.id} hover>
@@ -805,6 +848,9 @@ export default function SalesPage() {
                       color={getStatusColor(s.paymentStatus)} 
                       size="small" 
                     />
+                  </TableCell>
+                  <TableCell>
+                    {s.goat?.owner ? <Chip label={s.goat.owner.name} size="small" variant="outlined" color="primary" /> : '-'}
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
