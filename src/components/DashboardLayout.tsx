@@ -298,7 +298,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           width: isDesktop ? `calc(100% - ${drawerWidth}px)` : '100%',
           ml: isDesktop ? `${drawerWidth}px` : 0,
-          zIndex: (theme) => theme.zIndex.modal + 200,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
           bgcolor: 'background.paper',
           color: 'text.primary',
           boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
@@ -397,20 +397,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           }}
           sx={{
             display: { xs: 'block', lg: 'none' },
-            zIndex: (t) => t.zIndex.modal + 50,
             '& .MuiDrawer-paper': {
               width: { xs: '88vw', sm: '72vw', md: '62vw' },
               maxWidth: 360,
               boxSizing: 'border-box',
               position: 'fixed',
-              top: 0,
-              height: '100dvh',
-              paddingTop: 'env(safe-area-inset-top)',
+              top: { xs: 'calc(88px + env(safe-area-inset-top))', sm: '64px' },
+              height: { xs: 'calc(100dvh - 88px - env(safe-area-inset-top))', sm: 'calc(100dvh - 64px)' },
               WebkitOverflowScrolling: 'touch',
-              zIndex: (t) => t.zIndex.modal + 51
             },
             '& .MuiBackdrop-root': {
-              zIndex: (t) => t.zIndex.modal + 49,
+              top: { xs: 'calc(88px + env(safe-area-inset-top))', sm: '64px' },
               backgroundColor: (t) => alpha(t.palette.common.black, 0.35)
             }
           }}
