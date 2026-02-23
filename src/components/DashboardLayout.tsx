@@ -126,11 +126,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, can, loading: authLoading, farm, farms, switchFarm, switching } = useAuth()
   const [farmSearch, setFarmSearch] = useState('')
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
   const drawerWidth = collapsed ? collapsedDrawerWidth : expandedDrawerWidth
-  const mobileAppBarHeight = '88px'
-  const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
 
   const menuGroups = getMenuGroups(farm?.farmType)
   const labels = farmTypeLabels[farm?.farmType || 'SHEEP'] || farmTypeLabels.SHEEP
@@ -313,9 +310,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           sx={{
             gap: 1,
             alignItems: 'center',
-            flexWrap: { xs: 'wrap', sm: 'nowrap' },
-            py: { xs: 0.75, sm: 0 },
-            minHeight: { xs: mobileAppBarHeight, sm: 64 }
+            flexWrap: 'nowrap',
+            minHeight: 64
           }}
         >
           <IconButton
@@ -323,10 +319,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ 
-              display: { xs: 'inline-flex', sm: 'none' },
+              display: { xs: 'inline-flex', lg: 'none' },
               ml: 1,
-              position: 'relative',
-              zIndex: 1,
+              flexShrink: 0,
               bgcolor: 'background.paper',
               border: '1px solid',
               borderColor: 'divider'
@@ -335,26 +330,35 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <MenuIcon />
           </IconButton>
           <Typography
-            variant={isMobile ? 'subtitle1' : 'h6'}
-            noWrap={!isMobile}
+            variant="subtitle1"
+            noWrap
             component="div"
             sx={{
-              flexGrow: { xs: 1, sm: 0 },
-              minWidth: 0,
-              maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
+              flexShrink: 0,
+              fontWeight: 'bold',
+              display: { xs: 'block', lg: 'none' }
             }}
           >
-              {isMobile ? 'وبر وصوف' : `وبر وصوف — ${labels.herd}`}
+            وبر وصوف
+          </Typography>
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{
+              flexShrink: 0,
+              fontWeight: 'bold',
+              display: { xs: 'none', lg: 'block' }
+            }}
+          >
+            {`وبر وصوف — ${labels.herd}`}
           </Typography>
           {(authLoading || can('view_search')) && (
             <Box
               sx={{
                 flexGrow: 1,
                 display: 'flex',
-                justifyContent: 'flex-end',
-                width: { xs: '100%', sm: 'auto' },
-                mt: { xs: 0.5, sm: 0 },
-                order: { xs: 3, sm: 0 }
+                justifyContent: 'flex-end'
               }}
             >
               <TextField
@@ -365,7 +369,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') handleSearch()
                 }}
-                sx={{ width: { xs: '100%', sm: 280 }, ml: { xs: 0, sm: 2 } }}
+                sx={{ width: { xs: 180, sm: 240, md: 300 }, ml: 1 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -402,12 +406,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               maxWidth: 360,
               boxSizing: 'border-box',
               position: 'fixed',
-              top: { xs: 'calc(88px + env(safe-area-inset-top))', sm: '64px' },
-              height: { xs: 'calc(100dvh - 88px - env(safe-area-inset-top))', sm: 'calc(100dvh - 64px)' },
+              top: '64px',
+              height: 'calc(100dvh - 64px)',
               WebkitOverflowScrolling: 'touch',
             },
             '& .MuiBackdrop-root': {
-              top: { xs: 'calc(88px + env(safe-area-inset-top))', sm: '64px' },
+              top: '64px',
               backgroundColor: (t) => alpha(t.palette.common.black, 0.35)
             }
           }}
@@ -444,7 +448,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           overflowX: 'hidden'
         }}
       >
-        <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px', lg: '64px' } }} />
+        <Box sx={{ height: '64px' }} />
         <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>{children}</Box>
       </Box>
 
