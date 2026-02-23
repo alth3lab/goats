@@ -41,7 +41,7 @@ export async function recordBirth(prisma: PrismaClient, input: RecordBirthInput)
     throw new Error(`${breeding.father.tagId} ليس ذكر`)
   }
 
-  if (breeding.father && breeding.father.status !== 'ACTIVE') {
+  if (breeding.father && !['ACTIVE', 'EXTERNAL'].includes(breeding.father.status)) {
     throw new Error(`الأب ${breeding.father.tagId} غير نشط (الحالة: ${breeding.father.status})`)
   }
 

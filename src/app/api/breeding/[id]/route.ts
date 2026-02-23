@@ -108,7 +108,7 @@ export async function PUT(
       if (existingActive) {
         return NextResponse.json(
           {
-            error: `لا يمكن حفظ التعديل: الأنثى ${mother.tagId} لديها سجل نشط (${existingActive.pregnancyStatus}) مع الأب ${existingActive.father.tagId}`
+            error: `لا يمكن حفظ التعديل: الأنثى ${mother.tagId} لديها سجل نشط (${existingActive.pregnancyStatus}) مع الأب ${existingActive.father?.tagId || 'خارجي'}`
           },
           { status: 400 }
         )
@@ -120,7 +120,8 @@ export async function PUT(
       data: body
     })
     
-    // مزامنة تلقائية مع التقويم    try {
+    // مزامنة تلقائية مع التقويم
+    try {
       // 1. إذا تغير dueDate أو تمت إضافته
       if (body.dueDate !== undefined && body.dueDate !== existing.dueDate) {
         // البحث عن حدث الولادة المتوقعة الموجود باستخدام breedingId
@@ -261,7 +262,8 @@ export async function DELETE(
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
     
-    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل    try {
+    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل
+    try {
       await prisma.calendarEvent.deleteMany({
         where: { breedingId: id }
       })
