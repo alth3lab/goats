@@ -9,7 +9,7 @@ const globalForPrisma = globalThis as unknown as {
 const TENANT_FARM_MODELS = [
   'Pen', 'Goat', 'HealthRecord', 'VaccinationProtocol', 'Breeding',
   'Sale', 'Expense', 'InventoryItem', 'FeedType', 'FeedingSchedule',
-  'DailyFeedConsumption', 'CalendarEvent', 'FeedingRecord'
+  'DailyFeedConsumption', 'CalendarEvent', 'FeedingRecord', 'Owner'
 ]
 
 // Models that need tenantId only (no farmId)
