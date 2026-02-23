@@ -295,6 +295,11 @@ model Goat {
   penId         String?
   purchaseDate  DateTime?
   purchasePrice Float?
+  ownerName     String?
+  ownerPhone    String?
+  originFarm    String?
+  sireLineage   String?    @db.Text
+  damLineage    String?    @db.Text
   notes         String?    @db.Text
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
@@ -384,9 +389,9 @@ model Breeding {
   farmId          String          @default("")
   farm            Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
   motherId        String
-  fatherId        String
+  fatherId        String?
   mother          Goat            @relation("MotherGoat", fields: [motherId], references: [id])
-  father          Goat            @relation("FatherGoat", fields: [fatherId], references: [id])
+  father          Goat?           @relation("FatherGoat", fields: [fatherId], references: [id])
   matingDate      DateTime
   pregnancyStatus PregnancyStatus @default(MATED)
   dueDate         DateTime?
@@ -525,6 +530,7 @@ enum GoatStatus {
   SOLD
   DECEASED
   QUARANTINE
+  EXTERNAL
 }
 
 enum HealthType {

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       lowStockCount,
       feedConsumption
     ] = await Promise.all([
-      prisma.goat.count(),
+      prisma.goat.count({ where: { status: { not: 'EXTERNAL' } } }),
       prisma.goat.count({ where: { status: 'ACTIVE' } }),
       prisma.goat.count({ where: { gender: 'MALE', status: 'ACTIVE' } }),
       prisma.goat.count({ where: { gender: 'FEMALE', status: 'ACTIVE' } }),

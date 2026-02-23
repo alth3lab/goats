@@ -10,7 +10,7 @@ export const createGoatSchema = z.object({
   birthDate: z.string().or(z.date()),
   weight: z.number().nonnegative().optional().nullable(),
   color: z.string().optional().nullable(),
-  status: z.enum(['ACTIVE', 'SOLD', 'DECEASED', 'QUARANTINE']).optional(),
+  status: z.enum(['ACTIVE', 'SOLD', 'DECEASED', 'QUARANTINE', 'EXTERNAL']).optional(),
   motherId: z.string().uuid().optional().nullable(),
   fatherId: z.string().uuid().optional().nullable(),
   motherTagId: z.string().optional().nullable(),
@@ -19,6 +19,11 @@ export const createGoatSchema = z.object({
   penId: z.string().uuid().optional().nullable(),
   purchaseDate: z.string().or(z.date()).optional().nullable(),
   purchasePrice: z.number().nonnegative().optional().nullable(),
+  ownerName: z.string().optional().nullable(),
+  ownerPhone: z.string().optional().nullable(),
+  originFarm: z.string().optional().nullable(),
+  sireLineage: z.string().optional().nullable(),
+  damLineage: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 

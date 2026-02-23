@@ -32,7 +32,13 @@ import {
   Menu,
   Checkbox,
   Tooltip,
-  useMediaQuery
+  useMediaQuery,
+  Divider,
+  RadioGroup,
+  Radio,
+  FormControlLabel,
+  FormLabel,
+  Collapse
 } from '@mui/material'
 import { useTheme, alpha } from '@mui/material/styles'
 import {
@@ -79,7 +85,7 @@ interface BreedingRecord {
   motherId: string
   fatherId: string
   mother: { id: string; tagId: string }
-  father: { id: string; tagId: string }
+  father: { id: string; tagId: string; name?: string; status?: string; ownerName?: string; originFarm?: string; sireLineage?: string; damLineage?: string }
   matingDate: string
   pregnancyStatus: string
   dueDate?: string
@@ -126,8 +132,24 @@ export default function BreedingPage() {
   const [editMode, setEditMode] = useState(false)
   const [goats, setGoats] = useState<any[]>([]) // Using any to access full goat object properties
   const [pens, setPens] = useState<any[]>([])
+  const [breeds, setBreeds] = useState<any[]>([])
   const [targetPenId, setTargetPenId] = useState('')
   const [inbreedingWarning, setInbreedingWarning] = useState<string | null>(null)
+  const [useExternalSire, setUseExternalSire] = useState(false)
+  const [externalSireForm, setExternalSireForm] = useState({
+    name: '',
+    tagId: '',
+    breedId: '',
+    ownerName: '',
+    ownerPhone: '',
+    originFarm: '',
+    sireLineage: '',
+    damLineage: '',
+    notes: ''
+  })
+  const [existingExternalSires, setExistingExternalSires] = useState<any[]>([])
+  const [useExistingExternal, setUseExistingExternal] = useState(false)
+  const [selectedExternalId, setSelectedExternalId] = useState('')
   
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState('')
@@ -200,9 +222,17 @@ export default function BreedingPage() {
   }, [])
 
   const loadGoats = async () => {
-    const res = await fetch('/api/goats')
-    const data = await res.json()
-    setGoats(Array.isArray(data) ? data : [])
+    const [goatsRes, externalRes, breedsRes] = await Promise.all([
+      fetch('/api/goats'),
+      fetch('/api/goats?status=EXTERNAL'),
+      fetch('/api/breeds')
+    ])
+    const goatsData = await goatsRes.json()
+    const externalData = await externalRes.json()
+    const breedsData = await breedsRes.json()
+    setGoats(Array.isArray(goatsData) ? goatsData : [])
+    setExistingExternalSires(Array.isArray(externalData) ? externalData : [])
+    setBreeds(Array.isArray(breedsData) ? breedsData : [])
   }
 
   const loadPens = async () => {
@@ -221,6 +251,20 @@ export default function BreedingPage() {
     setEditMode(false)
     setSelectedRecord(null)
     setInbreedingWarning(null)
+    setUseExternalSire(false)
+    setUseExistingExternal(false)
+    setSelectedExternalId('')
+    setExternalSireForm({
+      name: '',
+      tagId: '',
+      breedId: '',
+      ownerName: '',
+      ownerPhone: '',
+      originFarm: '',
+      sireLineage: '',
+      damLineage: '',
+      notes: ''
+    })
     setForm({
       motherId: '',
       fatherId: '',
@@ -315,15 +359,34 @@ export default function BreedingPage() {
 
   const handleSubmit = async () => {
     try {
-      const payload = {
+      const payload: any = {
         motherId: form.motherId,
-        fatherId: form.fatherId,
         matingDate: new Date(form.matingDate),
         pregnancyStatus: form.pregnancyStatus,
         dueDate: form.dueDate ? new Date(form.dueDate) : null,
         birthDate: form.birthDate ? new Date(form.birthDate) : null,
         numberOfKids: form.numberOfKids ? Number(form.numberOfKids) : null,
         notes: form.notes.trim() || null
+      }
+
+      if (useExternalSire) {
+        if (useExistingExternal && selectedExternalId) {
+          payload.fatherId = selectedExternalId
+        } else {
+          payload.externalSire = {
+            name: externalSireForm.name,
+            tagId: externalSireForm.tagId || undefined,
+            breedId: externalSireForm.breedId,
+            ownerName: externalSireForm.ownerName || undefined,
+            ownerPhone: externalSireForm.ownerPhone || undefined,
+            originFarm: externalSireForm.originFarm || undefined,
+            sireLineage: externalSireForm.sireLineage || undefined,
+            damLineage: externalSireForm.damLineage || undefined,
+            notes: externalSireForm.notes || undefined,
+          }
+        }
+      } else {
+        payload.fatherId = form.fatherId
       }
 
       const url = editMode && selectedRecord ? `/api/breeding/${selectedRecord.id}` : '/api/breeding'
@@ -403,7 +466,7 @@ export default function BreedingPage() {
     // Search filter
     const matchesSearch = searchQuery === '' || 
       record.mother.tagId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.father.tagId.toLowerCase().includes(searchQuery.toLowerCase())
+      (record.father?.tagId || record.father?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     
     // Status filter
     const matchesStatus = statusFilter === 'ALL' || record.pregnancyStatus === statusFilter
@@ -575,7 +638,7 @@ export default function BreedingPage() {
     ])
     const breedingData = filteredRecords.map(r => ({
       'رقم الأم': r.mother.tagId,
-      'رقم الأب': r.father.tagId,
+      'رقم الأب': r.father?.tagId || r.father?.name || '—',
       'تاريخ التزاوج': formatDate(r.matingDate),
       'الحالة': statusLabels[r.pregnancyStatus] || r.pregnancyStatus,
       'تاريخ الولادة المتوقع': r.dueDate ? formatDate(r.dueDate) : '-',
@@ -593,7 +656,7 @@ export default function BreedingPage() {
   const exportToPDF = async () => {
     const pData = filteredRecords.map(r => ({
       motherTag: r.mother.tagId,
-      fatherTag: r.father.tagId,
+      fatherTag: r.father?.tagId || r.father?.name || '—',
       matingDate: formatDate(r.matingDate),
       status: statusLabels[r.pregnancyStatus] || r.pregnancyStatus,
       dueDate: r.dueDate ? formatDate(r.dueDate) : '-',
@@ -895,7 +958,7 @@ export default function BreedingPage() {
                         </Box>
                         <Box flex={1}>
                           <Typography variant="body2" color="text.secondary">الأب</Typography>
-                          <Typography variant="h6" fontWeight="bold">{r.father.tagId}</Typography>
+                          <Typography variant="h6" fontWeight="bold">{r.father?.tagId || r.father?.name || '—'}</Typography>
                         </Box>
                       </Stack>
 
@@ -1080,7 +1143,10 @@ export default function BreedingPage() {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
-                        {r.father.tagId}
+                        {r.father?.tagId || '—'}
+                        {r.father?.status === 'EXTERNAL' && (
+                          <Chip label="خارجي" size="small" color="info" variant="outlined" sx={{ ml: 0.5, height: 20, fontSize: '0.65rem' }} />
+                        )}
                       </Typography>
                     </TableCell>
                     <TableCell>{formatDate(r.matingDate)}</TableCell>
@@ -1192,17 +1258,159 @@ export default function BreedingPage() {
               </Select>
             </FormControl>
             <FormControl>
-              <InputLabel>الأب</InputLabel>
+              <InputLabel>الأب (الفحل)</InputLabel>
               <Select
-                value={form.fatherId}
-                label="الأب"
-                onChange={(e) => setForm({ ...form, fatherId: e.target.value })}
+                value={useExternalSire ? '__external__' : form.fatherId}
+                label="الأب (الفحل)"
+                onChange={(e) => {
+                  if (e.target.value === '__external__') {
+                    setUseExternalSire(true)
+                    setForm({ ...form, fatherId: '' })
+                  } else {
+                    setUseExternalSire(false)
+                    setUseExistingExternal(false)
+                    setSelectedExternalId('')
+                    setForm({ ...form, fatherId: e.target.value })
+                  }
+                }}
               >
-                {goats.filter(g => g.gender === 'MALE').map(g => (
-                  <MenuItem key={g.id} value={g.id}>{g.tagId}</MenuItem>
+                {goats.filter(g => g.gender === 'MALE' && g.status !== 'EXTERNAL').map(g => (
+                  <MenuItem key={g.id} value={g.id}>🐏 {g.tagId} {g.name ? `(${g.name})` : ''}</MenuItem>
                 ))}
+                <Divider />
+                <MenuItem value="__external__" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                  ➕ فحل خارجي
+                </MenuItem>
               </Select>
             </FormControl>
+
+            <Collapse in={useExternalSire}>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
+                <Stack spacing={2}>
+                  <Typography variant="subtitle2" color="primary">بيانات الفحل الخارجي</Typography>
+
+                  {existingExternalSires.length > 0 && (
+                    <FormControl>
+                      <FormLabel>
+                        <RadioGroup
+                          row
+                          value={useExistingExternal ? 'existing' : 'new'}
+                          onChange={(e) => {
+                            setUseExistingExternal(e.target.value === 'existing')
+                            if (e.target.value === 'new') setSelectedExternalId('')
+                          }}
+                        >
+                          <FormControlLabel value="new" control={<Radio size="small" />} label="فحل جديد" />
+                          <FormControlLabel value="existing" control={<Radio size="small" />} label="فحل مسجل سابقاً" />
+                        </RadioGroup>
+                      </FormLabel>
+                    </FormControl>
+                  )}
+
+                  {useExistingExternal ? (
+                    <FormControl fullWidth>
+                      <InputLabel>اختر فحل خارجي</InputLabel>
+                      <Select
+                        value={selectedExternalId}
+                        label="اختر فحل خارجي"
+                        onChange={(e) => setSelectedExternalId(e.target.value)}
+                      >
+                        {existingExternalSires.map(g => (
+                          <MenuItem key={g.id} value={g.id}>
+                            {g.name || g.tagId} {g.ownerName ? `— ${g.ownerName}` : ''} {g.breed?.nameAr ? `(${g.breed.nameAr})` : ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <>
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="اسم الفحل *"
+                            fullWidth
+                            value={externalSireForm.name}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, name: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="رقم الوسم (اختياري)"
+                            fullWidth
+                            value={externalSireForm.tagId}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, tagId: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <FormControl fullWidth>
+                            <InputLabel>السلالة *</InputLabel>
+                            <Select
+                              value={externalSireForm.breedId}
+                              label="السلالة *"
+                              onChange={(e) => setExternalSireForm({ ...externalSireForm, breedId: e.target.value })}
+                            >
+                              {breeds.map(b => (
+                                <MenuItem key={b.id} value={b.id}>{b.nameAr}</MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="صاحب الفحل"
+                            fullWidth
+                            value={externalSireForm.ownerName}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, ownerName: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="هاتف المالك"
+                            fullWidth
+                            value={externalSireForm.ownerPhone}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, ownerPhone: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="المزرعة الأصلية"
+                            fullWidth
+                            value={externalSireForm.originFarm}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, originFarm: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="نسب الأب (أبوه)"
+                            fullWidth
+                            value={externalSireForm.sireLineage}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, sireLineage: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="نسب الأم (أمه)"
+                            fullWidth
+                            value={externalSireForm.damLineage}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, damLineage: e.target.value })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                          <TextField
+                            label="ملاحظات عن الفحل"
+                            fullWidth
+                            multiline
+                            rows={2}
+                            value={externalSireForm.notes}
+                            onChange={(e) => setExternalSireForm({ ...externalSireForm, notes: e.target.value })}
+                          />
+                        </Grid>
+                      </Grid>
+                    </>
+                  )}
+                </Stack>
+              </Paper>
+            </Collapse>
             <TextField
               label="تاريخ التزاوج"
               type="date"
@@ -1274,7 +1482,16 @@ export default function BreedingPage() {
                 <Typography variant="h6" gutterBottom>معلومات التكاثر</Typography>
                 <Stack spacing={1}>
                   <Typography><strong>الأم:</strong> {selectedRecord.mother.tagId}</Typography>
-                  <Typography><strong>الأب:</strong> {selectedRecord.father.tagId}</Typography>
+                  <Typography><strong>الأب:</strong> {selectedRecord.father?.tagId || '—'} {selectedRecord.father?.name ? `(${selectedRecord.father.name})` : ''}</Typography>
+                  {selectedRecord.father?.status === 'EXTERNAL' && (
+                    <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'info.50', mt: 0.5 }}>
+                      <Typography variant="subtitle2" color="info.main" gutterBottom>🔗 فحل خارجي</Typography>
+                      {selectedRecord.father.ownerName && <Typography variant="body2"><strong>صاحبه:</strong> {selectedRecord.father.ownerName}</Typography>}
+                      {selectedRecord.father.originFarm && <Typography variant="body2"><strong>المزرعة:</strong> {selectedRecord.father.originFarm}</Typography>}
+                      {selectedRecord.father.sireLineage && <Typography variant="body2"><strong>نسب أبيه:</strong> {selectedRecord.father.sireLineage}</Typography>}
+                      {selectedRecord.father.damLineage && <Typography variant="body2"><strong>نسب أمه:</strong> {selectedRecord.father.damLineage}</Typography>}
+                    </Paper>
+                  )}
                     <Typography><strong>تاريخ التزاوج:</strong> {formatDate(selectedRecord.matingDate)}</Typography>
                   <Typography><strong>الحالة:</strong> {statusLabels[selectedRecord.pregnancyStatus]}</Typography>
                   {selectedRecord.dueDate && (
@@ -1374,7 +1591,7 @@ export default function BreedingPage() {
         <DialogTitle>تأكيد الحذف</DialogTitle>
         <DialogContent>
           <Typography>
-            هل أنت متأكد من حذف سجل التكاثر للأم <strong>{selectedRecord?.mother.tagId}</strong> والأب <strong>{selectedRecord?.father.tagId}</strong>؟
+            هل أنت متأكد من حذف سجل التكاثر للأم <strong>{selectedRecord?.mother.tagId}</strong> والأب <strong>{selectedRecord?.father?.tagId || selectedRecord?.father?.name || '—'}</strong>؟
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             لا يمكن التراجع عن هذا الإجراء!
@@ -1436,7 +1653,7 @@ export default function BreedingPage() {
             <Stack spacing={3}>
               <Alert severity="info">
                 <Typography variant="body2">
-                  <strong>الأم:</strong> {selectedRecord.mother.tagId} | <strong>الأب:</strong> {selectedRecord.father.tagId}
+                  <strong>الأم:</strong> {selectedRecord.mother.tagId} | <strong>الأب:</strong> {selectedRecord.father?.tagId || selectedRecord.father?.name || '—'}
                 </Typography>
               </Alert>
               

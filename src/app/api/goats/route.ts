@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const format = searchParams.get('format')
 
-    const where = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' } : undefined
+    const where = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' | 'EXTERNAL' } : { status: { not: 'EXTERNAL' as const } }
 
     // CSV export returns all data without pagination
     if (format === 'csv') {
