@@ -182,52 +182,28 @@ async function main(prisma) {
   // سلالات الإبل
   const camelBreeds = [
     {
-      name: 'Majaheem',
-      nameAr: 'مجاهيم',
-      description: 'من أشهر وأضخم سلالات الإبل في الجزيرة العربية',
-      avgWeight: 600,
-      avgHeight: 190,
-      characteristics: 'لون أسود داكن، ضخمة الحجم، إنتاج حليب عالي'
-    },
-    {
-      name: 'Maghateer',
-      nameAr: 'مغاتير',
-      description: 'سلالة مميزة بلونها الأبيض، للجمال والسباقات',
-      avgWeight: 500,
+      name: 'Local',
+      nameAr: 'محلي',
+      description: 'إبل محلية من السلالات العربية الأصيلة، متأقلمة مع البيئة المحلية',
+      avgWeight: 550,
       avgHeight: 185,
-      characteristics: 'لون أبيض فاتح، رشيقة، سريعة'
+      characteristics: 'سلالة محلية أصيلة، متحملة للحرارة، إنتاج حليب جيد'
     },
     {
-      name: 'Safra',
-      nameAr: 'صفراء',
-      description: 'سلالة ذات لون أصفر ذهبي، منتشرة في الخليج',
+      name: 'Hybrid',
+      nameAr: 'مهجن',
+      description: 'إبل مهجنة من تزاوج سلالات مختلفة لتحسين الإنتاج والصفات',
+      avgWeight: 580,
+      avgHeight: 188,
+      characteristics: 'مهجنة، قوية البنية، إنتاجية عالية'
+    },
+    {
+      name: 'Sudanese',
+      nameAr: 'سوداني',
+      description: 'إبل سودانية تتميز بإنتاج الحليب العالي وهدوء الطباع',
       avgWeight: 520,
-      avgHeight: 180,
-      characteristics: 'لون أصفر ذهبي، إنتاج حليب جيد'
-    },
-    {
-      name: 'Hamra',
-      nameAr: 'حمراء',
-      description: 'سلالة ذات لون أحمر بني',
-      avgWeight: 480,
-      avgHeight: 175,
-      characteristics: 'لون أحمر بني، متحملة للظروف الصحراوية'
-    },
-    {
-      name: 'Shaalah',
-      nameAr: 'شعلة',
-      description: 'سلالة مخصصة للسباقات',
-      avgWeight: 450,
-      avgHeight: 180,
-      characteristics: 'خفيفة الوزن، سريعة، أرجل طويلة'
-    },
-    {
-      name: 'Waddah',
-      nameAr: 'وضح',
-      description: 'سلالة بيضاء ناصعة للجمال والحليب',
-      avgWeight: 500,
       avgHeight: 182,
-      characteristics: 'لون أبيض ناصع، جميلة المظهر، هادئة'
+      characteristics: 'إنتاج حليب مرتفع، هادئة الطباع'
     }
   ]
 

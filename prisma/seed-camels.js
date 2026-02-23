@@ -24,68 +24,28 @@ async function main() {
     // سلالات الإبل العربية
     const camelBreeds = [
       {
-        name: 'Majaheem',
-        nameAr: 'مجاهيم',
-        description: 'من أشهر وأضخم سلالات الإبل في الجزيرة العربية، تتميز بلونها الأسود',
-        avgWeight: 600,
-        avgHeight: 190,
-        characteristics: 'لون أسود داكن، ضخمة الحجم، إنتاج حليب عالي، تتحمل الحرارة'
-      },
-      {
-        name: 'Maghateer',
-        nameAr: 'مغاتير',
-        description: 'سلالة مميزة بلونها الأبيض، تربى للجمال والسباقات',
-        avgWeight: 500,
+        name: 'Local',
+        nameAr: 'محلي',
+        description: 'إبل محلية من السلالات العربية الأصيلة، متأقلمة مع البيئة المحلية',
+        avgWeight: 550,
         avgHeight: 185,
-        characteristics: 'لون أبيض فاتح، رشيقة، سريعة، مرغوبة في مسابقات الجمال'
+        characteristics: 'سلالة محلية أصيلة، متحملة للحرارة، إنتاج حليب جيد، متأقلمة مع البيئة'
       },
       {
-        name: 'Safra',
-        nameAr: 'صفراء',
-        description: 'سلالة ذات لون أصفر ذهبي، منتشرة في الخليج العربي',
-        avgWeight: 520,
-        avgHeight: 180,
-        characteristics: 'لون أصفر ذهبي، متوسطة الحجم، إنتاج حليب جيد'
-      },
-      {
-        name: 'Hamra',
-        nameAr: 'حمراء',
-        description: 'سلالة ذات لون أحمر بني، من السلالات المحلية المميزة',
-        avgWeight: 480,
-        avgHeight: 175,
-        characteristics: 'لون أحمر بني، متينة، متحملة للظروف الصحراوية القاسية'
-      },
-      {
-        name: 'Shaalah',
-        nameAr: 'شعلة',
-        description: 'سلالة مخصصة للسباقات والركض',
-        avgWeight: 450,
-        avgHeight: 180,
-        characteristics: 'خفيفة الوزن، سريعة، أرجل طويلة، تستخدم في السباقات'
-      },
-      {
-        name: 'Omani',
-        nameAr: 'عمانية',
-        description: 'سلالة عمانية محلية تتميز بالصلابة والتحمل',
-        avgWeight: 470,
-        avgHeight: 178,
-        characteristics: 'متوسطة الحجم، قوية، متأقلمة مع البيئة الجبلية والساحلية'
+        name: 'Hybrid',
+        nameAr: 'مهجن',
+        description: 'إبل مهجنة من تزاوج سلالات مختلفة لتحسين الإنتاج والصفات',
+        avgWeight: 580,
+        avgHeight: 188,
+        characteristics: 'مهجنة، قوية البنية، إنتاجية عالية، تجمع صفات سلالات مختلفة'
       },
       {
         name: 'Sudanese',
-        nameAr: 'سودانية',
-        description: 'سلالة أفريقية تتميز بإنتاج الحليب العالي',
-        avgWeight: 550,
-        avgHeight: 185,
-        characteristics: 'إنتاج حليب مرتفع، هادئة الطباع، تتأقلم مع المناخات المختلفة'
-      },
-      {
-        name: 'Waddah',
-        nameAr: 'وضح',
-        description: 'سلالة بيضاء ناصعة مرغوبة في مسابقات الجمال',
-        avgWeight: 500,
+        nameAr: 'سوداني',
+        description: 'إبل سودانية تتميز بإنتاج الحليب العالي وهدوء الطباع',
+        avgWeight: 520,
         avgHeight: 182,
-        characteristics: 'لون أبيض ناصع، جميلة المظهر، هادئة، تربى للجمال والحليب'
+        characteristics: 'إنتاج حليب مرتفع، هادئة الطباع، تتأقلم مع المناخات المختلفة'
       }
     ]
 
