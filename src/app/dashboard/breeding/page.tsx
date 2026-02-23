@@ -232,7 +232,11 @@ export default function BreedingPage() {
     const breedsData = await breedsRes.json()
     setGoats(Array.isArray(goatsData) ? goatsData : [])
     setExistingExternalSires(Array.isArray(externalData) ? externalData : [])
-    setBreeds(Array.isArray(breedsData) ? breedsData : [])
+    // Filter breeds by farm type
+    const allBreeds = Array.isArray(breedsData) ? breedsData : []
+    const speciesMap: Record<string, string[]> = { SHEEP: ['SHEEP', 'GOAT'], CAMEL: ['CAMEL'] }
+    const allowed = farm?.farmType ? speciesMap[farm.farmType] : undefined
+    setBreeds(allowed ? allBreeds.filter((b: any) => allowed.includes(b.type?.name)) : allBreeds)
   }
 
   const loadPens = async () => {
