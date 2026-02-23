@@ -327,41 +327,45 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
   // Selected animal (row 3)
   // Offspring (row 4)
 
-  const centerX = 400
+  // RTL layout: الأب on the RIGHT, الأم on the LEFT (Arabic tradition)
+  const centerX = 520
   const startY = 10
+  const PARENT_GAP = 60  // horizontal gap between father and mother nodes
+  const GGP_GAP = H_GAP  // gap between grandparent pairs
 
   // Row positions
-  const row0Y = startY                    // great-grandparents
   const row1Y = startY + NODE_H + V_GAP   // grandparents
   const row2Y = row1Y + NODE_H + V_GAP    // parents
   const row3Y = row2Y + NODE_H + V_GAP    // selected
   const row4Y = row3Y + NODE_H + V_GAP    // offspring
 
-  // Parent positions
-  const fatherX = centerX - NODE_W - 40
-  const motherX = centerX + 40
+  // Parent positions: father RIGHT, mother LEFT
+  const fatherCenter = centerX + NODE_W / 2 + PARENT_GAP / 2   // center of father node
+  const motherCenter = centerX - NODE_W / 2 - PARENT_GAP / 2   // center of mother node
+  const fatherX = fatherCenter - NODE_W / 2
+  const motherX = motherCenter - NODE_W / 2
   const selectedX = centerX - NODE_W / 2
 
-  // Grandparent positions
-  const gfFatherX = fatherX - NODE_W / 2 - H_GAP / 2
-  const gfMotherX = fatherX + NODE_W / 2 + H_GAP / 2 - NODE_W
-  const gmFatherX = motherX - NODE_W / 2 - H_GAP / 2
-  const gmMotherX = motherX + NODE_W / 2 + H_GAP / 2 - NODE_W
+  // Grandparent positions — 2 centered above each parent, no overlap
+  // Father's side (right): أب الأب (far right), أم الأب (inner right)
+  const gfFatherX = fatherCenter + GGP_GAP / 2               // أب الأب — right of father
+  const gfMotherX = fatherCenter - NODE_W - GGP_GAP / 2      // أم الأب — left of father
+  // Mother's side (left): أب الأم (inner left), أم الأم (far left)
+  const gmFatherX = motherCenter + GGP_GAP / 2               // أب الأم — right of mother
+  const gmMotherX = motherCenter - NODE_W - GGP_GAP / 2      // أم الأم — left of mother
 
-  // Offspring positions
+  // Offspring positions (limited to 8, clamped to avoid negative x)
   const offspringCount = Math.min(offspring.length, 8)
   const offspringTotalW = offspringCount * (NODE_W + H_GAP) - H_GAP
-  const offspringStartX = centerX - offspringTotalW / 2
+  const offspringStartX = Math.max(40, centerX - offspringTotalW / 2)
 
   // SVG dimensions
   const hasOffspring = offspring.length > 0
   const hasGrandparents = father?.father || father?.mother || mother?.father || mother?.mother
-  const svgH = (hasOffspring ? row4Y + NODE_H + 20 : row3Y + NODE_H + 20)
-  const svgW = Math.max(
-    gmMotherX + NODE_W + 40,
-    offspringStartX + offspringTotalW + 40,
-    900
-  )
+  const svgH = hasOffspring ? row4Y + NODE_H + 20 : row3Y + NODE_H + 20
+  const rightEdge = Math.max(gfFatherX + NODE_W, offspringStartX + offspringTotalW) + 40
+  const leftEdge = Math.min(gmMotherX, offspringStartX, 0)
+  const svgW = Math.max(rightEdge - leftEdge, 900)
 
   return (
     <Stack spacing={2}>
@@ -484,17 +488,17 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
             />
           )}
 
-          {/* Marriage line between grandparents */}
+          {/* Marriage line between grandparents (left-node+width → right-node) */}
           {father?.father && father?.mother && (
             <MarriageLine
-              x1={gfFatherX + NODE_W} y={row1Y + NODE_H / 2}
-              x2={gfMotherX}
+              x1={gfMotherX + NODE_W} y={row1Y + NODE_H / 2}
+              x2={gfFatherX}
             />
           )}
           {mother?.father && mother?.mother && (
             <MarriageLine
-              x1={gmFatherX + NODE_W} y={row1Y + NODE_H / 2}
-              x2={gmMotherX}
+              x1={gmMotherX + NODE_W} y={row1Y + NODE_H / 2}
+              x2={gmFatherX}
             />
           )}
 
@@ -514,11 +518,11 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
             />
           )}
 
-          {/* Marriage line between parents */}
+          {/* Marriage line between parents (mother left+width → father right) */}
           {father && mother && (
             <MarriageLine
-              x1={fatherX + NODE_W} y={row2Y + NODE_H / 2}
-              x2={motherX}
+              x1={motherX + NODE_W} y={row2Y + NODE_H / 2}
+              x2={fatherX}
             />
           )}
 

@@ -106,11 +106,13 @@ export async function GET(
         })
       : []
 
-    // Stats
-    const totalOffspring = await prisma.goat.count({ where: offspringWhere })
-    const maleOffspring = await prisma.goat.count({ where: { ...offspringWhere, gender: 'MALE' } })
-    const femaleOffspring = await prisma.goat.count({ where: { ...offspringWhere, gender: 'FEMALE' } })
-    const aliveOffspring = await prisma.goat.count({ where: { ...offspringWhere, status: 'ACTIVE' } })
+    // Stats — run all counts in parallel
+    const [totalOffspring, maleOffspring, femaleOffspring, aliveOffspring] = await Promise.all([
+      prisma.goat.count({ where: offspringWhere }),
+      prisma.goat.count({ where: { ...offspringWhere, gender: 'MALE' } }),
+      prisma.goat.count({ where: { ...offspringWhere, gender: 'FEMALE' } }),
+      prisma.goat.count({ where: { ...offspringWhere, status: 'ACTIVE' } })
+    ])
 
     return NextResponse.json({
       goat,

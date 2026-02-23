@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import {
   Box,
   Paper,
@@ -13,7 +13,6 @@ import {
 } from '@mui/material'
 import { AccountTree as TreeIcon } from '@mui/icons-material'
 import FamilyTree from '@/components/FamilyTree'
-import { useAuth } from '@/lib/useAuth'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 interface GoatOption {
@@ -24,8 +23,7 @@ interface GoatOption {
   breed?: { nameAr: string } | null
 }
 
-export default function FamilyTreePage() {
-  const { user } = useAuth()
+function FamilyTreeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -124,5 +122,15 @@ export default function FamilyTreePage() {
         </Alert>
       )}
     </Box>
+  )
+}
+
+export default function FamilyTreePage() {
+  return (
+    <Suspense fallback={
+      <Stack alignItems="center" py={8}><CircularProgress /></Stack>
+    }>
+      <FamilyTreeContent />
+    </Suspense>
   )
 }
