@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -20,6 +18,7 @@ type PushState = 'loading' | 'unsupported' | 'denied' | 'subscribed' | 'unsubscr
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>('loading')
   const [error, setError] = useState<string | null>(null)
+  const vapidKeyRef = useRef<string>('')
 
   // Check current state on mount
   useEffect(() => {
@@ -33,10 +32,23 @@ export function usePushNotifications() {
       return
     }
 
-    if (!VAPID_PUBLIC_KEY) {
-      setState('error')
-      setError('VAPID key not configured')
-      return
+    // Fetch VAPID key from server (runtime, not build-time)
+    if (!vapidKeyRef.current) {
+      try {
+        const res = await fetch('/api/push/vapid')
+        const data = await res.json()
+        if (data.publicKey) {
+          vapidKeyRef.current = data.publicKey
+        } else {
+          setState('error')
+          setError('VAPID key not configured')
+          return
+        }
+      } catch {
+        setState('error')
+        setError('Failed to fetch VAPID key')
+        return
+      }
     }
 
     // Check notification permission
@@ -81,7 +93,7 @@ export function usePushNotifications() {
       // Subscribe to push
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+        applicationServerKey: urlBase64ToUint8Array(vapidKeyRef.current) as BufferSource,
       })
 
       // Send to server
