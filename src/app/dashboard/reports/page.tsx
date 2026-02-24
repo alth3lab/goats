@@ -1,5 +1,4 @@
-﻿
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
@@ -45,14 +44,14 @@ import { useAuth } from '@/lib/useAuth'
 import { getAnimalLabels } from '@/lib/animalLabels'
 import * as XLSX from 'xlsx'
 
-/* â”€â”€â”€â”€â”€ Constants â”€â”€â”€â”€â”€ */
+/* ───── Constants ───── */
 const categoryLabels: Record<string, string> = {
-  FEED: 'ط¹ظ„ظپ', MEDICINE: 'ط¯ظˆط§ط،', EQUIPMENT: 'ظ…ط¹ط¯ط§طھ', LABOR: 'ط¹ظ…ط§ظ„ط©',
-  UTILITIES: 'ظ…ط±ط§ظپظ‚', MAINTENANCE: 'طµظٹط§ظ†ط©', TRANSPORT: 'ظ†ظ‚ظ„', OTHER: 'ط£ط®ط±ظ‰',
+  FEED: 'علف', MEDICINE: 'دواء', EQUIPMENT: 'معدات', LABOR: 'عمالة',
+  UTILITIES: 'مرافق', MAINTENANCE: 'صيانة', TRANSPORT: 'نقل', OTHER: 'أخرى',
 }
 
 const paymentStatusLabels: Record<string, string> = {
-  PAID: 'ظ…ط¯ظپظˆط¹', PENDING: 'ظ…ط¹ظ„ظ‚', CANCELLED: 'ظ…ظ„ط؛ظٹ', PARTIAL: 'ط¬ط²ط¦ظٹ',
+  PAID: 'مدفوع', PENDING: 'معلق', CANCELLED: 'ملغي', PARTIAL: 'جزئي',
 }
 
 const paymentStatusColors: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
@@ -60,12 +59,12 @@ const paymentStatusColors: Record<string, 'success' | 'warning' | 'error' | 'def
 }
 
 const healthTypeLabels: Record<string, string> = {
-  VACCINATION: 'طھط·ط¹ظٹظ…', TREATMENT: 'ط¹ظ„ط§ط¬', CHECKUP: 'ظپط­طµ',
-  SURGERY: 'ط¬ط±ط§ط­ط©', MEDICATION: 'ط¯ظˆط§ط،', OTHER: 'ط£ط®ط±ظ‰',
+  VACCINATION: 'تطعيم', TREATMENT: 'علاج', CHECKUP: 'فحص',
+  SURGERY: 'جراحة', MEDICATION: 'دواء', OTHER: 'أخرى',
 }
 
 const breedingResultLabels: Record<string, string> = {
-  SUCCESS: 'ظ†ط§ط¬ط­', FAILED: 'ظپط§ط´ظ„', PENDING: 'ظ‚ظٹط¯ ط§ظ„ط§ظ†طھط¸ط§ط±', BORN: 'ظˆظ„ط¯',
+  SUCCESS: 'ناجح', FAILED: 'فاشل', PENDING: 'قيد الانتظار', BORN: 'ولد',
 }
 
 const breedingResultColors: Record<string, 'success' | 'error' | 'warning' | 'info'> = {
@@ -73,25 +72,25 @@ const breedingResultColors: Record<string, 'success' | 'error' | 'warning' | 'in
 }
 
 const goatStatusLabels: Record<string, string> = {
-  ACTIVE: 'ظ†ط´ط·', SOLD: 'ظ…ط¨ط§ط¹', DEAD: 'ظ†ط§ظپظ‚', SLAUGHTERED: 'ظ…ط°ط¨ظˆط­',
+  ACTIVE: 'نشط', SOLD: 'مباع', DEAD: 'نافق', SLAUGHTERED: 'مذبوح',
 }
 
 const goatStatusColors: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
   ACTIVE: 'success', SOLD: 'warning', DEAD: 'error', SLAUGHTERED: 'default',
 }
 
-/* â”€â”€â”€â”€â”€ Helpers â”€â”€â”€â”€â”€ */
+/* ───── Helpers ───── */
 const today = () => new Date().toISOString().split('T')[0]
 const firstOfMonth = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 const fmt = (dateStr?: string | null) => {
-  if (!dateStr) return 'â€”'
+  if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('ar-AE')
 }
 
-/* â”€â”€â”€â”€â”€ Empty-state component â”€â”€â”€â”€â”€ */
+/* ───── Empty-state component ───── */
 function EmptyState({ message }: { message: string }) {
   return (
     <TableRow>
@@ -102,7 +101,7 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-/* â”€â”€â”€â”€â”€ Loading row â”€â”€â”€â”€â”€ */
+/* ───── Loading row ───── */
 function LoadingRow() {
   return (
     <TableRow>
@@ -113,7 +112,7 @@ function LoadingRow() {
   )
 }
 
-/* â”€â”€â”€â”€â”€ Section header inside a tab â”€â”€â”€â”€â”€ */
+/* ───── Section header inside a tab ───── */
 function TabHeader({
   title,
   count,
@@ -138,7 +137,7 @@ function TabHeader({
         )}
       </Stack>
       <Stack direction="row" spacing={1}>
-        <Tooltip title="طھط­ط¯ظٹط« ط§ظ„ط¨ظٹط§ظ†ط§طھ">
+        <Tooltip title="تحديث البيانات">
           <span>
             <IconButton size="small" onClick={onRefresh} disabled={loading}>
               <RefreshIcon fontSize="small" />
@@ -169,9 +168,9 @@ function TabHeader({
   )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   TAB 1 â€“ Sales Report
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ════════════════════════════════════════════════════════════════
+   TAB 1 — Sales Report
+════════════════════════════════════════════════════════════════ */
 function SalesTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> }) {
   const [dateFrom, setDateFrom] = useState(firstOfMonth())
   const [dateTo, setDateTo] = useState(today())
@@ -217,51 +216,51 @@ function SalesTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels>
 
   const exportExcel = () => {
     const sheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
-      'ط§ظ„طھط§ط±ظٹط®': fmt(r.saleDate),
-      'ط±ظ‚ظ… ط§ظ„ط­ظٹظˆط§ظ†': r.goat?.tagId ?? 'â€”',
-      'ط§ظ„ط³ظ„ط§ظ„ط©': r.goat?.breed ?? 'â€”',
-      'ط§ظ„ظ…ط´طھط±ظٹ': r.buyerName ?? 'â€”',
-      'ظ‡ط§طھظپ ط§ظ„ظ…ط´طھط±ظٹ': r.buyerPhone ?? 'â€”',
-      'ط§ظ„ط³ط¹ط±': r.price,
-      'ط§ظ„ط­ط§ظ„ط©': paymentStatusLabels[r.status] ?? r.status,
-      'ظ…ظ„ط§ط­ط¸ط§طھ': r.notes ?? '',
+      'التاريخ': fmt(r.saleDate),
+      'رقم الحيوان': r.goat?.tagId ?? '—',
+      'السلالة': r.goat?.breed ?? '—',
+      'المشتري': r.buyerName ?? '—',
+      'هاتف المشتري': r.buyerPhone ?? '—',
+      'السعر': r.price,
+      'الحالة': paymentStatusLabels[r.status] ?? r.status,
+      'ملاحظات': r.notes ?? '',
     })))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, sheet, 'طھظ‚ط±ظٹط± ط§ظ„ظ…ط¨ظٹط¹ط§طھ')
+    XLSX.utils.book_append_sheet(wb, sheet, 'تقرير المبيعات')
     XLSX.writeFile(wb, `sales-report-${dateFrom}-${dateTo}.xlsx`)
   }
 
   const exportPdf = async () => {
     await generateArabicPDF({
-      title: `طھظ‚ط±ظٹط± ط§ظ„ظ…ط¨ظٹط¹ط§طھ (${fmt(dateFrom)} â€“ ${fmt(dateTo)})`,
+      title: `تقرير المبيعات (${fmt(dateFrom)} — ${fmt(dateTo)})`,
       date: new Date().toLocaleDateString('ar-AE'),
       stats: [
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط¨ظٹط¹ط§طھ', value: formatCurrency(total) },
-        { label: 'ط§ظ„ظ…ط¨ط§ظ„ط؛ ط§ظ„ظ…ط¯ظپظˆط¹ط©', value: formatCurrency(paid) },
-        { label: 'ط§ظ„ظ…ط¨ط§ظ„ط؛ ط§ظ„ظ…ط¹ظ„ظ‚ط©', value: formatCurrency(pending) },
-        { label: 'ط¹ط¯ط¯ ط¹ظ…ظ„ظٹط§طھ ط§ظ„ط¨ظٹط¹', value: filtered.length },
+        { label: 'إجمالي المبيعات', value: formatCurrency(total) },
+        { label: 'المبالغ المدفوعة', value: formatCurrency(paid) },
+        { label: 'المبالغ المعلقة', value: formatCurrency(pending) },
+        { label: 'عدد عمليات البيع', value: filtered.length },
       ],
       columns: [
-        { header: 'ط§ظ„طھط§ط±ظٹط®', dataKey: 'date' },
-        { header: 'ط±ظ‚ظ… ط§ظ„ط­ظٹظˆط§ظ†', dataKey: 'tagId' },
-        { header: 'ط§ظ„ط³ظ„ط§ظ„ط©', dataKey: 'breed' },
-        { header: 'ط§ظ„ظ…ط´طھط±ظٹ', dataKey: 'buyer' },
-        { header: 'ط§ظ„ط³ط¹ط±', dataKey: 'price' },
-        { header: 'ط§ظ„ط­ط§ظ„ط©', dataKey: 'status' },
+        { header: 'التاريخ', dataKey: 'date' },
+        { header: 'رقم الحيوان', dataKey: 'tagId' },
+        { header: 'السلالة', dataKey: 'breed' },
+        { header: 'المشتري', dataKey: 'buyer' },
+        { header: 'السعر', dataKey: 'price' },
+        { header: 'الحالة', dataKey: 'status' },
       ],
       data: filtered.map(r => ({
         date: fmt(r.saleDate),
-        tagId: r.goat?.tagId ?? 'â€”',
-        breed: r.goat?.breed ?? 'â€”',
-        buyer: r.buyerName ?? 'â€”',
+        tagId: r.goat?.tagId ?? '—',
+        breed: r.goat?.breed ?? '—',
+        buyer: r.buyerName ?? '—',
         price: formatCurrency(r.price ?? 0),
         status: paymentStatusLabels[r.status] ?? r.status,
       })),
       totals: {
-        date: 'ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ',
+        date: 'الإجمالي',
         tagId: '',
         breed: '',
-        buyer: `${filtered.length} ط¹ظ…ظ„ظٹط©`,
+        buyer: `${filtered.length} عملية`,
         price: formatCurrency(total),
         status: '',
       },
@@ -274,14 +273,14 @@ function SalesTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels>
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
           <FilterIcon color="action" sx={{ alignSelf: 'center' }} />
-          <TextField label="ظ…ظ† طھط§ط±ظٹط®" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField label="ط¥ظ„ظ‰ طھط§ط±ظٹط®" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField select label="ط­ط§ظ„ط© ط§ظ„ط¯ظپط¹" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} size="small" sx={{ minWidth: 140 }}>
-            <MenuItem value="">ط§ظ„ظƒظ„</MenuItem>
+          <TextField label="من تاريخ" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField label="إلى تاريخ" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField select label="حالة الدفع" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} size="small" sx={{ minWidth: 140 }}>
+            <MenuItem value="">الكل</MenuItem>
             {Object.entries(paymentStatusLabels).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
           </TextField>
           <TextField
-            label="ط¨ط­ط«" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 160 }}
+            label="بحث" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 160 }}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
               endAdornment: search ? <InputAdornment position="end"><IconButton size="small" onClick={() => setSearch('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment> : null,
@@ -289,38 +288,38 @@ function SalesTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels>
           />
         </Stack>
       </Paper>
-      <TabHeader title="طھظ‚ط±ظٹط± ط§ظ„ظ…ط¨ظٹط¹ط§طھ" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
+      <TabHeader title="تقرير المبيعات" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
-              <TableCell>ط§ظ„طھط§ط±ظٹط®</TableCell>
-              <TableCell>ط±ظ‚ظ… {animalLbl.singular}</TableCell>
-              <TableCell>ط§ظ„ط³ظ„ط§ظ„ط©</TableCell>
-              <TableCell>ط§ظ„ظ…ط´طھط±ظٹ</TableCell>
-              <TableCell align="right">ط§ظ„ط³ط¹ط±</TableCell>
-              <TableCell>ط§ظ„ط­ط§ظ„ط©</TableCell>
-              <TableCell>ظ…ظ„ط§ط­ط¸ط§طھ</TableCell>
+              <TableCell>التاريخ</TableCell>
+              <TableCell>رقم {animalLbl.singular}</TableCell>
+              <TableCell>السلالة</TableCell>
+              <TableCell>المشتري</TableCell>
+              <TableCell align="right">السعر</TableCell>
+              <TableCell>الحالة</TableCell>
+              <TableCell>ملاحظات</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="ظ„ط§ طھظˆط¬ط¯ ظ…ط¨ظٹط¹ط§طھ ظپظٹ ظ‡ط°ظ‡ ط§ظ„ظپطھط±ط©" /> : (
+            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="لا توجد مبيعات في هذه الفترة" /> : (
               filtered.map((row, idx) => (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{idx + 1}</TableCell>
                   <TableCell>{fmt(row.saleDate)}</TableCell>
-                  <TableCell><strong>{row.goat?.tagId ?? 'â€”'}</strong></TableCell>
-                  <TableCell>{row.goat?.breed ?? 'â€”'}</TableCell>
+                  <TableCell><strong>{row.goat?.tagId ?? '—'}</strong></TableCell>
+                  <TableCell>{row.goat?.breed ?? '—'}</TableCell>
                   <TableCell>
-                    <div>{row.buyerName ?? 'â€”'}</div>
+                    <div>{row.buyerName ?? '—'}</div>
                     {row.buyerPhone && <Typography variant="caption" color="text.secondary">{row.buyerPhone}</Typography>}
                   </TableCell>
                   <TableCell align="right"><strong>{formatCurrency(row.price ?? 0)}</strong></TableCell>
                   <TableCell>
                     <Chip label={paymentStatusLabels[row.status] ?? row.status} size="small" color={paymentStatusColors[row.status] ?? 'default'} />
                   </TableCell>
-                  <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{row.notes ?? 'â€”'}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{row.notes ?? '—'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -330,12 +329,12 @@ function SalesTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels>
               <TableRow sx={{ bgcolor: 'primary.50', '& td': { fontWeight: 'bold', borderTop: '2px solid', borderColor: 'primary.200' } }}>
                 <TableCell colSpan={5}>
                   <Stack direction="row" spacing={3}>
-                    <span>ط§ظ„ط¹ظ…ظ„ظٹط§طھ: {formatNumber(filtered.length)}</span>
-                    <span style={{ color: '#2e7d32' }}>ظ…ط¯ظپظˆط¹: {formatCurrency(paid)}</span>
-                    <span style={{ color: '#ed6c02' }}>ظ…ط¹ظ„ظ‚: {formatCurrency(pending)}</span>
+                    <span>العمليات: {formatNumber(filtered.length)}</span>
+                    <span style={{ color: '#2e7d32' }}>مدفوع: {formatCurrency(paid)}</span>
+                    <span style={{ color: '#ed6c02' }}>معلق: {formatCurrency(pending)}</span>
                   </Stack>
                 </TableCell>
-                <TableCell align="right" colSpan={3}>{formatCurrency(total)} ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ</TableCell>
+                <TableCell align="right" colSpan={3}>{formatCurrency(total)} الإجمالي</TableCell>
               </TableRow>
             </TableFooter>
           )}
@@ -345,9 +344,9 @@ function SalesTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels>
   )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   TAB 2 â€“ Expenses Report
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ════════════════════════════════════════════════════════════════
+   TAB 2 — Expenses Report
+════════════════════════════════════════════════════════════════ */
 function ExpensesTab() {
   const [dateFrom, setDateFrom] = useState(firstOfMonth())
   const [dateTo, setDateTo] = useState(today())
@@ -393,44 +392,44 @@ function ExpensesTab() {
 
   const exportExcel = () => {
     const sheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
-      'ط§ظ„طھط§ط±ظٹط®': fmt(r.date),
-      'ط§ظ„ظˆطµظپ': r.description ?? 'â€”',
-      'ط§ظ„ظپط¦ط©': categoryLabels[r.category] ?? r.category,
-      'ط§ظ„ظ…ط¨ظ„ط؛': r.amount,
-      'ظ…ظ„ط§ط­ط¸ط§طھ': r.notes ?? '',
+      'التاريخ': fmt(r.date),
+      'الوصف': r.description ?? '—',
+      'الفئة': categoryLabels[r.category] ?? r.category,
+      'المبلغ': r.amount,
+      'ملاحظات': r.notes ?? '',
     })))
     const summarySheet = XLSX.utils.json_to_sheet(byCategory.map(([cat, amt]) => ({
-      'ط§ظ„ظپط¦ط©': categoryLabels[cat] ?? cat,
-      'ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ': amt,
+      'الفئة': categoryLabels[cat] ?? cat,
+      'الإجمالي': amt,
     })))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, sheet, 'طھظپط§طµظٹظ„ ط§ظ„ظ…طµط±ظˆظپط§طھ')
-    XLSX.utils.book_append_sheet(wb, summarySheet, 'ظ…ظ„ط®طµ ط­ط³ط¨ ط§ظ„ظپط¦ط©')
+    XLSX.utils.book_append_sheet(wb, sheet, 'تفاصيل المصروفات')
+    XLSX.utils.book_append_sheet(wb, summarySheet, 'ملخص حسب الفئة')
     XLSX.writeFile(wb, `expenses-report-${dateFrom}-${dateTo}.xlsx`)
   }
 
   const exportPdf = async () => {
     await generateArabicPDF({
-      title: `طھظ‚ط±ظٹط± ط§ظ„ظ…طµط±ظˆظپط§طھ (${fmt(dateFrom)} â€“ ${fmt(dateTo)})`,
+      title: `تقرير المصروفات (${fmt(dateFrom)} — ${fmt(dateTo)})`,
       date: new Date().toLocaleDateString('ar-AE'),
       stats: [
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…طµط±ظˆظپط§طھ', value: formatCurrency(total) },
-        { label: 'ط¹ط¯ط¯ ط§ظ„ط³ط¬ظ„ط§طھ', value: filtered.length },
+        { label: 'إجمالي المصروفات', value: formatCurrency(total) },
+        { label: 'عدد السجلات', value: filtered.length },
         ...byCategory.slice(0, 4).map(([cat, amt]) => ({ label: categoryLabels[cat] ?? cat, value: formatCurrency(amt) })),
       ],
       columns: [
-        { header: 'ط§ظ„طھط§ط±ظٹط®', dataKey: 'date' },
-        { header: 'ط§ظ„ظˆطµظپ', dataKey: 'desc' },
-        { header: 'ط§ظ„ظپط¦ط©', dataKey: 'cat' },
-        { header: 'ط§ظ„ظ…ط¨ظ„ط؛', dataKey: 'amount' },
+        { header: 'التاريخ', dataKey: 'date' },
+        { header: 'الوصف', dataKey: 'desc' },
+        { header: 'الفئة', dataKey: 'cat' },
+        { header: 'المبلغ', dataKey: 'amount' },
       ],
       data: filtered.map(r => ({
         date: fmt(r.date),
-        desc: r.description ?? 'â€”',
+        desc: r.description ?? '—',
         cat: categoryLabels[r.category] ?? r.category,
         amount: formatCurrency(r.amount ?? 0),
       })),
-      totals: { date: 'ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ', desc: '', cat: `${filtered.length} ط³ط¬ظ„`, amount: formatCurrency(total) },
+      totals: { date: 'الإجمالي', desc: '', cat: `${filtered.length} سجل`, amount: formatCurrency(total) },
       filename: `expenses-report-${dateFrom}-${dateTo}.pdf`,
     })
   }
@@ -449,14 +448,14 @@ function ExpensesTab() {
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
           <FilterIcon color="action" sx={{ alignSelf: 'center' }} />
-          <TextField label="ظ…ظ† طھط§ط±ظٹط®" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField label="ط¥ظ„ظ‰ طھط§ط±ظٹط®" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField select label="ط§ظ„ظپط¦ط©" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} size="small" sx={{ minWidth: 140 }}>
-            <MenuItem value="">ط§ظ„ظƒظ„</MenuItem>
+          <TextField label="من تاريخ" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField label="إلى تاريخ" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField select label="الفئة" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} size="small" sx={{ minWidth: 140 }}>
+            <MenuItem value="">الكل</MenuItem>
             {Object.entries(categoryLabels).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
           </TextField>
           <TextField
-            label="ط¨ط­ط«" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 160 }}
+            label="بحث" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 160 }}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
               endAdornment: search ? <InputAdornment position="end"><IconButton size="small" onClick={() => setSearch('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment> : null,
@@ -464,29 +463,29 @@ function ExpensesTab() {
           />
         </Stack>
       </Paper>
-      <TabHeader title="طھظ‚ط±ظٹط± ط§ظ„ظ…طµط±ظˆظپط§طھ" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
+      <TabHeader title="تقرير المصروفات" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
-              <TableCell>ط§ظ„طھط§ط±ظٹط®</TableCell>
-              <TableCell>ط§ظ„ظˆطµظپ</TableCell>
-              <TableCell>ط§ظ„ظپط¦ط©</TableCell>
-              <TableCell align="right">ط§ظ„ظ…ط¨ظ„ط؛</TableCell>
-              <TableCell>ظ…ظ„ط§ط­ط¸ط§طھ</TableCell>
+              <TableCell>التاريخ</TableCell>
+              <TableCell>الوصف</TableCell>
+              <TableCell>الفئة</TableCell>
+              <TableCell align="right">المبلغ</TableCell>
+              <TableCell>ملاحظات</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="ظ„ط§ طھظˆط¬ط¯ ظ…طµط±ظˆظپط§طھ ظپظٹ ظ‡ط°ظ‡ ط§ظ„ظپطھط±ط©" /> : (
+            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="لا توجد مصروفات في هذه الفترة" /> : (
               filtered.map((row, idx) => (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{idx + 1}</TableCell>
                   <TableCell>{fmt(row.date)}</TableCell>
-                  <TableCell>{row.description ?? 'â€”'}</TableCell>
+                  <TableCell>{row.description ?? '—'}</TableCell>
                   <TableCell><Chip label={categoryLabels[row.category] ?? row.category} size="small" color="warning" variant="outlined" /></TableCell>
                   <TableCell align="right"><strong>{formatCurrency(row.amount ?? 0)}</strong></TableCell>
-                  <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{row.notes ?? 'â€”'}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{row.notes ?? '—'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -494,8 +493,8 @@ function ExpensesTab() {
           {!loading && filtered.length > 0 && (
             <TableFooter>
               <TableRow sx={{ '& td': { fontWeight: 'bold', borderTop: '2px solid', borderColor: 'warning.200' } }}>
-                <TableCell colSpan={4}>{formatNumber(filtered.length)} ط³ط¬ظ„</TableCell>
-                <TableCell align="right">{formatCurrency(total)} ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…طµط±ظˆظپط§طھ</TableCell>
+                <TableCell colSpan={4}>{formatNumber(filtered.length)} سجل</TableCell>
+                <TableCell align="right">{formatCurrency(total)} إجمالي المصروفات</TableCell>
                 <TableCell />
               </TableRow>
             </TableFooter>
@@ -506,9 +505,9 @@ function ExpensesTab() {
   )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   TAB 3 â€“ Herd Report
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ════════════════════════════════════════════════════════════════
+   TAB 3 — Herd Report
+════════════════════════════════════════════════════════════════ */
 function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> }) {
   const [statusFilter, setStatusFilter] = useState('ACTIVE')
   const [genderFilter, setGenderFilter] = useState('')
@@ -542,48 +541,48 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
   }, [rows, search])
 
   const calcAge = (birthDate?: string | null) => {
-    if (!birthDate) return 'â€”'
+    if (!birthDate) return '—'
     const months = Math.floor((Date.now() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
-    if (months < 12) return `${months} ط´ظ‡ط±`
+    if (months < 12) return `${months} شهر`
     const years = Math.floor(months / 12)
     const rem = months % 12
-    return rem > 0 ? `${years} ط³ظ†ط© ${rem} ط´ظ‡ط±` : `${years} ط³ظ†ط©`
+    return rem > 0 ? `${years} سنة ${rem} شهر` : `${years} سنة`
   }
 
   const exportExcel = () => {
     const sheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
-      'ط±ظ‚ظ… ط§ظ„ط­ظٹظˆط§ظ†': r.tagId, 'ط§ظ„ط§ط³ظ…': r.name ?? 'â€”',
-      'ط§ظ„ط¬ظ†ط³': r.gender === 'MALE' ? 'ط°ظƒط±' : 'ط£ظ†ط«ظ‰', 'ط§ظ„ط³ظ„ط§ظ„ط©': r.breed ?? 'â€”',
-      'ط§ظ„ط¹ظ…ط±': calcAge(r.birthDate), 'ط§ظ„ط­ط¸ظٹط±ط©': r.pen?.name ?? 'â€”',
-      'ط§ظ„ط­ط§ظ„ط©': goatStatusLabels[r.status] ?? r.status, 'ط§ظ„ظˆط²ظ† (ظƒط¬ظ…)': r.currentWeight ?? '',
+      'رقم الحيوان': r.tagId, 'الاسم': r.name ?? '—',
+      'الجنس': r.gender === 'MALE' ? 'ذكر' : 'أنثى', 'السلالة': r.breed ?? '—',
+      'العمر': calcAge(r.birthDate), 'الحظيرة': r.pen?.name ?? '—',
+      'الحالة': goatStatusLabels[r.status] ?? r.status, 'الوزن (كجم)': r.currentWeight ?? '',
     })))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, sheet, `طھظ‚ط±ظٹط± ${animalLbl.plural}`)
+    XLSX.utils.book_append_sheet(wb, sheet, `تقرير ${animalLbl.plural}`)
     XLSX.writeFile(wb, `herd-report-${today()}.xlsx`)
   }
 
   const exportPdf = async () => {
     await generateArabicPDF({
-      title: `طھظ‚ط±ظٹط± ط§ظ„ظ‚ط·ظٹط¹ â€“ ${animalLbl.plural}`,
+      title: `تقرير القطيع — ${animalLbl.plural}`,
       date: new Date().toLocaleDateString('ar-AE'),
       stats: [
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ†طھط§ط¦ط¬', value: filtered.length },
-        { label: 'ط°ظƒظˆط±', value: filtered.filter(r => r.gender === 'MALE').length },
-        { label: 'ط¥ظ†ط§ط«', value: filtered.filter(r => r.gender === 'FEMALE').length },
+        { label: 'إجمالي النتائج', value: filtered.length },
+        { label: 'ذكور', value: filtered.filter(r => r.gender === 'MALE').length },
+        { label: 'إناث', value: filtered.filter(r => r.gender === 'FEMALE').length },
       ],
       columns: [
-        { header: 'ط±ظ‚ظ… ط§ظ„ط­ظٹظˆط§ظ†', dataKey: 'tagId' }, { header: 'ط§ظ„ط§ط³ظ…', dataKey: 'name' },
-        { header: 'ط§ظ„ط¬ظ†ط³', dataKey: 'gender' }, { header: 'ط§ظ„ط³ظ„ط§ظ„ط©', dataKey: 'breed' },
-        { header: 'ط§ظ„ط¹ظ…ط±', dataKey: 'age' }, { header: 'ط§ظ„ط­ط¸ظٹط±ط©', dataKey: 'pen' },
-        { header: 'ط§ظ„ط­ط§ظ„ط©', dataKey: 'status' },
+        { header: 'رقم الحيوان', dataKey: 'tagId' }, { header: 'الاسم', dataKey: 'name' },
+        { header: 'الجنس', dataKey: 'gender' }, { header: 'السلالة', dataKey: 'breed' },
+        { header: 'العمر', dataKey: 'age' }, { header: 'الحظيرة', dataKey: 'pen' },
+        { header: 'الحالة', dataKey: 'status' },
       ],
       data: filtered.map(r => ({
-        tagId: r.tagId, name: r.name ?? 'â€”',
-        gender: r.gender === 'MALE' ? 'ط°ظƒط±' : 'ط£ظ†ط«ظ‰', breed: r.breed ?? 'â€”',
-        age: calcAge(r.birthDate), pen: r.pen?.name ?? 'â€”',
+        tagId: r.tagId, name: r.name ?? '—',
+        gender: r.gender === 'MALE' ? 'ذكر' : 'أنثى', breed: r.breed ?? '—',
+        age: calcAge(r.birthDate), pen: r.pen?.name ?? '—',
         status: goatStatusLabels[r.status] ?? r.status,
       })),
-      totals: { tagId: `${filtered.length} ط¥ط¬ظ…ط§ظ„ظٹ`, name: '', gender: '', breed: '', age: '', pen: '', status: '' },
+      totals: { tagId: `${filtered.length} إجمالي`, name: '', gender: '', breed: '', age: '', pen: '', status: '' },
       filename: `herd-report-${today()}.pdf`,
     })
   }
@@ -593,17 +592,17 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
           <FilterIcon color="action" sx={{ alignSelf: 'center' }} />
-          <TextField select label="ط§ظ„ط­ط§ظ„ط©" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} size="small" sx={{ minWidth: 130 }}>
-            <MenuItem value="">ط§ظ„ظƒظ„</MenuItem>
+          <TextField select label="الحالة" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} size="small" sx={{ minWidth: 130 }}>
+            <MenuItem value="">الكل</MenuItem>
             {Object.entries(goatStatusLabels).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
           </TextField>
-          <TextField select label="ط§ظ„ط¬ظ†ط³" value={genderFilter} onChange={e => setGenderFilter(e.target.value)} size="small" sx={{ minWidth: 120 }}>
-            <MenuItem value="">ط§ظ„ظƒظ„</MenuItem>
-            <MenuItem value="MALE">ط°ظƒط±</MenuItem>
-            <MenuItem value="FEMALE">ط£ظ†ط«ظ‰</MenuItem>
+          <TextField select label="الجنس" value={genderFilter} onChange={e => setGenderFilter(e.target.value)} size="small" sx={{ minWidth: 120 }}>
+            <MenuItem value="">الكل</MenuItem>
+            <MenuItem value="MALE">ذكر</MenuItem>
+            <MenuItem value="FEMALE">أنثى</MenuItem>
           </TextField>
           <TextField
-            label="ط¨ط­ط« ط¨ط§ظ„ط±ظ‚ظ… ط£ظˆ ط§ظ„ط§ط³ظ… ط£ظˆ ط§ظ„ط³ظ„ط§ظ„ط©" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 200 }}
+            label="بحث بالرقم أو الاسم أو السلالة" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 200 }}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
               endAdornment: search ? <InputAdornment position="end"><IconButton size="small" onClick={() => setSearch('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment> : null,
@@ -611,34 +610,34 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
           />
         </Stack>
       </Paper>
-      <TabHeader title={`طھظ‚ط±ظٹط± ط§ظ„ظ‚ط·ظٹط¹ â€“ ${animalLbl.plural}`} count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
+      <TabHeader title={`تقرير القطيع — ${animalLbl.plural}`} count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
-              <TableCell>ط±ظ‚ظ… ط§ظ„ط­ظٹظˆط§ظ†</TableCell>
-              <TableCell>ط§ظ„ط§ط³ظ…</TableCell>
-              <TableCell>ط§ظ„ط¬ظ†ط³</TableCell>
-              <TableCell>ط§ظ„ط³ظ„ط§ظ„ط©</TableCell>
-              <TableCell>ط§ظ„ط¹ظ…ط±</TableCell>
-              <TableCell>ط§ظ„ظˆط²ظ†</TableCell>
-              <TableCell>ط§ظ„ط­ط¸ظٹط±ط©</TableCell>
-              <TableCell>ط§ظ„ط­ط§ظ„ط©</TableCell>
+              <TableCell>رقم الحيوان</TableCell>
+              <TableCell>الاسم</TableCell>
+              <TableCell>الجنس</TableCell>
+              <TableCell>السلالة</TableCell>
+              <TableCell>العمر</TableCell>
+              <TableCell>الوزن</TableCell>
+              <TableCell>الحظيرة</TableCell>
+              <TableCell>الحالة</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="ظ„ط§ طھظˆط¬ط¯ ظ†طھط§ط¦ط¬" /> : (
+            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="لا توجد نتائج" /> : (
               filtered.map((row, idx) => (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{idx + 1}</TableCell>
                   <TableCell><strong>{row.tagId}</strong></TableCell>
-                  <TableCell>{row.name ?? 'â€”'}</TableCell>
-                  <TableCell><Chip label={row.gender === 'MALE' ? 'ط°ظƒط±' : 'ط£ظ†ط«ظ‰'} size="small" color={row.gender === 'MALE' ? 'info' : 'secondary'} /></TableCell>
-                  <TableCell>{row.breed ?? 'â€”'}</TableCell>
+                  <TableCell>{row.name ?? '—'}</TableCell>
+                  <TableCell><Chip label={row.gender === 'MALE' ? 'ذكر' : 'أنثى'} size="small" color={row.gender === 'MALE' ? 'info' : 'secondary'} /></TableCell>
+                  <TableCell>{row.breed ?? '—'}</TableCell>
                   <TableCell>{calcAge(row.birthDate)}</TableCell>
-                  <TableCell>{row.currentWeight ? `${row.currentWeight} ظƒط¬ظ…` : 'â€”'}</TableCell>
-                  <TableCell>{row.pen?.name ?? 'â€”'}</TableCell>
+                  <TableCell>{row.currentWeight ? `${row.currentWeight} كجم` : '—'}</TableCell>
+                  <TableCell>{row.pen?.name ?? '—'}</TableCell>
                   <TableCell><Chip label={goatStatusLabels[row.status] ?? row.status} size="small" color={goatStatusColors[row.status] ?? 'default'} /></TableCell>
                 </TableRow>
               ))
@@ -647,8 +646,8 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
           {!loading && filtered.length > 0 && (
             <TableFooter>
               <TableRow sx={{ '& td': { fontWeight: 'bold', borderTop: '2px solid', borderColor: 'success.200' } }}>
-                <TableCell colSpan={3}>{formatNumber(filtered.length)} ط­ظٹظˆط§ظ†</TableCell>
-                <TableCell>ط°ظƒظˆط±: {filtered.filter(r => r.gender === 'MALE').length} | ط¥ظ†ط§ط«: {filtered.filter(r => r.gender === 'FEMALE').length}</TableCell>
+                <TableCell colSpan={3}>{formatNumber(filtered.length)} حيوان</TableCell>
+                <TableCell>ذكور: {filtered.filter(r => r.gender === 'MALE').length} | إناث: {filtered.filter(r => r.gender === 'FEMALE').length}</TableCell>
                 <TableCell colSpan={5} />
               </TableRow>
             </TableFooter>
@@ -659,9 +658,9 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
   )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   TAB 4 â€“ Health Report
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ════════════════════════════════════════════════════════════════
+   TAB 4 — Health Report
+════════════════════════════════════════════════════════════════ */
 function HealthTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> }) {
   const [dateFrom, setDateFrom] = useState(firstOfMonth())
   const [dateTo, setDateTo] = useState(today())
@@ -701,39 +700,39 @@ function HealthTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels
 
   const exportExcel = () => {
     const sheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
-      'ط§ظ„طھط§ط±ظٹط®': fmt(r.date), 'ط±ظ‚ظ… ط§ظ„ط­ظٹظˆط§ظ†': r.goat?.tagId ?? 'â€”',
-      'ظ†ظˆط¹ ط§ظ„ط³ط¬ظ„': healthTypeLabels[r.type] ?? r.type, 'ط§ظ„طھط´ط®ظٹطµ/ط§ظ„ظˆطµظپ': r.diagnosis ?? 'â€”',
-      'ط§ظ„ط·ط¨ظٹط¨ ط§ظ„ط¨ظٹط·ط±ظٹ': r.vetName ?? 'â€”', 'ط§ظ„طھظƒظ„ظپط©': r.cost ?? 0,
-      'ط§ظ„ظ…ظˆط¹ط¯ ط§ظ„ظ‚ط§ط¯ظ…': fmt(r.nextDate), 'ظ…ظ„ط§ط­ط¸ط§طھ': r.notes ?? '',
+      'التاريخ': fmt(r.date), 'رقم الحيوان': r.goat?.tagId ?? '—',
+      'نوع السجل': healthTypeLabels[r.type] ?? r.type, 'التشخيص/الوصف': r.diagnosis ?? '—',
+      'الطبيب البيطري': r.vetName ?? '—', 'التكلفة': r.cost ?? 0,
+      'الموعد القادم': fmt(r.nextDate), 'ملاحظات': r.notes ?? '',
     })))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, sheet, 'طھظ‚ط±ظٹط± ط§ظ„طµط­ط©')
+    XLSX.utils.book_append_sheet(wb, sheet, 'تقرير الصحة')
     XLSX.writeFile(wb, `health-report-${dateFrom}-${dateTo}.xlsx`)
   }
 
   const exportPdf = async () => {
     await generateArabicPDF({
-      title: `طھظ‚ط±ظٹط± ط§ظ„طµط­ط© ظˆط§ظ„طھط·ط¹ظٹظ…ط§طھ (${fmt(dateFrom)} â€“ ${fmt(dateTo)})`,
+      title: `تقرير الصحة والتطعيمات (${fmt(dateFrom)} — ${fmt(dateTo)})`,
       date: new Date().toLocaleDateString('ar-AE'),
       stats: [
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط³ط¬ظ„ط§طھ', value: filtered.length },
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„طھظƒط§ظ„ظٹظپ', value: formatCurrency(totalCost) },
+        { label: 'إجمالي السجلات', value: filtered.length },
+        { label: 'إجمالي التكاليف', value: formatCurrency(totalCost) },
       ],
       columns: [
-        { header: 'ط§ظ„طھط§ط±ظٹط®', dataKey: 'date' },
-        { header: `ط±ظ‚ظ… ${animalLbl.singular}`, dataKey: 'tagId' },
-        { header: 'ط§ظ„ظ†ظˆط¹', dataKey: 'type' },
-        { header: 'ط§ظ„طھط´ط®ظٹطµ', dataKey: 'diag' },
-        { header: 'ط§ظ„ط·ط¨ظٹط¨', dataKey: 'vet' },
-        { header: 'ط§ظ„طھظƒظ„ظپط©', dataKey: 'cost' },
-        { header: 'ط§ظ„ظ…ظˆط¹ط¯ ط§ظ„ظ‚ط§ط¯ظ…', dataKey: 'next' },
+        { header: 'التاريخ', dataKey: 'date' },
+        { header: `رقم ${animalLbl.singular}`, dataKey: 'tagId' },
+        { header: 'النوع', dataKey: 'type' },
+        { header: 'التشخيص', dataKey: 'diag' },
+        { header: 'الطبيب', dataKey: 'vet' },
+        { header: 'التكلفة', dataKey: 'cost' },
+        { header: 'الموعد القادم', dataKey: 'next' },
       ],
       data: filtered.map(r => ({
-        date: fmt(r.date), tagId: r.goat?.tagId ?? 'â€”',
-        type: healthTypeLabels[r.type] ?? r.type, diag: r.diagnosis ?? 'â€”',
-        vet: r.vetName ?? 'â€”', cost: formatCurrency(r.cost ?? 0), next: fmt(r.nextDate),
+        date: fmt(r.date), tagId: r.goat?.tagId ?? '—',
+        type: healthTypeLabels[r.type] ?? r.type, diag: r.diagnosis ?? '—',
+        vet: r.vetName ?? '—', cost: formatCurrency(r.cost ?? 0), next: fmt(r.nextDate),
       })),
-      totals: { date: 'ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ', tagId: '', type: '', diag: '', vet: '', cost: formatCurrency(totalCost), next: '' },
+      totals: { date: 'الإجمالي', tagId: '', type: '', diag: '', vet: '', cost: formatCurrency(totalCost), next: '' },
       filename: `health-report-${dateFrom}-${dateTo}.pdf`,
     })
   }
@@ -743,14 +742,14 @@ function HealthTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
           <FilterIcon color="action" sx={{ alignSelf: 'center' }} />
-          <TextField label="ظ…ظ† طھط§ط±ظٹط®" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField label="ط¥ظ„ظ‰ طھط§ط±ظٹط®" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField select label="ظ†ظˆط¹ ط§ظ„ط³ط¬ظ„" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} size="small" sx={{ minWidth: 140 }}>
-            <MenuItem value="">ط§ظ„ظƒظ„</MenuItem>
+          <TextField label="من تاريخ" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField label="إلى تاريخ" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField select label="نوع السجل" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} size="small" sx={{ minWidth: 140 }}>
+            <MenuItem value="">الكل</MenuItem>
             {Object.entries(healthTypeLabels).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
           </TextField>
           <TextField
-            label="ط¨ط­ط«" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 160 }}
+            label="بحث" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 160 }}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
               endAdornment: search ? <InputAdornment position="end"><IconButton size="small" onClick={() => setSearch('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment> : null,
@@ -758,33 +757,33 @@ function HealthTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels
           />
         </Stack>
       </Paper>
-      <TabHeader title="طھظ‚ط±ظٹط± ط§ظ„طµط­ط© ظˆط§ظ„طھط·ط¹ظٹظ…ط§طھ" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
+      <TabHeader title="تقرير الصحة والتطعيمات" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
-              <TableCell>ط§ظ„طھط§ط±ظٹط®</TableCell>
-              <TableCell>ط±ظ‚ظ… {animalLbl.singular}</TableCell>
-              <TableCell>ط§ظ„ظ†ظˆط¹</TableCell>
-              <TableCell>ط§ظ„طھط´ط®ظٹطµ / ط§ظ„ظˆطµظپ</TableCell>
-              <TableCell>ط§ظ„ط·ط¨ظٹط¨ ط§ظ„ط¨ظٹط·ط±ظٹ</TableCell>
-              <TableCell align="right">ط§ظ„طھظƒظ„ظپط©</TableCell>
-              <TableCell>ط§ظ„ظ…ظˆط¹ط¯ ط§ظ„ظ‚ط§ط¯ظ…</TableCell>
+              <TableCell>التاريخ</TableCell>
+              <TableCell>رقم {animalLbl.singular}</TableCell>
+              <TableCell>النوع</TableCell>
+              <TableCell>التشخيص / الوصف</TableCell>
+              <TableCell>الطبيب البيطري</TableCell>
+              <TableCell align="right">التكلفة</TableCell>
+              <TableCell>الموعد القادم</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="ظ„ط§ طھظˆط¬ط¯ ط³ط¬ظ„ط§طھ طµط­ظٹط© ظپظٹ ظ‡ط°ظ‡ ط§ظ„ظپطھط±ط©" /> : (
+            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="لا توجد سجلات صحية في هذه الفترة" /> : (
               filtered.map((row, idx) => (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{idx + 1}</TableCell>
                   <TableCell>{fmt(row.date)}</TableCell>
-                  <TableCell><strong>{row.goat?.tagId ?? 'â€”'}</strong></TableCell>
+                  <TableCell><strong>{row.goat?.tagId ?? '—'}</strong></TableCell>
                   <TableCell><Chip label={healthTypeLabels[row.type] ?? row.type} size="small" color="info" variant="outlined" /></TableCell>
-                  <TableCell>{row.diagnosis ?? 'â€”'}</TableCell>
-                  <TableCell>{row.vetName ?? 'â€”'}</TableCell>
-                  <TableCell align="right">{row.cost ? formatCurrency(row.cost) : 'â€”'}</TableCell>
-                  <TableCell>{row.nextDate ? <Chip label={fmt(row.nextDate)} size="small" color="warning" variant="outlined" /> : 'â€”'}</TableCell>
+                  <TableCell>{row.diagnosis ?? '—'}</TableCell>
+                  <TableCell>{row.vetName ?? '—'}</TableCell>
+                  <TableCell align="right">{row.cost ? formatCurrency(row.cost) : '—'}</TableCell>
+                  <TableCell>{row.nextDate ? <Chip label={fmt(row.nextDate)} size="small" color="warning" variant="outlined" /> : '—'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -792,8 +791,8 @@ function HealthTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels
           {!loading && filtered.length > 0 && (
             <TableFooter>
               <TableRow sx={{ '& td': { fontWeight: 'bold', borderTop: '2px solid', borderColor: 'info.200' } }}>
-                <TableCell colSpan={6}>{formatNumber(filtered.length)} ط³ط¬ظ„ طµط­ظٹ</TableCell>
-                <TableCell align="right">{formatCurrency(totalCost)} ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„طھظƒط§ظ„ظٹظپ</TableCell>
+                <TableCell colSpan={6}>{formatNumber(filtered.length)} سجل صحي</TableCell>
+                <TableCell align="right">{formatCurrency(totalCost)} إجمالي التكاليف</TableCell>
                 <TableCell />
               </TableRow>
             </TableFooter>
@@ -804,9 +803,9 @@ function HealthTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels
   )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   TAB 5 â€“ Breeding Report
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ════════════════════════════════════════════════════════════════
+   TAB 5 — Breeding Report
+════════════════════════════════════════════════════════════════ */
 function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> }) {
   const [dateFrom, setDateFrom] = useState(firstOfMonth())
   const [dateTo, setDateTo] = useState(today())
@@ -839,45 +838,45 @@ function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabe
   }, [rows, search])
 
   const successCount = useMemo(() => filtered.filter(r => r.result === 'SUCCESS' || r.result === 'BORN').length, [filtered])
-  const successRate = filtered.length > 0 ? ((successCount / filtered.length) * 100).toFixed(1) : 'â€”'
+  const successRate = filtered.length > 0 ? ((successCount / filtered.length) * 100).toFixed(1) : '—'
   const totalOffspring = useMemo(() => filtered.reduce((s, r) => s + (r.offspringCount ?? 0), 0), [filtered])
 
   const exportExcel = () => {
     const sheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
-      'طھط§ط±ظٹط® ط§ظ„طھظ„ظ‚ظٹط­': fmt(r.breedingDate), 'ط§ظ„ط£ظ…': r.mother?.tagId ?? 'â€”', 'ط§ظ„ط£ط¨': r.father?.tagId ?? 'â€”',
-      'طھط§ط±ظٹط® ط§ظ„ظˆظ„ط§ط¯ط© ط§ظ„ظ…طھظˆظ‚ط¹': fmt(r.expectedBirthDate), 'طھط§ط±ظٹط® ط§ظ„ظˆظ„ط§ط¯ط© ط§ظ„ظپط¹ظ„ظٹ': fmt(r.actualBirthDate),
-      'ط§ظ„ظ†طھظٹط¬ط©': breedingResultLabels[r.result] ?? r.result, 'ط¹ط¯ط¯ ط§ظ„ظ…ظˆط§ظ„ظٹط¯': r.offspringCount ?? 0, 'ظ…ظ„ط§ط­ط¸ط§طھ': r.notes ?? '',
+      'تاريخ التلقيح': fmt(r.breedingDate), 'الأم': r.mother?.tagId ?? '—', 'الأب': r.father?.tagId ?? '—',
+      'تاريخ الولادة المتوقع': fmt(r.expectedBirthDate), 'تاريخ الولادة الفعلي': fmt(r.actualBirthDate),
+      'النتيجة': breedingResultLabels[r.result] ?? r.result, 'عدد المواليد': r.offspringCount ?? 0, 'ملاحظات': r.notes ?? '',
     })))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, sheet, 'طھظ‚ط±ظٹط± ط§ظ„طھظƒط§ط«ط±')
+    XLSX.utils.book_append_sheet(wb, sheet, 'تقرير التكاثر')
     XLSX.writeFile(wb, `breeding-report-${dateFrom}-${dateTo}.xlsx`)
   }
 
   const exportPdf = async () => {
     await generateArabicPDF({
-      title: `طھظ‚ط±ظٹط± ط§ظ„طھظƒط§ط«ط± (${fmt(dateFrom)} â€“ ${fmt(dateTo)})`,
+      title: `تقرير التكاثر (${fmt(dateFrom)} — ${fmt(dateTo)})`,
       date: new Date().toLocaleDateString('ar-AE'),
       stats: [
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط¹ظ…ظ„ظٹط§طھ ط§ظ„طھظ„ظ‚ظٹط­', value: filtered.length },
-        { label: 'ظ†ط³ط¨ط© ط§ظ„ظ†ط¬ط§ط­', value: `${successRate}%` },
-        { label: 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ظˆط§ظ„ظٹط¯', value: totalOffspring },
-        { label: 'ظ†ط§ط¬ط­', value: successCount },
-        { label: 'ظپط§ط´ظ„', value: filtered.filter(r => r.result === 'FAILED').length },
+        { label: 'إجمالي عمليات التلقيح', value: filtered.length },
+        { label: 'نسبة النجاح', value: `${successRate}%` },
+        { label: 'إجمالي المواليد', value: totalOffspring },
+        { label: 'ناجح', value: successCount },
+        { label: 'فاشل', value: filtered.filter(r => r.result === 'FAILED').length },
       ],
       columns: [
-        { header: 'طھط§ط±ظٹط® ط§ظ„طھظ„ظ‚ظٹط­', dataKey: 'date' },
-        { header: 'ط§ظ„ط£ظ…', dataKey: 'mother' },
-        { header: 'ط§ظ„ط£ط¨', dataKey: 'father' },
-        { header: 'ط§ظ„ظˆظ„ط§ط¯ط© ط§ظ„ظ…طھظˆظ‚ط¹ط©', dataKey: 'expected' },
-        { header: 'ط§ظ„ظ†طھظٹط¬ط©', dataKey: 'result' },
-        { header: 'ط§ظ„ظ…ظˆط§ظ„ظٹط¯', dataKey: 'offspring' },
+        { header: 'تاريخ التلقيح', dataKey: 'date' },
+        { header: 'الأم', dataKey: 'mother' },
+        { header: 'الأب', dataKey: 'father' },
+        { header: 'الولادة المتوقعة', dataKey: 'expected' },
+        { header: 'النتيجة', dataKey: 'result' },
+        { header: 'المواليد', dataKey: 'offspring' },
       ],
       data: filtered.map(r => ({
-        date: fmt(r.breedingDate), mother: r.mother?.tagId ?? 'â€”', father: r.father?.tagId ?? 'â€”',
+        date: fmt(r.breedingDate), mother: r.mother?.tagId ?? '—', father: r.father?.tagId ?? '—',
         expected: fmt(r.expectedBirthDate), result: breedingResultLabels[r.result] ?? r.result,
         offspring: r.offspringCount ?? 0,
       })),
-      totals: { date: 'ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ', mother: '', father: '', expected: '', result: `ظ†ط³ط¨ط© ط§ظ„ظ†ط¬ط§ط­: ${successRate}%`, offspring: totalOffspring },
+      totals: { date: 'الإجمالي', mother: '', father: '', expected: '', result: `نسبة النجاح: ${successRate}%`, offspring: totalOffspring },
       filename: `breeding-report-${dateFrom}-${dateTo}.pdf`,
     })
   }
@@ -887,14 +886,14 @@ function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabe
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
           <FilterIcon color="action" sx={{ alignSelf: 'center' }} />
-          <TextField label="ظ…ظ† طھط§ط±ظٹط®" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField label="ط¥ظ„ظ‰ طھط§ط±ظٹط®" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
-          <TextField select label="ط§ظ„ظ†طھظٹط¬ط©" value={resultFilter} onChange={e => setResultFilter(e.target.value)} size="small" sx={{ minWidth: 150 }}>
-            <MenuItem value="">ط§ظ„ظƒظ„</MenuItem>
+          <TextField label="من تاريخ" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField label="إلى تاريخ" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} size="small" sx={{ minWidth: 150 }} />
+          <TextField select label="النتيجة" value={resultFilter} onChange={e => setResultFilter(e.target.value)} size="small" sx={{ minWidth: 150 }}>
+            <MenuItem value="">الكل</MenuItem>
             {Object.entries(breedingResultLabels).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
           </TextField>
           <TextField
-            label="ط¨ط­ط« ط¨ط±ظ‚ظ… ط§ظ„ط£ظ… ط£ظˆ ط§ظ„ط£ط¨" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 180 }}
+            label="بحث برقم الأم أو الأب" value={search} onChange={e => setSearch(e.target.value)} size="small" sx={{ flex: 1, minWidth: 180 }}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
               endAdornment: search ? <InputAdornment position="end"><IconButton size="small" onClick={() => setSearch('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment> : null,
@@ -902,13 +901,13 @@ function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabe
           />
         </Stack>
       </Paper>
-      <TabHeader title="طھظ‚ط±ظٹط± ط§ظ„طھظƒط§ط«ط±" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
+      <TabHeader title="تقرير التكاثر" count={filtered.length} onExcelExport={exportExcel} onPdfExport={exportPdf} onRefresh={fetchData} loading={loading} />
       {!loading && filtered.length > 0 && (
         <Stack direction="row" spacing={2} mb={2} flexWrap="wrap" useFlexGap>
-          <Chip label={`ظ†ط³ط¨ط© ط§ظ„ظ†ط¬ط§ط­: ${successRate}%`} color="success" />
-          <Chip label={`ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ظˆط§ظ„ظٹط¯: ${totalOffspring}`} color="info" />
-          <Chip label={`ظ‚ظٹط¯ ط§ظ„ط§ظ†طھط¸ط§ط±: ${filtered.filter(r => r.result === 'PENDING').length}`} color="warning" />
-          <Chip label={`ظپط§ط´ظ„: ${filtered.filter(r => r.result === 'FAILED').length}`} color="error" variant="outlined" />
+          <Chip label={`نسبة النجاح: ${successRate}%`} color="success" />
+          <Chip label={`إجمالي المواليد: ${totalOffspring}`} color="info" />
+          <Chip label={`قيد الانتظار: ${filtered.filter(r => r.result === 'PENDING').length}`} color="warning" />
+          <Chip label={`فاشل: ${filtered.filter(r => r.result === 'FAILED').length}`} color="error" variant="outlined" />
         </Stack>
       )}
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
@@ -916,29 +915,29 @@ function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabe
           <TableHead>
             <TableRow>
               <TableCell>#</TableCell>
-              <TableCell>طھط§ط±ظٹط® ط§ظ„طھظ„ظ‚ظٹط­</TableCell>
-              <TableCell>ط§ظ„ط£ظ… ({animalLbl.singular})</TableCell>
-              <TableCell>ط§ظ„ط£ط¨ ({animalLbl.singular})</TableCell>
-              <TableCell>ط§ظ„ظˆظ„ط§ط¯ط© ط§ظ„ظ…طھظˆظ‚ط¹ط©</TableCell>
-              <TableCell>ط§ظ„ظˆظ„ط§ط¯ط© ط§ظ„ظپط¹ظ„ظٹط©</TableCell>
-              <TableCell>ط§ظ„ظ†طھظٹط¬ط©</TableCell>
-              <TableCell align="center">ط§ظ„ظ…ظˆط§ظ„ظٹط¯</TableCell>
-              <TableCell>ظ…ظ„ط§ط­ط¸ط§طھ</TableCell>
+              <TableCell>تاريخ التلقيح</TableCell>
+              <TableCell>الأم ({animalLbl.singular})</TableCell>
+              <TableCell>الأب ({animalLbl.singular})</TableCell>
+              <TableCell>الولادة المتوقعة</TableCell>
+              <TableCell>الولادة الفعلية</TableCell>
+              <TableCell>النتيجة</TableCell>
+              <TableCell align="center">المواليد</TableCell>
+              <TableCell>ملاحظات</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="ظ„ط§ طھظˆط¬ط¯ ط³ط¬ظ„ط§طھ طھظƒط§ط«ط± ظپظٹ ظ‡ط°ظ‡ ط§ظ„ظپطھط±ط©" /> : (
+            {loading ? <LoadingRow /> : filtered.length === 0 ? <EmptyState message="لا توجد سجلات تكاثر في هذه الفترة" /> : (
               filtered.map((row, idx) => (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{idx + 1}</TableCell>
                   <TableCell>{fmt(row.breedingDate)}</TableCell>
-                  <TableCell><strong>{row.mother?.tagId ?? 'â€”'}</strong></TableCell>
-                  <TableCell><strong>{row.father?.tagId ?? 'â€”'}</strong></TableCell>
+                  <TableCell><strong>{row.mother?.tagId ?? '—'}</strong></TableCell>
+                  <TableCell><strong>{row.father?.tagId ?? '—'}</strong></TableCell>
                   <TableCell>{fmt(row.expectedBirthDate)}</TableCell>
                   <TableCell>{fmt(row.actualBirthDate)}</TableCell>
                   <TableCell><Chip label={breedingResultLabels[row.result] ?? row.result} size="small" color={breedingResultColors[row.result] ?? 'default'} /></TableCell>
-                  <TableCell align="center">{row.offspringCount ? <Chip label={row.offspringCount} size="small" color="info" /> : 'â€”'}</TableCell>
-                  <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{row.notes ?? 'â€”'}</TableCell>
+                  <TableCell align="center">{row.offspringCount ? <Chip label={row.offspringCount} size="small" color="info" /> : '—'}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{row.notes ?? '—'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -946,9 +945,9 @@ function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabe
           {!loading && filtered.length > 0 && (
             <TableFooter>
               <TableRow sx={{ '& td': { fontWeight: 'bold', borderTop: '2px solid', borderColor: 'success.200' } }}>
-                <TableCell colSpan={6}>{formatNumber(filtered.length)} ط¹ظ…ظ„ظٹط© طھظ„ظ‚ظٹط­</TableCell>
-                <TableCell>ظ†ط¬ط§ط­: {successCount}</TableCell>
-                <TableCell align="center">{totalOffspring} ظ…ظˆظ„ظˆط¯</TableCell>
+                <TableCell colSpan={6}>{formatNumber(filtered.length)} عملية تلقيح</TableCell>
+                <TableCell>نجاح: {successCount}</TableCell>
+                <TableCell align="center">{totalOffspring} مولود</TableCell>
                 <TableCell />
               </TableRow>
             </TableFooter>
@@ -959,9 +958,9 @@ function BreedingTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabe
   )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* ════════════════════════════════════════════════════════════════
    TYPE DECLARATIONS
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+════════════════════════════════════════════════════════════════ */
 interface Sale {
   id: string; saleDate?: string | null; price?: number | null; status: string
   buyerName?: string | null; buyerPhone?: string | null; notes?: string | null
@@ -989,9 +988,9 @@ interface BreedingRecord {
   father?: { tagId?: string | null } | null
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* ════════════════════════════════════════════════════════════════
    MAIN PAGE
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+════════════════════════════════════════════════════════════════ */
 export default function ReportsPage() {
   const { farm } = useAuth()
   const animalLbl = getAnimalLabels(farm?.farmType)
@@ -1003,7 +1002,7 @@ export default function ReportsPage() {
       goats: '/api/goats', sales: '/api/sales', expenses: '/api/expenses',
     }
     const labels: Record<string, string> = {
-      goats: animalLbl.plural, sales: 'ط§ظ„ظ…ط¨ظٹط¹ط§طھ', expenses: 'ط§ظ„ظ…طµط±ظˆظپط§طھ',
+      goats: animalLbl.plural, sales: 'المبيعات', expenses: 'المصروفات',
     }
     const res = await fetch(`${endpoints[type]}?limit=9999`)
     const json = await res.json()
@@ -1022,27 +1021,27 @@ export default function ReportsPage() {
       method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: text,
     })
     const payload = await res.json()
-    if (!res.ok) { setImportResult(payload.error || 'ظپط´ظ„ ظپظٹ ط§ظ„ط§ط³طھظٹط±ط§ط¯'); return }
+    if (!res.ok) { setImportResult(payload.error || 'فشل في الاستيراد'); return }
     const errors = Array.isArray(payload.errors) ? payload.errors.length : 0
-    setImportResult(`طھظ… ط§ط³طھظٹط±ط§ط¯ ${payload.created ?? 0} ط³ط¬ظ„. ط£ط®ط·ط§ط،: ${errors}`)
+    setImportResult(`تم استيراد ${payload.created ?? 0} سجل. أخطاء: ${errors}`)
   }
 
   return (
     <Box sx={{ width: '100%', overflowX: 'hidden' }}>
-      {/* â”€â”€ Page Header â”€â”€ */}
+      {/* —— Page Header —— */}
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <ReportsIcon color="primary" sx={{ fontSize: 32 }} />
           <Box>
-            <Typography variant="h4" fontWeight="bold">ط§ظ„طھظ‚ط§ط±ظٹط±</Typography>
+            <Typography variant="h4" fontWeight="bold">التقارير</Typography>
             <Typography variant="body2" color="text.secondary">
-              ظپظ„طھط±ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظˆظ…ط±ط§ط¬ط¹طھظ‡ط§ ظ‚ط¨ظ„ ط§ظ„طھطµط¯ظٹط±
+              فلترة البيانات ومراجعتها قبل التصدير
             </Typography>
           </Box>
         </Stack>
       </Paper>
 
-      {/* â”€â”€ Tabs â”€â”€ */}
+      {/* —— Tabs —— */}
       <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
         <Tabs
           value={tab}
@@ -1054,12 +1053,12 @@ export default function ReportsPage() {
             '& .MuiTab-root': { fontWeight: 'bold', fontSize: { xs: 13, sm: 14 } },
           }}
         >
-          <Tab label="ط§ظ„ظ…ط¨ظٹط¹ط§طھ" />
-          <Tab label="ط§ظ„ظ…طµط±ظˆظپط§طھ" />
-          <Tab label="ط§ظ„ظ‚ط·ظٹط¹" />
-          <Tab label="ط§ظ„طµط­ط©" />
-          <Tab label="ط§ظ„طھظƒط§ط«ط±" />
-          <Tab label="ط§ط³طھظٹط±ط§ط¯ / طھطµط¯ظٹط±" />
+          <Tab label="المبيعات" />
+          <Tab label="المصروفات" />
+          <Tab label="القطيع" />
+          <Tab label="الصحة" />
+          <Tab label="التكاثر" />
+          <Tab label="استيراد / تصدير" />
         </Tabs>
 
         <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -1073,32 +1072,32 @@ export default function ReportsPage() {
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between" mb={3}>
                 <Stack direction="row" spacing={2} alignItems="center">
                   <PetsIcon color="primary" />
-                  <Typography variant="h6" fontWeight="bold">طھطµط¯ظٹط± ط§ظ„ط¨ظٹط§ظ†ط§طھ (Excel)</Typography>
+                  <Typography variant="h6" fontWeight="bold">تصدير البيانات (Excel)</Typography>
                 </Stack>
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                   <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => handleExportData('goats')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
-                    طھطµط¯ظٹط± {animalLbl.plural}
+                    تصدير {animalLbl.plural}
                   </Button>
                   <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => handleExportData('sales')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
-                    طھطµط¯ظٹط± ط§ظ„ظ…ط¨ظٹط¹ط§طھ
+                    تصدير المبيعات
                   </Button>
                   <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => handleExportData('expenses')} sx={{ color: 'success.main', borderColor: 'success.main' }}>
-                    طھطµط¯ظٹط± ط§ظ„ظ…طµط±ظˆظپط§طھ
+                    تصدير المصروفات
                   </Button>
                 </Stack>
               </Stack>
               <Divider sx={{ mb: 3 }} />
               <Stack direction="row" spacing={2} alignItems="center" mb={2}>
                 <PetsIcon color="primary" />
-                <Typography variant="h6" fontWeight="bold">ط§ط³طھظٹط±ط§ط¯ {animalLbl.plural} (CSV)</Typography>
+                <Typography variant="h6" fontWeight="bold">استيراد {animalLbl.plural} (CSV)</Typography>
               </Stack>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
                 <Button component="label" variant="contained" startIcon={<UploadIcon />}>
-                  ط§ط®طھط± ظ…ظ„ظپ CSV
+                  اختر ملف CSV
                   <input type="file" hidden accept=".csv" onChange={e => { const f = e.target.files?.[0]; if (f) handleImport(f) }} />
                 </Button>
                 <Typography variant="body2" color="text.secondary">
-                  ط§ظ„ط£ط¹ظ…ط¯ط© ط§ظ„ظ…ط·ظ„ظˆط¨ط©: tagId, breed, gender, birthDate (YYYY-MM-DD)
+                  الأعمدة المطلوبة: tagId, breed, gender, birthDate (YYYY-MM-DD)
                 </Typography>
               </Stack>
               {importResult && <Alert severity="info" sx={{ mt: 2 }}>{importResult}</Alert>}
