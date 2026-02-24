@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Box,
   Paper,
@@ -66,6 +67,7 @@ import { generateArabicPDF } from '@/lib/pdfHelper'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
 import FamilyTree from '@/components/FamilyTree'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { useAuth } from '@/lib/useAuth'
 
 const farmTypePageLabels: Record<string, { title: string; animal: string; animalPlural: string }> = {
@@ -415,9 +417,10 @@ export default function GoatsPage() {
     })
   }
 
+  const router = useRouter()
+
   const handleView = (goat: Goat) => {
-    setSelectedGoat(goat)
-    setViewDialogOpen(true)
+    router.push(`/dashboard/goats/${goat.id}`)
   }
 
   const handleAddOffspring = async (mother: Goat) => {
@@ -481,18 +484,28 @@ export default function GoatsPage() {
     setDeleteDialogOpen(true)
   }
 
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
   const handleDelete = async () => {
     if (!selectedGoat) return
-    
+    setDeleteLoading(true)
     try {
-      await fetch(`/api/goats/${selectedGoat.id}`, {
+      const res = await fetch(`/api/goats/${selectedGoat.id}`, {
         method: 'DELETE'
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || 'فشل حذف الحيوان')
+        return
+      }
       setDeleteDialogOpen(false)
       setSelectedGoat(null)
       loadGoats()
     } catch (error) {
       console.error('خطأ في الحذف:', error)
+      alert('خطأ في الاتصال بالخادم')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -1944,23 +1957,17 @@ export default function GoatsPage() {
       </Dialog>
 
       {/* Dialog تأكيد الحذف */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="xs" fullScreen={isMobile}>
-        <DialogTitle>تأكيد الحذف</DialogTitle>
-        <DialogContent>
-          <Typography>
-            هل أنت متأكد من حذف <strong>{selectedGoat?.tagId}</strong>؟
-          </Typography>
-          <Typography color="error" sx={{ mt: 1 }}>
-            لا يمكن التراجع عن هذا الإجراء!
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
-            حذف
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="حذف الحيوان"
+        message={`هل أنت متأكد من حذف ${selectedGoat?.tagId}؟ هذا الإجراء لا يمكن التراجع عنه.`}
+        severity="error"
+        confirmText="حذف نهائي"
+        cancelText="إلغاء"
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
 
       {/* Dialog نقل جماعي */}
       <Dialog

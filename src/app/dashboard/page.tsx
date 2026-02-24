@@ -17,7 +17,14 @@ import {
   Divider,
   TextField,
   IconButton,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Switch,
+  FormControlLabel,
 } from '@mui/material'
 import { 
   Pets as PetsIcon,
@@ -42,7 +49,9 @@ import {
   Diversity1 as BreedingActiveIcon,
   Inventory2 as InventoryIcon,
   Grass as FeedIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Settings as SettingsIcon,
+  RestartAlt as ResetIcon,
 } from '@mui/icons-material'
 import {
   BarChart, Bar, XAxis, YAxis, Cell,
@@ -107,6 +116,47 @@ interface AlertItem {
   date: string
 }
 
+/* ── Widget Config ── */
+const STORAGE_KEY = 'dashboard_widgets'
+
+interface WidgetConfig {
+  alerts: boolean
+  kpiHerd: boolean
+  kpiFinance: boolean
+  kpiGrowth: boolean
+  kpiExtra: boolean
+  chart: boolean
+  expenses: boolean
+}
+
+const DEFAULT_WIDGETS: WidgetConfig = {
+  alerts: true,
+  kpiHerd: true,
+  kpiFinance: true,
+  kpiGrowth: true,
+  kpiExtra: true,
+  chart: true,
+  expenses: true,
+}
+
+const WIDGET_LABELS: Record<keyof WidgetConfig, string> = {
+  alerts: 'التنبيهات',
+  kpiHerd: 'بطاقات القطيع (الإجمالي، الذكور/الإناث)',
+  kpiFinance: 'بطاقات المالية (المبيعات، المصروفات، الربح)',
+  kpiGrowth: 'بطاقات النمو (المواليد، النمو، النفوق)',
+  kpiExtra: 'بطاقات إضافية (التكاثر، المخزون، الأعلاف)',
+  chart: 'مخطط المبيعات والمصروفات',
+  expenses: 'تفاصيل المصروفات',
+}
+
+function loadWidgetConfig(): WidgetConfig {
+  if (typeof window === 'undefined') return DEFAULT_WIDGETS
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return { ...DEFAULT_WIDGETS, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return DEFAULT_WIDGETS
+}
 
 
 /* ── Trend Badge ── */
@@ -188,6 +238,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [selectedMonth, setSelectedMonth] = useState('')
+  const [widgets, setWidgets] = useState<WidgetConfig>(DEFAULT_WIDGETS)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  /* Load widget config from localStorage on mount */
+  useEffect(() => { setWidgets(loadWidgetConfig()) }, [])
+
+  const toggleWidget = (key: keyof WidgetConfig) => {
+    setWidgets(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  const resetWidgets = () => {
+    localStorage.removeItem(STORAGE_KEY)
+    setWidgets(DEFAULT_WIDGETS)
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -265,6 +333,11 @@ export default function DashboardPage() {
             </Box>
           </Stack>
           <Stack direction="row" alignItems="center" spacing={1}>
+            <Tooltip title="تخصيص لوحة التحكم">
+              <IconButton size="small" onClick={() => setSettingsOpen(true)} color="primary">
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
             <CalendarIcon color="action" />
             <TextField
               type="month"
@@ -293,7 +366,7 @@ export default function DashboardPage() {
       ) : stats ? (
         <>
           {/* قسم التنبيهات */}
-          {alerts.length > 0 && (
+          {widgets.alerts && alerts.length > 0 && (
             <Box mb={4}>
               <Stack direction="row" alignItems="center" spacing={1} mb={2}>
                 <AlertIcon color="warning" />
@@ -336,8 +409,9 @@ export default function DashboardPage() {
             </Box>
           )}
 
-          {/* ── KPI Cards ── */}
-          <Grid container spacing={3} mb={4}>
+          {/* ── KPI Cards Row 1 ── */}
+          {(widgets.kpiHerd || widgets.kpiFinance) && <Grid container spacing={3} mb={4}>
+            {widgets.kpiHerd && <>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <KpiCard
                 icon={<PetsIcon />}
@@ -356,6 +430,8 @@ export default function DashboardPage() {
                 color="secondary"
               />
             </Grid>
+            </>}
+            {widgets.kpiFinance && <>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <KpiCard
                 icon={<SalesIcon />}
@@ -376,10 +452,11 @@ export default function DashboardPage() {
                 invertColor
               />
             </Grid>
-          </Grid>
+            </>}
+          </Grid>}
 
-          <Grid container spacing={3} mb={4}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          {(widgets.kpiFinance || widgets.kpiGrowth) && <Grid container spacing={3} mb={4}>
+            {widgets.kpiFinance && <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <KpiCard
                 icon={<ProfitIcon />}
                 title={`صافي الربح (${periodLabel})`}
@@ -387,7 +464,8 @@ export default function DashboardPage() {
                 trend={stats.comparison?.netProfit}
                 color="success"
               />
-            </Grid>
+            </Grid>}
+            {widgets.kpiGrowth && <>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <KpiCard
                 icon={<BirthIcon />}
@@ -418,10 +496,10 @@ export default function DashboardPage() {
                 invertColor
               />
             </Grid>
-          </Grid>
+            </>}
+          </Grid>}
 
-          {/* ── Row 3 - Additional KPIs ── */}
-          <Grid container spacing={3} mb={4}>
+          {widgets.kpiExtra && <Grid container spacing={3} mb={4}>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <KpiCard
                 icon={<BreedingActiveIcon />}
@@ -449,9 +527,9 @@ export default function DashboardPage() {
                 color="warning"
               />
             </Grid>
-          </Grid>
+          </Grid>}
           {/* ── Yearly Sales vs Expenses Comparison Chart ── */}
-          <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+          {widgets.chart && <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               مقارنة المبيعات والمصروفات الشهرية - {stats.currentYear}
             </Typography>
@@ -496,10 +574,10 @@ export default function DashboardPage() {
                 </BarChart>
               </ResponsiveContainer>
             )}
-          </Paper>
+          </Paper>}
 
           {/* ── Expenses breakdown with progress bars ── */}
-          <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+          {widgets.expenses && <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               تفاصيل المصروفات {selectedMonth ? '' : '(إجمالي)'}
             </Typography>
@@ -547,9 +625,42 @@ export default function DashboardPage() {
                   })}
               </Grid>
             )}
-          </Paper>
+          </Paper>}
       </>
       ) : null}
+
+      {/* ── Settings Dialog ── */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <SettingsIcon color="primary" />
+            <Typography variant="h6" fontWeight="bold">تخصيص لوحة التحكم</Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            اختر الأقسام التي تريد إظهارها في لوحة التحكم
+          </Typography>
+          <Stack spacing={0.5}>
+            {(Object.keys(WIDGET_LABELS) as (keyof WidgetConfig)[]).map(key => (
+              <FormControlLabel
+                key={key}
+                control={<Switch checked={widgets[key]} onChange={() => toggleWidget(key)} color="primary" />}
+                label={<Typography variant="body2">{WIDGET_LABELS[key]}</Typography>}
+                sx={{ borderRadius: 2, px: 1, '&:hover': { bgcolor: 'action.hover' } }}
+              />
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button onClick={resetWidgets} startIcon={<ResetIcon />} color="inherit" size="small">
+            إعادة ضبط
+          </Button>
+          <Button onClick={() => setSettingsOpen(false)} variant="contained" size="small">
+            تم
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
