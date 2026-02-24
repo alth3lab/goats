@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Box,
-  Paper,
   Typography,
   Stack,
   Chip,
@@ -12,6 +11,7 @@ import {
   CircularProgress,
   Alert,
   Divider,
+  Snackbar,
   useMediaQuery
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -21,7 +21,10 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   FitScreen as FitIcon,
-  Pets as PetsIcon
+  Pets as PetsIcon,
+  Print as PrintIcon,
+  Share as ShareIcon,
+  Check as CheckIcon
 } from '@mui/icons-material'
 
 // ===== Types =====
@@ -268,7 +271,9 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
   const [error, setError] = useState<string | null>(null)
   const [zoom, setZoom] = useState(isMobile ? 0.7 : 1)
   const [currentGoatId, setCurrentGoatId] = useState(goatId)
+  const [shareCopied, setShareCopied] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   const loadFamily = useCallback(async (id: string) => {
     setLoading(true)
@@ -302,6 +307,53 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
     setCurrentGoatId(id)
     if (onNavigate) onNavigate(id)
   }
+
+  const handlePrint = useCallback(() => {
+    if (!svgRef.current || !data) return
+    const svgContent = svgRef.current.outerHTML
+    const goatLabel = `${data.goat.tagId}${data.goat.name ? ' - ' + data.goat.name : ''}`
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8" />
+        <title>شجرة أنساب - ${goatLabel}</title>
+        <style>
+          body { margin: 20px; font-family: Arial, Tahoma, sans-serif; direction: rtl; background: #fff; }
+          h2 { text-align: center; color: #1a237e; margin: 0 0 4px; font-size: 20px; }
+          p.sub { text-align: center; color: #666; margin: 0 0 16px; font-size: 12px; }
+          svg { max-width: 100%; height: auto; }
+          .legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 12px; font-size: 11px; color: #555; }
+          @media print { @page { margin: 10mm; size: A4 landscape; } }
+        </style>
+      </head>
+      <body>
+        <h2>شجرة أنساب: ${goatLabel}</h2>
+        <p class="sub">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-SA')} | الأجيال: ${data.stats.generations} | الأبناء: ${data.stats.totalOffspring}</p>
+        ${svgContent}
+        <div class="legend">
+          <span>🔵 ذكر</span><span>🔴 أنثى</span>
+          <span>🟢 حي</span><span>🟠 مباع</span><span>⚫ نافق</span>
+        </div>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => printWindow.print(), 500)
+  }, [data])
+
+  const handleShare = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2500)
+    } catch {
+      // fallback: select & copy
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -415,24 +467,46 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
         </Stack>
       )}
 
-      {/* Zoom controls */}
-      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-        <Tooltip title="تصغير">
-          <IconButton size="small" onClick={() => setZoom(z => Math.max(0.4, z - 0.1))}>
-            <ZoomOutIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="تكبير">
-          <IconButton size="small" onClick={() => setZoom(z => Math.min(1.5, z + 0.1))}>
-            <ZoomInIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="ملائمة">
-          <IconButton size="small" onClick={() => setZoom(1)}>
-            <FitIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      {/* Zoom + action controls */}
+      <Stack direction="row" spacing={0.5} justifyContent="space-between" alignItems="center">
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="طباعة الشجرة">
+            <IconButton size="small" onClick={handlePrint} color="primary">
+              <PrintIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={shareCopied ? 'تم نسخ الرابط!' : 'مشاركة الرابط'}>
+            <IconButton size="small" onClick={handleShare} color={shareCopied ? 'success' : 'default'}>
+              {shareCopied ? <CheckIcon fontSize="small" /> : <ShareIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Stack>
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="تصغير">
+            <IconButton size="small" onClick={() => setZoom(z => Math.max(0.4, z - 0.1))}>
+              <ZoomOutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="تكبير">
+            <IconButton size="small" onClick={() => setZoom(z => Math.min(1.5, z + 0.1))}>
+              <ZoomInIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="ملائمة">
+            <IconButton size="small" onClick={() => setZoom(1)}>
+              <FitIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       </Stack>
+
+      <Snackbar
+        open={shareCopied}
+        message="✓ تم نسخ رابط الشجرة للحافظة"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        autoHideDuration={2500}
+        onClose={() => setShareCopied(false)}
+      />
 
       {/* Tree SVG */}
       <Box
@@ -449,6 +523,7 @@ export default function FamilyTree({ goatId, compact = false, onNavigate }: Fami
         }}
       >
         <svg
+          ref={svgRef}
           width={svgW * zoom}
           height={svgH * zoom}
           viewBox={`0 0 ${svgW} ${svgH}`}
