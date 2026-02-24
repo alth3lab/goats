@@ -536,7 +536,7 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
     const q = search.toLowerCase()
     return rows.filter(r =>
       r.tagId?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) ||
-      r.breed?.toLowerCase().includes(q) || r.pen?.name?.toLowerCase().includes(q)
+      r.breed?.nameAr?.toLowerCase().includes(q) || r.pen?.nameAr?.toLowerCase().includes(q)
     )
   }, [rows, search])
 
@@ -552,9 +552,9 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
   const exportExcel = () => {
     const sheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
       'رقم الحيوان': r.tagId, 'الاسم': r.name ?? '—',
-      'الجنس': r.gender === 'MALE' ? 'ذكر' : 'أنثى', 'السلالة': r.breed ?? '—',
-      'العمر': calcAge(r.birthDate), 'الحظيرة': r.pen?.name ?? '—',
-      'الحالة': goatStatusLabels[r.status] ?? r.status, 'الوزن (كجم)': r.currentWeight ?? '',
+      'الجنس': r.gender === 'MALE' ? 'ذكر' : 'أنثى', 'السلالة': r.breed?.nameAr ?? '—',
+      'العمر': calcAge(r.birthDate), 'الحظيرة': r.pen?.nameAr ?? '—',
+      'الحالة': goatStatusLabels[r.status] ?? r.status, 'الوزن (كجم)': r.weight ?? '',
     })))
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, sheet, `تقرير ${animalLbl.plural}`)
@@ -578,8 +578,8 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
       ],
       data: filtered.map(r => ({
         tagId: r.tagId, name: r.name ?? '—',
-        gender: r.gender === 'MALE' ? 'ذكر' : 'أنثى', breed: r.breed ?? '—',
-        age: calcAge(r.birthDate), pen: r.pen?.name ?? '—',
+        gender: r.gender === 'MALE' ? 'ذكر' : 'أنثى', breed: r.breed?.nameAr ?? '—',
+        age: calcAge(r.birthDate), pen: r.pen?.nameAr ?? '—',
         status: goatStatusLabels[r.status] ?? r.status,
       })),
       totals: { tagId: `${filtered.length} إجمالي`, name: '', gender: '', breed: '', age: '', pen: '', status: '' },
@@ -634,10 +634,10 @@ function HerdTab({ animalLbl }: { animalLbl: ReturnType<typeof getAnimalLabels> 
                   <TableCell><strong>{row.tagId}</strong></TableCell>
                   <TableCell>{row.name ?? '—'}</TableCell>
                   <TableCell><Chip label={row.gender === 'MALE' ? 'ذكر' : 'أنثى'} size="small" color={row.gender === 'MALE' ? 'info' : 'secondary'} /></TableCell>
-                  <TableCell>{row.breed ?? '—'}</TableCell>
+                  <TableCell>{row.breed?.nameAr ?? '—'}</TableCell>
                   <TableCell>{calcAge(row.birthDate)}</TableCell>
-                  <TableCell>{row.currentWeight ? `${row.currentWeight} كجم` : '—'}</TableCell>
-                  <TableCell>{row.pen?.name ?? '—'}</TableCell>
+                  <TableCell>{row.weight ? `${row.weight} كجم` : '—'}</TableCell>
+                  <TableCell>{row.pen?.nameAr ?? '—'}</TableCell>
                   <TableCell><Chip label={goatStatusLabels[row.status] ?? row.status} size="small" color={goatStatusColors[row.status] ?? 'default'} /></TableCell>
                 </TableRow>
               ))
@@ -972,8 +972,9 @@ interface Expense {
 }
 interface Goat {
   id: string; tagId: string; name?: string | null; gender: string
-  breed?: string | null; birthDate?: string | null; currentWeight?: number | null
-  status: string; pen?: { name?: string | null } | null
+  breed?: { nameAr?: string | null; type?: { nameAr?: string | null } | null } | null
+  birthDate?: string | null; weight?: number | null
+  status: string; pen?: { nameAr?: string | null } | null
 }
 interface HealthRecord {
   id: string; date?: string | null; type: string; diagnosis?: string | null
