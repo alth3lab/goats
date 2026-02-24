@@ -40,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
+        <meta charSet="utf-8" />
         <meta name="theme-color" content="#2e7d32" />
         <meta name="color-scheme" content="light dark" />
         <link rel="manifest" href="/manifest.json" />
