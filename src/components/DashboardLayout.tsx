@@ -27,6 +27,8 @@ import {
   Chip,
   Backdrop,
   CircularProgress,
+  Badge,
+  Tooltip,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -51,6 +53,7 @@ import {
   ChevronRight as ExpandIcon,
   Agriculture as FarmIcon,
   SwapHoriz as SwitchIcon,
+  NotificationsActive as NotifIcon,
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -121,6 +124,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [farmMenuAnchor, setFarmMenuAnchor] = useState<null | HTMLElement>(null)
+  const [alertCount, setAlertCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const { user, can, loading: authLoading, farm, farms, switchFarm, switching } = useAuth()
@@ -131,6 +135,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const menuGroups = getMenuGroups(farm?.farmType)
   const labels = farmTypeLabels[farm?.farmType || 'SHEEP'] || farmTypeLabels.SHEEP
+
+  // Fetch alert count for badge
+  useEffect(() => {
+    fetch('/api/alerts')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAlertCount(data.filter((a: { severity: string }) => a.severity === 'error' || a.severity === 'warning').length)
+        }
+      })
+      .catch(() => {})
+  }, [farm?.id])
 
   // Global auth guard: redirect to login if not authenticated
   useEffect(() => {
@@ -380,6 +396,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               />
             </Box>
           )}
+          {/* Notification Bell */}
+          <Tooltip title={alertCount > 0 ? `${alertCount} تنبيه عاجل` : 'لا توجد تنبيهات'}>
+            <IconButton
+              component={Link}
+              href="/dashboard"
+              sx={{
+                ml: 1,
+                flexShrink: 0,
+                color: alertCount > 0 ? 'warning.main' : 'text.secondary',
+              }}
+            >
+              <Badge
+                badgeContent={alertCount}
+                color="error"
+                max={99}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.65rem',
+                    minWidth: 18,
+                    height: 18,
+                  }
+                }}
+              >
+                <NotifIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 

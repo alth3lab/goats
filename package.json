@@ -47,10 +47,10 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
-  "devDependencies": {},
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   }

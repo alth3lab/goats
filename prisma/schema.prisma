@@ -852,3 +852,22 @@ model AppSetting {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 }
+
+// ==================== Push Subscriptions ====================
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String   @default("")
+  farmId    String   @default("")
+  endpoint  String   @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, endpoint(length: 500)])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([farmId])
+}
