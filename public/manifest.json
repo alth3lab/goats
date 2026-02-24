@@ -1,0 +1,44 @@
+{
+  "name": "وبر وصوف — إدارة المواشي",
+  "short_name": "وبر وصوف",
+  "description": "نظام سحابي شامل لإدارة مزارع الإبل والأغنام والمواشي في الوطن العربي",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1a2e1a",
+  "theme_color": "#2e7d32",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "productivity", "agriculture"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الحيوانات",
+      "short_name": "قطيع",
+      "url": "/dashboard/goats",
+      "description": "إدارة القطيع"
+    },
+    {
+      "name": "الصحة",
+      "short_name": "صحة",
+      "url": "/dashboard/health",
+      "description": "السجلات الصحية"
+    },
+    {
+      "name": "المبيعات",
+      "short_name": "مبيعات",
+      "url": "/dashboard/sales",
+      "description": "قائمة المبيعات"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
