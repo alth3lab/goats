@@ -327,6 +327,8 @@ model Goat {
   damLineage    String?    @db.Text
   ownerId       String?
   notes         String?    @db.Text
+  image         String?    @db.LongText
+  thumbnail     String?    @db.LongText
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 

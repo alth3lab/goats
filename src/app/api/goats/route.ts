@@ -85,8 +85,11 @@ export async function GET(request: NextRequest) {
       const age = calculateGoatAge(goat.birthDate, species)
       const currentBreeding = goat.breedingAsMother && goat.breedingAsMother.length > 0 ? goat.breedingAsMother[0] : null
       
+      // Exclude full-size image from list response (keep thumbnail)
+      const { image: _img, ...goatWithoutImage } = goat
+      
       return {
-        ...goat,
+        ...goatWithoutImage,
         age: {
           years: age.years,
           months: age.months,

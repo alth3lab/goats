@@ -36,6 +36,7 @@ import {
   CardContent,
   CardActions,
   Grid,
+  Avatar,
   useMediaQuery
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -89,6 +90,7 @@ interface Goat {
   ownerId?: string | null
   owner?: { id: string; name: string; phone?: string } | null
   notes?: string | null
+  thumbnail?: string | null
   pen?: { nameAr: string } | null
   breed: {
     id: string
@@ -1207,16 +1209,18 @@ export default function GoatsPage() {
                       {/* Header */}
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pr: 5 }}>
                         <Stack direction="row" spacing={1} alignItems="center">
+                          {goat.thumbnail ? (
+                            <Avatar src={goat.thumbnail} sx={{ width: 40, height: 40 }} />
+                          ) : goat.gender === 'MALE' ? (
+                            <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
+                          ) : (
+                            <FemaleIcon sx={{ color: femaleIconColor, fontSize: 32 }} />
+                          )}
                           <Chip 
                             label={goat.tagId} 
                             color="primary" 
                             sx={{ fontSize: '1.1rem', fontWeight: 'bold', px: 2 }}
                           />
-                          {goat.gender === 'MALE' ? (
-                            <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
-                          ) : (
-                            <FemaleIcon sx={{ color: femaleIconColor, fontSize: 32 }} />
-                          )}
                         </Stack>
                         <Chip 
                           label={getStatusLabel(goat.status)} 
@@ -1342,7 +1346,10 @@ export default function GoatsPage() {
                   />
                   <CardContent>
                     <Stack spacing={2}>
-                      <Stack direction="row" justifyContent="center" spacing={1}>
+                      <Stack direction="row" justifyContent="center" spacing={1} alignItems="center">
+                        {goat.thumbnail && (
+                          <Avatar src={goat.thumbnail} sx={{ width: 48, height: 48, border: '2px solid', borderColor: goat.gender === 'MALE' ? 'info.main' : 'secondary.main' }} />
+                        )}
                         <Chip 
                           label={goat.tagId} 
                           color="primary" 
@@ -1491,7 +1498,10 @@ export default function GoatsPage() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip label={goat.tagId} color="primary" size="small" />
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {goat.thumbnail && <Avatar src={goat.thumbnail} sx={{ width: 32, height: 32 }} />}
+                      <Chip label={goat.tagId} color="primary" size="small" />
+                    </Stack>
                   </TableCell>
                   <TableCell>{goat.breed.nameAr}</TableCell>
                   <TableCell>

@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   Box, Paper, Typography, Grid, Stack, Chip, Avatar, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Tabs, Tab, Button, IconButton, Tooltip, Skeleton, Alert,
-  Card, CardContent, CircularProgress,
+  Card, CardContent, CircularProgress, Snackbar, Badge,
 } from '@mui/material'
 import {
   ArrowBack as BackIcon,
@@ -28,6 +28,8 @@ import {
   Palette as ColorIcon,
   ChildCare as OffspringIcon,
   Print as PrintIcon,
+  CameraAlt as CameraIcon,
+  DeleteForever as DeletePhotoIcon,
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/useAuth'
 import { getAnimalLabels } from '@/lib/animalLabels'
@@ -125,6 +127,9 @@ export default function GoatProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [tab, setTab] = useState(0)
+  const [uploading, setUploading] = useState(false)
+  const [snackMsg, setSnackMsg] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchGoat = useCallback(async () => {
     setLoading(true)
@@ -142,6 +147,82 @@ export default function GoatProfilePage() {
   }, [id])
 
   useEffect(() => { fetchGoat() }, [fetchGoat])
+
+  /* ── Image resize helper ── */
+  const resizeImage = (file: File, maxSize: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let w = img.width, h = img.height
+          if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize } }
+          else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize } }
+          canvas.width = w
+          canvas.height = h
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, w, h)
+          resolve(canvas.toDataURL('image/jpeg', quality))
+        }
+        img.onerror = reject
+        img.src = e.target?.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setSnackMsg('الرجاء اختيار ملف صورة')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setSnackMsg('حجم الصورة كبير جداً (الحد الأقصى 10 ميجابايت)')
+      return
+    }
+    setUploading(true)
+    try {
+      const [image, thumbnail] = await Promise.all([
+        resizeImage(file, 800, 0.8),
+        resizeImage(file, 150, 0.7),
+      ])
+      const res = await fetch(`/api/goats/${id}/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, thumbnail }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'فشل الرفع')
+      }
+      setSnackMsg('تم رفع الصورة بنجاح')
+      fetchGoat()
+    } catch (err: unknown) {
+      setSnackMsg(err instanceof Error ? err.message : 'فشل في رفع الصورة')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteImage = async () => {
+    if (!confirm('هل تريد حذف الصورة؟')) return
+    setUploading(true)
+    try {
+      const res = await fetch(`/api/goats/${id}/image`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('فشل الحذف')
+      setSnackMsg('تم حذف الصورة')
+      fetchGoat()
+    } catch {
+      setSnackMsg('فشل في حذف الصورة')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   /* ── Computed data ── */
   const allBreedings = useMemo(() => {
@@ -194,9 +275,60 @@ export default function GoatProfilePage() {
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'flex-start', sm: 'center' }}>
-          <Avatar sx={{ bgcolor: isFemale ? 'secondary.main' : 'info.main', width: 72, height: 72, fontSize: 32 }}>
-            {isFemale ? <FemaleIcon sx={{ fontSize: 40 }} /> : <MaleIcon sx={{ fontSize: 40 }} />}
-          </Avatar>
+          {/* Avatar with photo upload */}
+          <Box sx={{ position: 'relative', display: 'inline-block' }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleImageUpload}
+            />
+            <Badge
+              overlap="circular"
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              badgeContent={
+                uploading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <Stack direction="row" spacing={0}>
+                    <IconButton
+                      size="small"
+                      onClick={() => fileInputRef.current?.click()}
+                      sx={{ bgcolor: 'primary.main', color: 'white', width: 28, height: 28, '&:hover': { bgcolor: 'primary.dark' } }}
+                    >
+                      <CameraIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    {goat.image && (
+                      <IconButton
+                        size="small"
+                        onClick={handleDeleteImage}
+                        sx={{ bgcolor: 'error.main', color: 'white', width: 28, height: 28, ml: 0.5, '&:hover': { bgcolor: 'error.dark' } }}
+                      >
+                        <DeletePhotoIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    )}
+                  </Stack>
+                )
+              }
+            >
+              <Avatar
+                src={goat.image || undefined}
+                sx={{
+                  bgcolor: isFemale ? 'secondary.main' : 'info.main',
+                  width: 80,
+                  height: 80,
+                  fontSize: 32,
+                  cursor: 'pointer',
+                  border: goat.image ? '3px solid' : 'none',
+                  borderColor: isFemale ? 'secondary.main' : 'info.main',
+                }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {!goat.image && (isFemale ? <FemaleIcon sx={{ fontSize: 40 }} /> : <MaleIcon sx={{ fontSize: 40 }} />)}
+              </Avatar>
+            </Badge>
+          </Box>
           <Box sx={{ flex: 1 }}>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
               <Typography variant="h4" fontWeight="bold">{goat.tagId}</Typography>
@@ -519,6 +651,13 @@ export default function GoatProfilePage() {
           )}
         </Box>
       </Paper>
+      <Snackbar
+        open={!!snackMsg}
+        autoHideDuration={3000}
+        onClose={() => setSnackMsg('')}
+        message={snackMsg}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   )
 }
@@ -544,6 +683,8 @@ interface GoatProfile {
   damLineage?: string | null
   ownerId?: string | null
   notes?: string | null
+  image?: string | null
+  thumbnail?: string | null
   pen?: { name?: string | null } | null
   breed?: { name?: string | null; type?: { name?: string | null } | null } | null
   age?: { years: number; months: number; days: number; totalMonths: number; category: string; formatted: string } | null
