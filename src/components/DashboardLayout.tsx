@@ -54,6 +54,7 @@ import {
   Agriculture as FarmIcon,
   SwapHoriz as SwitchIcon,
   NotificationsActive as NotifIcon,
+  SmartToy as AiIcon,
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -80,6 +81,7 @@ const getMenuGroups = (farmType?: string) => {
     items: [
       { text: 'لوحة التحكم', icon: <DashboardIcon />, href: '/dashboard' },
       { text: 'بحث موحّد', icon: <SearchIcon />, href: '/dashboard/search' },
+      { text: 'المساعد الذكي', icon: <AiIcon />, href: '/dashboard/ai' },
       { text: 'التقويم', icon: <CalendarIcon />, href: '/dashboard/calendar' },
     ]
   },

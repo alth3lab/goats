@@ -13,6 +13,8 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.31",
+    "@ai-sdk/react": "^3.0.101",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -27,6 +29,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/stylis": "^4.2.7",
+    "ai": "^6.0.99",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.4",
     "eslint": "^9",
