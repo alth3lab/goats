@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requirePermission(request, 'add_feed')
+    const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requirePermission(request, 'add_feed')
+    const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 

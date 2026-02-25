@@ -231,6 +231,7 @@ export default function FeedsPage() {
   const [consumeSubmitting, setConsumeSubmitting] = useState(false)
   const [smartScheduleLoading, setSmartScheduleLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const [saving, setSaving] = useState(false)
 
   // Forms
   const [editingType, setEditingType] = useState<FeedType | null>(null)
@@ -365,7 +366,7 @@ export default function FeedsPage() {
   const dailyConsumptionByType = useMemo(() => {
     const byType: Record<string, number> = {}
     activeSchedules.forEach(s => {
-      const heads = s.pen?._count?.goats || 1
+      const heads = s.pen?._count?.goats || 0
       const daily = s.quantity * heads
       byType[s.feedTypeId] = (byType[s.feedTypeId] || 0) + daily
     })
@@ -374,7 +375,7 @@ export default function FeedsPage() {
 
   const dailyCost = useMemo(() => {
     return activeSchedules.reduce((sum, s) => {
-      const heads = s.pen?._count?.goats || 1
+      const heads = s.pen?._count?.goats || 0
       const stock = stocks.find(st => st.feedTypeId === s.feedTypeId)
       return sum + (s.quantity * heads * (stock?.cost || 0))
     }, 0)
@@ -476,28 +477,40 @@ export default function FeedsPage() {
   const openEditSchedule = (s: Schedule) => { setEditingSchedule(s); setAiSuggestion(null); setScheduleForm({ penId: s.penId || '', feedTypeId: s.feedTypeId, dailyAmount: s.quantity, feedingTimes: String(s.frequency), startDate: s.startDate.split('T')[0], endDate: s.endDate ? s.endDate.split('T')[0] : '', notes: s.notes || '' }); setScheduleDialog(true) }
 
   const saveType = async () => {
-    const url = editingType ? `/api/feeds/${editingType.id}` : '/api/feeds'
-    const method = editingType ? 'PUT' : 'POST'
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(typeForm) })
-    if (res.ok) { fetchAll(); setTypeDialog(false) } else { const d = await res.json().catch(() => ({})); alert(d.error || 'فشل في الحفظ') }
+    if (saving) return
+    setSaving(true)
+    try {
+      const url = editingType ? `/api/feeds/${editingType.id}` : '/api/feeds'
+      const method = editingType ? 'PUT' : 'POST'
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(typeForm) })
+      if (res.ok) { fetchAll(); setTypeDialog(false); setActionMessage({ type: 'success', text: editingType ? 'تم تحديث نوع العلف بنجاح' : 'تم إضافة نوع العلف بنجاح' }) } else { const d = await res.json().catch(() => ({})); setActionMessage({ type: 'error', text: d.error || 'فشل في الحفظ' }) }
+    } finally { setSaving(false) }
   }
 
   const saveStock = async () => {
-    const url = editingStock ? `/api/feeds/stock/${editingStock.id}` : '/api/feeds/stock'
-    const method = editingStock ? 'PUT' : 'POST'
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stockForm) })
-    if (res.ok) { fetchAll(); setStockDialog(false) } else { const d = await res.json().catch(() => ({})); alert(d.error || 'فشل في الحفظ') }
+    if (saving) return
+    setSaving(true)
+    try {
+      const url = editingStock ? `/api/feeds/stock/${editingStock.id}` : '/api/feeds/stock'
+      const method = editingStock ? 'PUT' : 'POST'
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stockForm) })
+      if (res.ok) { fetchAll(); setStockDialog(false); setActionMessage({ type: 'success', text: editingStock ? 'تم تحديث المخزون بنجاح' : 'تم إضافة المخزون بنجاح' }) } else { const d = await res.json().catch(() => ({})); setActionMessage({ type: 'error', text: d.error || 'فشل في الحفظ' }) }
+    } finally { setSaving(false) }
   }
 
   const saveSchedule = async () => {
-    const url = editingSchedule ? `/api/feeds/schedule/${editingSchedule.id}` : '/api/feeds/schedule'
-    const method = editingSchedule ? 'PUT' : 'POST'
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...scheduleForm, dailyAmount: Number(scheduleForm.dailyAmount), feedingTimes: Number(scheduleForm.feedingTimes) })
-    })
-    if (res.ok) { fetchAll(); setScheduleDialog(false); setEditingSchedule(null) } else { const d = await res.json().catch(() => ({})); alert(d.error || 'فشل في الحفظ') }
+    if (saving) return
+    setSaving(true)
+    try {
+      const url = editingSchedule ? `/api/feeds/schedule/${editingSchedule.id}` : '/api/feeds/schedule'
+      const method = editingSchedule ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...scheduleForm, dailyAmount: Number(scheduleForm.dailyAmount), feedingTimes: Number(scheduleForm.feedingTimes) })
+      })
+      if (res.ok) { fetchAll(); setScheduleDialog(false); setEditingSchedule(null); setActionMessage({ type: 'success', text: editingSchedule ? 'تم تحديث الجدول بنجاح' : 'تم إضافة الجدول بنجاح' }) } else { const d = await res.json().catch(() => ({})); setActionMessage({ type: 'error', text: d.error || 'فشل في الحفظ' }) }
+    } finally { setSaving(false) }
   }
 
   const toggleScheduleActive = async (s: Schedule) => {
@@ -513,8 +526,19 @@ export default function FeedsPage() {
     if (!deleteDialog) return
     const { type, item } = deleteDialog
     const url = type === 'stock' ? `/api/feeds/stock/${item.id}` : type === 'schedule' ? `/api/feeds/schedule/${item.id}` : `/api/feeds/${item.id}`
-    await fetch(url, { method: 'DELETE' })
-    fetchAll(); setDeleteDialog(null)
+    try {
+      const res = await fetch(url, { method: 'DELETE' })
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: 'تم الحذف بنجاح' })
+        fetchAll()
+      } else {
+        const d = await res.json().catch(() => ({}))
+        setActionMessage({ type: 'error', text: d.error || 'فشل في الحذف' })
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'حدث خطأ أثناء الحذف' })
+    }
+    setDeleteDialog(null)
   }
 
   const executeTodayConsumption = async () => {
@@ -874,7 +898,7 @@ export default function FeedsPage() {
                   ) : (
                     <Grid container spacing={2}>
                       {stockSummary.map(s => {
-                        const pct = Math.min(100, (s.totalQty / 200) * 100)
+                        const pct = Math.min(100, (s.totalQty / ((s.feedType.reorderLevel || 50) * 4)) * 100)
                         const expDays = s.lowestExpiry ? daysUntil(s.lowestExpiry) : null
                         const isExpired = expDays !== null && expDays <= 0
                         const dailyUse = dailyConsumptionByType[s.feedType.id] || 0
@@ -1273,7 +1297,7 @@ export default function FeedsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTypeDialog(false)}>إلغاء</Button>
-          <Button variant="contained" onClick={saveType}>حفظ</Button>
+          <Button variant="contained" onClick={saveType} disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
         </DialogActions>
       </Dialog>
 
@@ -1300,7 +1324,7 @@ export default function FeedsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setStockDialog(false)}>إلغاء</Button>
-          <Button variant="contained" onClick={saveStock}>حفظ</Button>
+          <Button variant="contained" onClick={saveStock} disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Button>
         </DialogActions>
       </Dialog>
 
@@ -1365,7 +1389,7 @@ export default function FeedsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { setScheduleDialog(false); setEditingSchedule(null); setAiSuggestion(null) }}>إلغاء</Button>
-          <Button variant="contained" onClick={saveSchedule}>{editingSchedule ? 'تحديث' : 'حفظ'}</Button>
+          <Button variant="contained" onClick={saveSchedule} disabled={saving}>{saving ? 'جاري الحفظ...' : (editingSchedule ? 'تحديث' : 'حفظ')}</Button>
         </DialogActions>
       </Dialog>
 

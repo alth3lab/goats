@@ -90,6 +90,28 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Deduct from stock if feedTypeId is provided (DI-03)
+    if (record.feedTypeId && record.quantity > 0) {
+      try {
+        const stocks = await prisma.feedStock.findMany({
+          where: { feedTypeId: record.feedTypeId, quantity: { gt: 0 } },
+          orderBy: [{ purchaseDate: 'asc' }, { createdAt: 'asc' }]
+        })
+        let remaining = record.quantity
+        for (const stock of stocks) {
+          if (remaining <= 0) break
+          const used = Math.min(stock.quantity, remaining)
+          await prisma.feedStock.update({
+            where: { id: stock.id },
+            data: { quantity: Number((stock.quantity - used).toFixed(4)) }
+          })
+          remaining -= used
+        }
+      } catch (e) {
+        console.error('Failed to deduct stock for feeding record:', e)
+      }
+    }
+
     await logActivity({
       userId: userId || undefined,
       action: 'CREATE',

@@ -59,7 +59,10 @@ model Farm {
   expenses             Expense[]
   inventoryItems       InventoryItem[]
   feedTypes            FeedType[]
+  feedStocks           FeedStock[]
   feedingSchedules     FeedingSchedule[]
+  feedingRecords       FeedingRecord[]
+  dailyFeedConsumptions DailyFeedConsumption[]
   calendarEvents       CalendarEvent[]
   activityLogs         ActivityLog[]
   vaccinationProtocols VaccinationProtocol[]
@@ -467,6 +470,7 @@ model FeedingRecord {
   id         String    @id @default(uuid())
   tenantId   String    @default("")
   farmId     String    @default("")
+  farm       Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
   goatId     String?
   goat       Goat?     @relation(fields: [goatId], references: [id], onDelete: SetNull)
   date       DateTime
@@ -708,6 +712,7 @@ model FeedStock {
   id           String    @id @default(uuid())
   tenantId     String    @default("")
   farmId       String    @default("")
+  farm         Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
   feedTypeId   String
   feedType     FeedType  @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
   quantity     Float
@@ -755,6 +760,7 @@ model DailyFeedConsumption {
   id         String   @id @default(uuid())
   tenantId   String   @default("")
   farmId     String   @default("")
+  farm       Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
   date       DateTime
   feedTypeId String
   feedType   FeedType @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
@@ -766,7 +772,7 @@ model DailyFeedConsumption {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([date, feedTypeId, penId])
+  @@unique([tenantId, date, feedTypeId, penId])
   @@index([tenantId])
   @@index([farmId])
   @@index([date])

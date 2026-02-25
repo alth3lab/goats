@@ -9,7 +9,7 @@ type RequiredItem = { feedTypeName: string; required: number }
 
 function dayStart(input: Date | string) {
   const d = new Date(input)
-  d.setHours(0, 0, 0, 0)
+  d.setUTCHours(0, 0, 0, 0)
   return d
 }
 
@@ -31,20 +31,8 @@ function dateRange(start: Date, end: Date) {
 async function resolveActorId(request: NextRequest) {
   const fromCookie = await getUserIdFromRequest(request)
   if (fromCookie) return fromCookie
-
-  const admin = await prisma.user.findFirst({
-    where: { role: 'ADMIN', isActive: true },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true }
-  })
-  if (admin) return admin.id
-
-  const anyActive = await prisma.user.findFirst({
-    where: { isActive: true },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true }
-  })
-  return anyActive?.id || null
+  // SEC-01: No fallback — if no user found, return null (will cause 401)
+  return null
 }
 
 /* ── حساب المطلوب من الجداول المخزنة مسبقاً (بدون استعلام DB) ── */
@@ -118,7 +106,12 @@ export async function POST(request: NextRequest) {
         return start < min ? start : min
       }, dayStart(schedules[0].startDate))
 
-      executionDates = dateRange(earliest, targetDate)
+      // PERF-03: Limit auto-consume to max 90 days back to avoid processing years of data
+      const maxLookback = dayStart(new Date())
+      maxLookback.setDate(maxLookback.getDate() - 90)
+      const effectiveStart = earliest > maxLookback ? earliest : maxLookback
+
+      executionDates = dateRange(effectiveStart, targetDate)
     } else {
       executionDates = [targetDate]
     }

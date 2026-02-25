@@ -11,7 +11,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requirePermission(request, 'add_feed')
+    const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
@@ -66,7 +66,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requirePermission(request, 'add_feed')
+    const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 

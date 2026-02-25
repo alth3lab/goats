@@ -50,10 +50,24 @@ export async function POST(request: NextRequest) {
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
+    const userId = await getUserIdFromRequest(request)
+
+    // Input validation (SEC-04)
+    if (!body.feedTypeId) {
+      return NextResponse.json({ error: 'نوع العلف مطلوب' }, { status: 400 })
+    }
+    const dailyAmount = Number(body.dailyAmount ?? body.quantity ?? 0)
+    if (dailyAmount <= 0) {
+      return NextResponse.json({ error: 'الكمية اليومية يجب أن تكون أكبر من صفر' }, { status: 400 })
+    }
+    if (body.endDate && body.startDate && new Date(body.endDate) < new Date(body.startDate)) {
+      return NextResponse.json({ error: 'تاريخ الانتهاء لا يمكن أن يكون قبل تاريخ البدء' }, { status: 400 })
+    }
+
     const createData = {
       feedTypeId: body.feedTypeId,
       penId: body.penId || null,
-      quantity: Number(body.dailyAmount ?? body.quantity ?? 0),
+      quantity: dailyAmount,
       frequency: Number(body.feedingTimes ?? body.frequency ?? 2),
       startDate: body.startDate ? new Date(body.startDate) : new Date(),
       endDate: body.endDate ? new Date(body.endDate) : null,
@@ -67,6 +81,17 @@ export async function POST(request: NextRequest) {
         feedType: true,
         pen: true
       }
+    })
+
+    // Activity logging (CODE-03)
+    await logActivity({
+      userId: userId || undefined,
+      action: 'CREATE',
+      entity: 'FeedingSchedule',
+      entityId: schedule.id,
+      description: `إضافة جدول تغذية: ${schedule.feedType?.nameAr || ''} - ${schedule.pen?.nameAr || 'بدون حظيرة'}`,
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json(schedule, { status: 201 })
