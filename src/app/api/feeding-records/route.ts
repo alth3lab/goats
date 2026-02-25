@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
             name: true,
             breed: { select: { nameAr: true } }
           }
+        },
+        feedTypeRef: {
+          select: {
+            nameAr: true,
+            category: true
+          }
         }
       },
       orderBy: { date: 'desc' }
@@ -62,6 +68,7 @@ export async function POST(request: NextRequest) {
         goatId: body.goatId || null,
         date: new Date(body.date),
         feedType: body.feedType,
+        feedTypeId: body.feedTypeId || null,
         quantity: Number(body.quantity),
         unit: body.unit,
         cost: body.cost ? Number(body.cost) : null,
@@ -72,6 +79,12 @@ export async function POST(request: NextRequest) {
           select: {
             tagId: true,
             name: true
+          }
+        },
+        feedTypeRef: {
+          select: {
+            nameAr: true,
+            category: true
           }
         }
       }

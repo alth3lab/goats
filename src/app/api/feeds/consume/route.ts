@@ -222,8 +222,8 @@ export async function POST(request: NextRequest) {
           if (remaining <= 0) break
           const used = Math.min(stock.quantity, remaining)
           const nextQty = Number((stock.quantity - used).toFixed(4))
-          const stockCost = stock.cost || 0
-          const itemCost = (stockCost / (stock.quantity + used)) * used  // تكلفة الكمية المستخدمة من هذه الدفعة
+          const unitCost = stock.cost || 0  // سعر الوحدة
+          const itemCost = unitCost * used  // تكلفة الكمية المستخدمة = سعر الوحدة × الكمية
           totalCost += itemCost
           updates.push({ stockId: stock.id, nextQty, used: Number(used.toFixed(4)), cost: itemCost })
           remaining -= used

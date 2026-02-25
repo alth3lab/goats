@@ -8,12 +8,12 @@ const globalForPrisma = globalThis as unknown as {
 // Models that need tenantId + farmId filtering
 const TENANT_FARM_MODELS = [
   'Pen', 'Goat', 'HealthRecord', 'VaccinationProtocol', 'Breeding',
-  'Sale', 'Expense', 'InventoryItem', 'FeedType', 'FeedingSchedule',
+  'Sale', 'Expense', 'InventoryItem', 'FeedType', 'FeedStock', 'FeedingSchedule',
   'DailyFeedConsumption', 'CalendarEvent', 'FeedingRecord', 'Owner'
 ]
 
 // Models that need tenantId only (no farmId)
-const TENANT_ONLY_MODELS = ['Birth', 'Payment', 'FeedStock', 'InventoryTransaction', 'User', 'Subscription']
+const TENANT_ONLY_MODELS = ['Birth', 'Payment', 'InventoryTransaction', 'User', 'Subscription']
 
 // Models that need tenantId + optional farmId filtering on reads
 const TENANT_OPTIONAL_FARM_MODELS = ['ActivityLog']

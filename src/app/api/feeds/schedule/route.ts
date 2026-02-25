@@ -79,9 +79,18 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'add_feed')
+    const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
+
+    // يتطلب تأكيد صريح عبر body.confirm = true
+    const body = await request.json().catch(() => ({}))
+    if (!body?.confirm) {
+      return NextResponse.json(
+        { error: 'يجب تأكيد الحذف الجماعي عبر إرسال confirm: true', requireConfirm: true },
+        { status: 400 }
+      )
+    }
 
     const userId = await getUserIdFromRequest(request)
     const deleted = await prisma.feedingSchedule.deleteMany({})

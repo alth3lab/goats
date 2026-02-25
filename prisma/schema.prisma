@@ -464,23 +464,26 @@ model Birth {
 // ==================== Feeding ====================
 
 model FeedingRecord {
-  id        String   @id @default(uuid())
-  tenantId  String   @default("")
-  farmId    String   @default("")
-  goatId    String?
-  goat      Goat?    @relation(fields: [goatId], references: [id], onDelete: SetNull)
-  date      DateTime
-  feedType  String
-  quantity  Float
-  unit      String
-  cost      Float?
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(uuid())
+  tenantId   String    @default("")
+  farmId     String    @default("")
+  goatId     String?
+  goat       Goat?     @relation(fields: [goatId], references: [id], onDelete: SetNull)
+  date       DateTime
+  feedType   String
+  feedTypeId String?
+  feedTypeRef FeedType? @relation(fields: [feedTypeId], references: [id], onDelete: SetNull)
+  quantity   Float
+  unit       String
+  cost       Float?
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([tenantId])
   @@index([farmId])
   @@index([goatId])
+  @@index([feedTypeId])
   @@index([date])
 }
 
@@ -689,9 +692,10 @@ model FeedType {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  stock        FeedStock[]
-  schedules    FeedingSchedule[]
-  consumptions DailyFeedConsumption[]
+  stock          FeedStock[]
+  schedules      FeedingSchedule[]
+  consumptions   DailyFeedConsumption[]
+  feedingRecords FeedingRecord[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -702,6 +706,7 @@ model FeedType {
 model FeedStock {
   id           String    @id @default(uuid())
   tenantId     String    @default("")
+  farmId       String    @default("")
   feedTypeId   String
   feedType     FeedType  @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
   quantity     Float
@@ -715,6 +720,7 @@ model FeedStock {
   updatedAt    DateTime  @updatedAt
 
   @@index([tenantId])
+  @@index([farmId])
   @@index([feedTypeId])
   @@index([expiryDate])
 }
