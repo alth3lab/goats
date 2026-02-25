@@ -338,7 +338,7 @@ export default function GoatProfilePage() {
               {goat.age?.category && <Chip label={goat.age.category} size="small" variant="outlined" />}
             </Stack>
             <Typography variant="body2" color="text.secondary" mt={0.5}>
-              {goat.breed?.type?.name} — {goat.breed?.name} | العمر: {goat.age?.formatted ?? calcAge(goat.birthDate)}
+              {goat.breed?.type?.nameAr} — {goat.breed?.nameAr} | العمر: {goat.age?.formatted ?? calcAge(goat.birthDate)}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
@@ -412,8 +412,8 @@ export default function GoatProfilePage() {
               <Grid size={{ xs: 12, md: 6 }}>
                 <Typography variant="subtitle1" fontWeight="bold" mb={1}>النسب والمصدر</Typography>
                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                  <InfoRow icon={<PetsIcon fontSize="small" />} label="النوع" value={goat.breed?.type?.name ?? '—'} />
-                  <InfoRow icon={<PetsIcon fontSize="small" />} label="السلالة" value={goat.breed?.name ?? '—'} />
+                  <InfoRow icon={<PetsIcon fontSize="small" />} label="النوع" value={goat.breed?.type?.nameAr ?? '—'} />
+                  <InfoRow icon={<PetsIcon fontSize="small" />} label="السلالة" value={goat.breed?.nameAr ?? '—'} />
                   <InfoRow icon={<FemaleIcon fontSize="small" />} label="رقم الأم" value={goat.motherTagId ?? '—'} />
                   <InfoRow icon={<MaleIcon fontSize="small" />} label="رقم الأب" value={goat.fatherTagId ?? '—'} />
                   <InfoRow icon={<CalendarIcon fontSize="small" />} label="تاريخ الشراء" value={formatDate(goat.purchaseDate) ?? '—'} />
@@ -686,7 +686,7 @@ interface GoatProfile {
   image?: string | null
   thumbnail?: string | null
   pen?: { name?: string | null } | null
-  breed?: { name?: string | null; type?: { name?: string | null } | null } | null
+  breed?: { name?: string | null; nameAr?: string | null; type?: { name?: string | null; nameAr?: string | null } | null } | null
   age?: { years: number; months: number; days: number; totalMonths: number; category: string; formatted: string } | null
   healthRecords?: HealthRecord[]
   breedingAsMother?: BreedingRecord[]
