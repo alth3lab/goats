@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
-import { google } from '@ai-sdk/google'
-import { generateText } from 'ai'
+import { GoogleGenAI } from '@google/genai'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { runWithTenant } from '@/lib/tenantContext'
@@ -19,6 +18,8 @@ const SYSTEM_PROMPT = `أنت مساعد ذكي متخصص في إدارة ال�
 تحدث بالعربية دائماً. كن مختصراً ومفيداً. إذا سُئلت عن بيانات المزرعة، استخدم البيانات المقدمة لك في السياق.
 لا تقدم تشخيصات طبية نهائية - انصح دائماً بمراجعة الطبيب البيطري للحالات الخطيرة.`
 
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || '' })
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_goats')
@@ -27,10 +28,10 @@ export async function POST(request: NextRequest) {
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
       const body = await request.json()
       
-      // Convert client messages to model format
+      // Convert client messages to Gemini format
       const chatMessages = (body.messages || []).map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
+        role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+        parts: [{ text: m.content }],
       }))
 
       // Fetch farm context data for AI
@@ -58,14 +59,32 @@ export async function POST(request: NextRequest) {
 - الأعلاف المتوفرة: ${feedStats.map(f => `${f.nameAr || f.name} (${f.category}) - سعر الوحدة: ${f.unitPrice || 'غير محدد'}`).join('، ')}
 `
 
-      const result = await generateText({
-        model: google('gemini-2.0-flash'),
-        system: SYSTEM_PROMPT + '\n\n' + farmContext,
-        messages: chatMessages,
-        maxRetries: 0,
-      })
+      // Try gemini-2.5-pro first, fallback to gemini-2.5-flash if unavailable
+      const models = ['gemini-2.5-pro', 'gemini-2.5-flash']
+      let text = ''
+      
+      for (const modelName of models) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: chatMessages,
+            config: {
+              systemInstruction: SYSTEM_PROMPT + '\n\n' + farmContext,
+            },
+          })
+          text = response.text || 'عذراً، لم أتمكن من توليد رد.'
+          break
+        } catch (modelError: unknown) {
+          const errMsg = modelError instanceof Error ? modelError.message : String(modelError)
+          if ((errMsg.includes('503') || errMsg.includes('UNAVAILABLE')) && modelName !== models[models.length - 1]) {
+            console.warn(`${modelName} unavailable, trying fallback...`)
+            continue
+          }
+          throw modelError
+        }
+      }
 
-      return new Response(result.text, {
+      return new Response(text, {
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       })
     })
