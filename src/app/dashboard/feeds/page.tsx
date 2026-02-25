@@ -21,7 +21,10 @@ import {
   CalendarMonth as CalendarIcon, PictureAsPdf as PdfIcon,
   Description as ExcelIcon,
   History as HistoryIcon, Undo as UndoIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  Blender as RecipeIcon,
+  ShoppingCart as ReorderIcon,
+  Pets as AnimalIcon
 } from '@mui/icons-material'
 import * as XLSX from 'xlsx'
 import { generateArabicPDF } from '@/lib/pdfHelper'
@@ -44,8 +47,11 @@ const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v
 // ─── Types ───
 interface FeedType { id: string; name: string; nameAr: string; category: string; protein?: number; energy?: number; reorderLevel?: number; notes?: string }
 interface Stock { id: string; feedTypeId: string; feedType: FeedType; quantity: number; unit: string; cost?: number; purchaseDate: string; expiryDate?: string; supplier?: string; notes?: string }
-interface Schedule { id: string; feedTypeId: string; feedType: FeedType; penId?: string; pen?: { id: string; nameAr: string; _count?: { goats: number } }; quantity: number; frequency: number; startDate: string; endDate?: string; isActive: boolean; notes?: string }
+interface Schedule { id: string; feedTypeId: string; feedType: FeedType; penId?: string; pen?: { id: string; nameAr: string; _count?: { goats: number } }; goatId?: string; goat?: { tagId: string; name: string }; recipeId?: string; quantity: number; frequency: number; startDate: string; endDate?: string; isActive: boolean; notes?: string }
 interface Pen { id: string; nameAr: string; name: string; _count?: { goats: number }; goats?: any[] }
+interface Recipe { id: string; name: string; nameAr: string; description?: string; isActive: boolean; items: RecipeItem[] }
+interface RecipeItem { id: string; feedTypeId: string; feedType: { id: string; nameAr: string; name: string; category: string }; percentage: number; notes?: string }
+interface ReorderSuggestion { feedTypeId: string; feedName: string; category: string; currentStock: number; reorderLevel: number; dailyConsumption: number; daysRemaining: number; suggestedPurchase: number; avgPrice: number; estimatedCost: number; urgency: 'critical' | 'warning' | 'ok' }
 
 // ─── AI Feed Suggestion ───
 interface FeedSuggestion {
@@ -197,7 +203,7 @@ function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status
 }
 
 // ─── View Enum ───
-type View = 'today' | 'stock' | 'schedules' | 'history'
+type View = 'today' | 'stock' | 'schedules' | 'history' | 'recipes' | 'reorder'
 
 export default function FeedsPage() {
   const theme = useTheme()
@@ -239,13 +245,27 @@ export default function FeedsPage() {
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
   const [typeForm, setTypeForm] = useState({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, reorderLevel: 50, description: '' })
   const [stockForm, setStockForm] = useState({ feedTypeId: '', quantity: 0, unit: 'كجم', unitPrice: 0, purchaseDate: today(), expiryDate: '', supplier: '', notes: '' })
-  const [scheduleForm, setScheduleForm] = useState({ penId: '', feedTypeId: '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '' })
+  const [scheduleForm, setScheduleForm] = useState({ penId: '', feedTypeId: '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '', goatId: '' })
   const [aiSuggestion, setAiSuggestion] = useState<FeedSuggestion | null>(null)
 
   // History & Filtering
   const [consumptionHistory, setConsumptionHistory] = useState<any[]>([])
   const [undoingDate, setUndoingDate] = useState<string | null>(null)
   const [stockCategoryFilter, setStockCategoryFilter] = useState<string>('ALL')
+
+  // Recipes
+  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [recipeDialog, setRecipeDialog] = useState(false)
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null)
+  const [recipeForm, setRecipeForm] = useState({ nameAr: '', nameEn: '', description: '', items: [] as { feedTypeId: string; percentage: number }[] })
+
+  // Reorder
+  const [reorderData, setReorderData] = useState<{ suggestions: ReorderSuggestion[]; summary: any } | null>(null)
+  const [reorderLoading, setReorderLoading] = useState(false)
+
+  // Unified feeding (schedule for individual goat)
+  const [scheduleTarget, setScheduleTarget] = useState<'pen' | 'goat'>('pen')
+  const [goats, setGoats] = useState<any[]>([])
 
   // ─── Fetch ───
   useEffect(() => {
@@ -294,15 +314,17 @@ export default function FeedsPage() {
   const fetchAll = async () => {
     setLoading(true)
     try {
-      const [t, s, sc, p] = await Promise.all([
+      const [t, s, sc, p, rec, g] = await Promise.all([
         fetch('/api/feeds').then(r => r.ok ? r.json() : []),
         fetch('/api/feeds/stock').then(r => r.ok ? r.json() : []),
         fetch('/api/feeds/schedule').then(r => r.ok ? r.json() : []),
-        fetch('/api/pens').then(r => r.ok ? r.json() : [])
+        fetch('/api/pens').then(r => r.ok ? r.json() : []),
+        fetch('/api/feeds/recipes').then(r => r.ok ? r.json() : []),
+        fetch('/api/goats?limit=500').then(r => r.ok ? r.json() : [])
       ])
-      setFeedTypes(t); setStocks(s); setSchedules(sc); setPens(p)
+      setFeedTypes(t); setStocks(s); setSchedules(sc); setPens(p); setRecipes(rec)
+      setGoats(Array.isArray(g) ? g : (g?.data || []))
     } catch {
-      // MD-09: Log error instead of silent catch
       console.error('fetchAll failed')
       setActionMessage({ type: 'error', text: 'فشل في تحميل البيانات' })
     } finally { setLoading(false) }
@@ -343,6 +365,66 @@ export default function FeedsPage() {
       setUndoingDate(null)
     }
   }
+
+  const fetchReorder = async () => {
+    setReorderLoading(true)
+    try {
+      const res = await fetch('/api/feeds/reorder')
+      if (res.ok) setReorderData(await res.json())
+    } catch {
+      console.error('fetchReorder failed')
+    } finally { setReorderLoading(false) }
+  }
+
+  const openAddRecipe = () => {
+    setEditingRecipe(null)
+    setRecipeForm({ nameAr: '', nameEn: '', description: '', items: [{ feedTypeId: feedTypes[0]?.id || '', percentage: 100 }] })
+    setRecipeDialog(true)
+  }
+  const openEditRecipe = (r: Recipe) => {
+    setEditingRecipe(r)
+    setRecipeForm({
+      nameAr: r.nameAr, nameEn: r.name, description: r.description || '',
+      items: r.items.map(i => ({ feedTypeId: i.feedTypeId, percentage: i.percentage }))
+    })
+    setRecipeDialog(true)
+  }
+
+  const saveRecipe = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
+      const url = editingRecipe ? `/api/feeds/recipes/${editingRecipe.id}` : '/api/feeds/recipes'
+      const method = editingRecipe ? 'PUT' : 'POST'
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recipeForm) })
+      if (res.ok) {
+        fetchAll()
+        setRecipeDialog(false)
+        setActionMessage({ type: 'success', text: editingRecipe ? 'تم تعديل الخلطة بنجاح' : 'تم إنشاء الخلطة بنجاح' })
+      } else {
+        const d = await res.json().catch(() => ({}))
+        setActionMessage({ type: 'error', text: d.error || 'فشل في حفظ الخلطة' })
+      }
+    } finally { setSaving(false) }
+  }
+
+  const deleteRecipe = async (r: Recipe) => {
+    if (!confirm(`هل تريد حذف خلطة "${r.nameAr}"؟`)) return
+    try {
+      const res = await fetch(`/api/feeds/recipes/${r.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        fetchAll()
+        setActionMessage({ type: 'success', text: 'تم حذف الخلطة بنجاح' })
+      } else {
+        const d = await res.json().catch(() => ({}))
+        setActionMessage({ type: 'error', text: d.error || 'فشل في حذف الخلطة' })
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'حدث خطأ أثناء الحذف' })
+    }
+  }
+
+  const recipeFormTotalPct = useMemo(() => recipeForm.items.reduce((s, i) => s + (i.percentage || 0), 0), [recipeForm.items])
 
   // ─── Computed ───
   const activeSchedules = useMemo(() => schedules.filter(s => s.isActive), [schedules])
@@ -398,7 +480,11 @@ export default function FeedsPage() {
     const low = stockSummary.filter(s => s.isLow)
     if (expired.length) list.push({ severity: 'error', text: `${expired.length} أصناف منتهية الصلاحية — يجب التخلص منها فوراً` })
     if (expiring.length) list.push({ severity: 'warning', text: `${expiring.length} أصناف ستنتهي صلاحيتها خلال 30 يوم` })
-    if (low.length) list.push({ severity: 'warning', text: `${low.length} أنواع أعلاف بمخزون منخفض` })
+    if (low.length) {
+      // Enhanced with purchase suggestion
+      const lowNames = low.map(l => l.feedType.nameAr).join('، ')
+      list.push({ severity: 'warning', text: `${low.length} أنواع أعلاف بمخزون منخفض (${lowNames}) — انتقل لتبويب إعادة الطلب لعرض كميات الشراء المقترحة` })
+    }
     if (activeSchedules.length === 0 && pens.length > 0) list.push({ severity: 'info', text: 'لا توجد جداول تغذية نشطة — أنشئ جدول لبدء التتبع' })
     return list
   }, [stocks, stockSummary, activeSchedules, pens])
@@ -540,8 +626,8 @@ export default function FeedsPage() {
     }
   }, [pens, feedTypes])
 
-  const openAddSchedule = () => { setEditingSchedule(null); setAiSuggestion(null); setScheduleForm({ penId: '', feedTypeId: feedTypes[0]?.id || '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '' }); setScheduleDialog(true) }
-  const openEditSchedule = (s: Schedule) => { setEditingSchedule(s); setAiSuggestion(null); setScheduleForm({ penId: s.penId || '', feedTypeId: s.feedTypeId, dailyAmount: s.quantity, feedingTimes: String(s.frequency), startDate: s.startDate.split('T')[0], endDate: s.endDate ? s.endDate.split('T')[0] : '', notes: s.notes || '' }); setScheduleDialog(true) }
+  const openAddSchedule = () => { setEditingSchedule(null); setAiSuggestion(null); setScheduleTarget('pen'); setScheduleForm({ penId: '', feedTypeId: feedTypes[0]?.id || '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '', goatId: '' }); setScheduleDialog(true) }
+  const openEditSchedule = (s: Schedule) => { setEditingSchedule(s); setAiSuggestion(null); setScheduleTarget(s.goatId ? 'goat' : 'pen'); setScheduleForm({ penId: s.penId || '', feedTypeId: s.feedTypeId, dailyAmount: s.quantity, feedingTimes: String(s.frequency), startDate: s.startDate.split('T')[0], endDate: s.endDate ? s.endDate.split('T')[0] : '', notes: s.notes || '', goatId: s.goatId || '' }); setScheduleDialog(true) }
 
   const saveType = async () => {
     if (saving) return
@@ -732,6 +818,8 @@ export default function FeedsPage() {
     { key: 'today', label: 'لوحة اليوم', icon: <TodayIcon /> },
     { key: 'stock', label: 'المخزون', icon: <InventoryIcon />, count: stocks.length },
     { key: 'schedules', label: 'جداول التغذية', icon: <ScheduleIcon />, count: activeSchedules.length },
+    { key: 'recipes', label: 'الخلطات', icon: <RecipeIcon />, count: recipes.length },
+    { key: 'reorder', label: 'إعادة الطلب', icon: <ReorderIcon /> },
     { key: 'history', label: 'سجل الاستهلاك', icon: <HistoryIcon />, count: consumptionHistory.length }
   ]
 
@@ -1261,14 +1349,14 @@ export default function FeedsPage() {
                 <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
                   <Stack spacing={2}>
                     {schedules.map(s => {
-                      const heads = s.pen?._count?.goats || 0
+                      const heads = s.goat ? 1 : (s.pen?._count?.goats || 0)
                       return (
                         <Card key={s.id} sx={{ opacity: s.isActive ? 1 : 0.6, borderRadius: 3 }}>
                           <CardContent>
                             <Stack spacing={2}>
                               {/* Header */}
                               <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <Typography variant="h6" fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography>
+                                <Typography variant="h6" fontWeight="bold">{s.goat ? `${s.goat.tagId} — ${s.goat.name || ''}` : (s.pen?.nameAr || 'غير محدد')}</Typography>
                                 <Chip
                                   label={s.isActive ? 'نشط' : 'متوقف'}
                                   size="small"
@@ -1341,10 +1429,10 @@ export default function FeedsPage() {
                     </TableHead>
                     <TableBody>
                       {schedules.map(s => {
-                        const heads = s.pen?._count?.goats || 0
+                        const heads = s.goat ? 1 : (s.pen?._count?.goats || 0)
                         return (
                           <TableRow key={s.id} hover sx={{ opacity: s.isActive ? 1 : 0.6 }}>
-                            <TableCell><Typography fontWeight="bold">{s.pen?.nameAr || 'غير محدد'}</Typography></TableCell>
+                            <TableCell><Typography fontWeight="bold">{s.goat ? `${s.goat.tagId} — ${s.goat.name || ''}` : (s.pen?.nameAr || 'غير محدد')}</Typography></TableCell>
                             <TableCell>{heads}</TableCell>
                             <TableCell>
                               <Chip label={s.feedType?.nameAr || '-'} size="small" sx={{ bgcolor: catColor(s.feedType?.category || ''), color: 'common.white' }} />
@@ -1372,6 +1460,167 @@ export default function FeedsPage() {
                   </TableBody>
                 </Table>
               </TableContainer>
+              </>
+            )}
+          </Box>
+        </Fade>
+      )}
+
+      {/* ═══════════════════ VIEW: RECIPES ═══════════════════ */}
+      {view === 'recipes' && (
+        <Fade in>
+          <Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddRecipe}>إنشاء خلطة جديدة</Button>
+            </Stack>
+
+            {recipes.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                <RecipeIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">لا توجد خلطات أعلاف</Typography>
+                <Typography variant="body2" color="text.secondary" mb={2}>أنشئ خلطة لتعريف وصفة خلط (مثال: 60% شعير + 30% نخالة + 10% أملاح)</Typography>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openAddRecipe}>إنشاء أول خلطة</Button>
+              </Paper>
+            ) : (
+              <Grid container spacing={2}>
+                {recipes.map(r => (
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={r.id}>
+                    <Card sx={{ borderRadius: 3, height: '100%', border: '1px solid', borderColor: 'divider', transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 4 } }}>
+                      <Box sx={{ px: 2, py: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.08), borderBottom: '1px solid', borderColor: 'divider', borderRadius: '12px 12px 0 0' }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <RecipeIcon color="primary" fontSize="small" />
+                            <Typography variant="subtitle1" fontWeight="bold">{r.nameAr}</Typography>
+                          </Stack>
+                          <Chip label={r.isActive ? 'نشطة' : 'معطلة'} size="small" color={r.isActive ? 'success' : 'default'} />
+                        </Stack>
+                      </Box>
+                      <CardContent sx={{ pt: 1.5 }}>
+                        {r.description && <Typography variant="body2" color="text.secondary" mb={1}>{r.description}</Typography>}
+                        <Typography variant="caption" fontWeight="bold" color="text.secondary" mb={0.5} display="block">المكونات ({r.items.length})</Typography>
+                        <Stack spacing={0.5} mb={1.5}>
+                          {r.items.map(item => (
+                            <Stack key={item.id} direction="row" spacing={1} alignItems="center">
+                              <Box sx={{ width: '100%' }}>
+                                <Stack direction="row" justifyContent="space-between" mb={0.25}>
+                                  <Typography variant="body2" fontSize={12.5}>{item.feedType.nameAr}</Typography>
+                                  <Typography variant="body2" fontSize={12.5} fontWeight="bold">{item.percentage}%</Typography>
+                                </Stack>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={item.percentage}
+                                  sx={{
+                                    height: 6, borderRadius: 3,
+                                    bgcolor: alpha(catColor(item.feedType.category), 0.12),
+                                    '& .MuiLinearProgress-bar': { bgcolor: catColor(item.feedType.category), borderRadius: 3 }
+                                  }}
+                                />
+                              </Box>
+                            </Stack>
+                          ))}
+                        </Stack>
+                        <Stack direction="row" spacing={0.5} pt={0.75} sx={{ borderTop: '1px dashed', borderColor: 'divider' }}>
+                          <IconButton size="small" onClick={() => openEditRecipe(r)}><EditIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" color="error" onClick={() => deleteRecipe(r)}><DeleteIcon fontSize="small" /></IconButton>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        </Fade>
+      )}
+
+      {/* ═══════════════════ VIEW: REORDER ═══════════════════ */}
+      {view === 'reorder' && (
+        <Fade in>
+          <Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" mb={2}>
+              <ReorderIcon color="primary" sx={{ fontSize: 28 }} />
+              <Typography variant="h6" fontWeight="bold">اقتراحات إعادة الطلب</Typography>
+              <Button size="small" variant="outlined" onClick={fetchReorder} disabled={reorderLoading}>
+                {reorderLoading ? 'جاري الحساب...' : 'تحديث'}
+              </Button>
+            </Stack>
+
+            {!reorderData ? (
+              <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                <ReorderIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">اضغط "تحديث" لحساب كميات الشراء المقترحة</Typography>
+                <Typography variant="body2" color="text.secondary" mb={2}>سيتم تحليل معدل الاستهلاك ومستوى المخزون لكل نوع علف</Typography>
+                <Button variant="contained" onClick={fetchReorder} disabled={reorderLoading}>{reorderLoading ? 'جاري...' : 'حساب الاقتراحات'}</Button>
+              </Paper>
+            ) : (
+              <>
+                {/* Summary Strip */}
+                <Paper sx={{ p: 2, mb: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
+                    {reorderData.summary.criticalCount > 0 && (
+                      <Chip color="error" label={`${reorderData.summary.criticalCount} حرج`} variant="filled" />
+                    )}
+                    {reorderData.summary.warningCount > 0 && (
+                      <Chip color="warning" label={`${reorderData.summary.warningCount} تحذير`} variant="filled" />
+                    )}
+                    <Chip color="info" variant="outlined" label={`${reorderData.summary.totalTypes} أنواع`} />
+                    <Chip color="warning" variant="outlined" label={`تكلفة تقديرية: ${reorderData.summary.totalEstimatedCost.toLocaleString()} د.إ`} />
+                  </Stack>
+                </Paper>
+
+                {/* Suggestions Table */}
+                <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'action.hover' }}>
+                        <TableCell><strong>الحالة</strong></TableCell>
+                        <TableCell><strong>نوع العلف</strong></TableCell>
+                        <TableCell><strong>المخزون الحالي</strong></TableCell>
+                        <TableCell><strong>حد إعادة الطلب</strong></TableCell>
+                        <TableCell><strong>الاستهلاك اليومي</strong></TableCell>
+                        <TableCell><strong>يكفي لـ</strong></TableCell>
+                        <TableCell><strong>الكمية المقترحة</strong></TableCell>
+                        <TableCell><strong>التكلفة التقديرية</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {reorderData.suggestions.map(s => (
+                        <TableRow key={s.feedTypeId} hover sx={{
+                          bgcolor: s.urgency === 'critical' ? alpha(theme.palette.error.main, 0.06) : s.urgency === 'warning' ? alpha(theme.palette.warning.main, 0.04) : undefined
+                        }}>
+                          <TableCell>
+                            <Chip
+                              label={s.urgency === 'critical' ? 'حرج' : s.urgency === 'warning' ? 'تحذير' : 'جيد'}
+                              size="small"
+                              color={s.urgency === 'critical' ? 'error' : s.urgency === 'warning' ? 'warning' : 'success'}
+                              variant="filled"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <Typography fontWeight="bold">{s.feedName}</Typography>
+                              <Chip label={catLabel(s.category)} size="small" sx={{ height: 18, fontSize: 10, bgcolor: alpha(catColor(s.category), 0.14), color: catColor(s.category) }} />
+                            </Stack>
+                          </TableCell>
+                          <TableCell>{s.currentStock.toFixed(1)} كجم</TableCell>
+                          <TableCell>{s.reorderLevel} كجم</TableCell>
+                          <TableCell>{s.dailyConsumption.toFixed(1)} كجم/يوم</TableCell>
+                          <TableCell>
+                            <Typography fontWeight="bold" color={s.daysRemaining <= 3 ? 'error.main' : s.daysRemaining <= 7 ? 'warning.main' : 'success.main'}>
+                              {s.daysRemaining >= 999 ? '∞' : `${s.daysRemaining.toFixed(0)} يوم`}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography fontWeight="bold" color="primary.main">
+                              {s.suggestedPurchase > 0 ? `${s.suggestedPurchase} كجم` : '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{s.estimatedCost > 0 ? `${s.estimatedCost.toLocaleString()} د.إ` : '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </>
             )}
           </Box>
@@ -1517,18 +1766,44 @@ export default function FeedsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Schedule Dialog */}
-      <Dialog open={scheduleDialog} onClose={() => { setScheduleDialog(false); setEditingSchedule(null); setAiSuggestion(null) }} maxWidth="sm" fullWidth fullScreen={isMobile}>
+      {/* Schedule Dialog — Unified (Pen or Individual Animal) */}
+      <Dialog open={scheduleDialog} onClose={() => { setScheduleDialog(false); setEditingSchedule(null); setAiSuggestion(null); setScheduleTarget('pen') }} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{editingSchedule ? 'تعديل جدول التغذية' : 'إضافة جدول تغذية'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} mt={1}>
-            <TextField select fullWidth label="الحظيرة" value={scheduleForm.penId} onChange={e => {
-              const newPenId = e.target.value
-              setScheduleForm({ ...scheduleForm, penId: newPenId })
-              computeSuggestion(newPenId, scheduleForm.feedTypeId)
-            }}>
-              {pens.map(p => <MenuItem key={p.id} value={p.id}>{p.nameAr} ({p._count?.goats || 0} رأس)</MenuItem>)}
-            </TextField>
+            {/* Unified: Choose target type (pen vs individual goat) */}
+            <Stack direction="row" spacing={1}>
+              <Chip
+                icon={<ScheduleIcon />}
+                label="حظيرة كاملة"
+                variant={scheduleTarget === 'pen' ? 'filled' : 'outlined'}
+                color={scheduleTarget === 'pen' ? 'primary' : 'default'}
+                onClick={() => setScheduleTarget('pen')}
+              />
+              <Chip
+                icon={<AnimalIcon />}
+                label="حيوان فردي"
+                variant={scheduleTarget === 'goat' ? 'filled' : 'outlined'}
+                color={scheduleTarget === 'goat' ? 'primary' : 'default'}
+                onClick={() => setScheduleTarget('goat')}
+              />
+            </Stack>
+
+            {scheduleTarget === 'pen' ? (
+              <TextField select fullWidth label="الحظيرة" value={scheduleForm.penId} onChange={e => {
+                const newPenId = e.target.value
+                setScheduleForm({ ...scheduleForm, penId: newPenId, goatId: '' })
+                computeSuggestion(newPenId, scheduleForm.feedTypeId)
+              }}>
+                {pens.map(p => <MenuItem key={p.id} value={p.id}>{p.nameAr} ({p._count?.goats || 0} رأس)</MenuItem>)}
+              </TextField>
+            ) : (
+              <TextField select fullWidth label="الحيوان" value={(scheduleForm as any).goatId || ''} onChange={e => {
+                setScheduleForm({ ...scheduleForm, penId: '', goatId: e.target.value } as any)
+              }}>
+                {goats.map((g: any) => <MenuItem key={g.id} value={g.id}>{g.tagId} — {g.name || g.breed?.nameAr || ''}</MenuItem>)}
+              </TextField>
+            )}
             <TextField select fullWidth label="نوع العلف" value={scheduleForm.feedTypeId} onChange={e => {
               const newFeedTypeId = e.target.value
               setScheduleForm({ ...scheduleForm, feedTypeId: newFeedTypeId })
@@ -1591,6 +1866,97 @@ export default function FeedsPage() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog(null)}>إلغاء</Button>
           <Button variant="contained" color="error" onClick={confirmDelete}>حذف</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Recipe Dialog (Mix Builder) */}
+      <Dialog open={recipeDialog} onClose={() => setRecipeDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{editingRecipe ? 'تعديل خلطة علف' : 'إنشاء خلطة علف'}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField fullWidth label="اسم الخلطة بالعربية" value={recipeForm.nameAr} onChange={e => setRecipeForm({ ...recipeForm, nameAr: e.target.value })} />
+            <TextField fullWidth label="اسم الخلطة بالإنجليزية" value={recipeForm.nameEn} onChange={e => setRecipeForm({ ...recipeForm, nameEn: e.target.value })} />
+            <TextField fullWidth multiline rows={2} label="وصف" value={recipeForm.description} onChange={e => setRecipeForm({ ...recipeForm, description: e.target.value })} />
+
+            {/* Ingredients */}
+            <Box>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="subtitle2" fontWeight="bold">المكونات</Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip
+                    label={`المجموع: ${recipeFormTotalPct}%`}
+                    size="small"
+                    color={Math.abs(recipeFormTotalPct - 100) < 0.1 ? 'success' : 'error'}
+                    variant="filled"
+                  />
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => setRecipeForm(f => ({ ...f, items: [...f.items, { feedTypeId: '', percentage: 0 }] }))}
+                  >
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              </Stack>
+              <Stack spacing={1.5}>
+                {recipeForm.items.map((item, idx) => (
+                  <Stack key={idx} direction="row" spacing={1} alignItems="center">
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      label="نوع العلف"
+                      value={item.feedTypeId}
+                      onChange={e => {
+                        const items = [...recipeForm.items]
+                        items[idx] = { ...items[idx], feedTypeId: e.target.value }
+                        setRecipeForm({ ...recipeForm, items })
+                      }}
+                    >
+                      {feedTypes.map(t => (
+                        <MenuItem key={t.id} value={t.id} disabled={recipeForm.items.some((it, i) => i !== idx && it.feedTypeId === t.id)}>
+                          {t.nameAr}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      type="number"
+                      size="small"
+                      label="%"
+                      sx={{ minWidth: 80 }}
+                      value={item.percentage}
+                      onChange={e => {
+                        const items = [...recipeForm.items]
+                        items[idx] = { ...items[idx], percentage: Number(e.target.value) }
+                        setRecipeForm({ ...recipeForm, items })
+                      }}
+                      InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                    />
+                    {recipeForm.items.length > 1 && (
+                      <IconButton size="small" color="error" onClick={() => {
+                        setRecipeForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))
+                      }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+              {Math.abs(recipeFormTotalPct - 100) >= 0.1 && (
+                <Alert severity="warning" sx={{ mt: 1 }}>مجموع النسب يجب أن يساوي 100% (الحالي: {recipeFormTotalPct}%)</Alert>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRecipeDialog(false)}>إلغاء</Button>
+          <Button
+            variant="contained"
+            onClick={saveRecipe}
+            disabled={saving || Math.abs(recipeFormTotalPct - 100) >= 0.1 || !recipeForm.nameAr.trim() || recipeForm.items.some(i => !i.feedTypeId)}
+          >
+            {saving ? 'جاري الحفظ...' : 'حفظ'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

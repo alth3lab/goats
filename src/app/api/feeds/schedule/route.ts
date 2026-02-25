@@ -14,10 +14,12 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams
     const penId = searchParams.get('penId')
+    const goatId = searchParams.get('goatId')
     const isActive = searchParams.get('isActive')
 
     const where: Record<string, unknown> = {}
     if (penId) where.penId = penId
+    if (goatId) where.goatId = goatId
     // LO-05: Fix isActive filter — searchParams.get returns string or null
     if (searchParams.has('isActive')) where.isActive = isActive === 'true'
 
@@ -31,7 +33,9 @@ export async function GET(request: NextRequest) {
               select: { goats: true }
             }
           }
-        }
+        },
+        goat: { select: { id: true, tagId: true, name: true } },
+        recipe: { select: { id: true, nameAr: true } }
       },
       orderBy: { startDate: 'desc' }
     })
@@ -69,6 +73,8 @@ export async function POST(request: NextRequest) {
     const createData = {
       feedTypeId: body.feedTypeId,
       penId: body.penId || null,
+      goatId: body.goatId || null,
+      recipeId: body.recipeId || null,
       quantity: dailyAmount,
       frequency: Number(body.feedingTimes ?? body.frequency ?? 2),
       startDate: body.startDate ? new Date(body.startDate) : new Date(),
@@ -81,17 +87,19 @@ export async function POST(request: NextRequest) {
       data: createData,
       include: {
         feedType: true,
-        pen: true
+        pen: true,
+        goat: { select: { id: true, tagId: true, name: true } }
       }
     })
 
     // Activity logging (CODE-03)
+    const targetLabel = schedule.goat ? `حيوان ${schedule.goat.tagId}` : (schedule.pen?.nameAr || 'بدون حظيرة')
     await logActivity({
       userId: userId || undefined,
       action: 'CREATE',
       entity: 'FeedingSchedule',
       entityId: schedule.id,
-      description: `إضافة جدول تغذية: ${schedule.feedType?.nameAr || ''} - ${schedule.pen?.nameAr || 'بدون حظيرة'}`,
+      description: `إضافة جدول تغذية: ${schedule.feedType?.nameAr || ''} - ${targetLabel}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })

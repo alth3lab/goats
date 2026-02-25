@@ -19,6 +19,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const updateData: any = {}
     if (body.feedTypeId) updateData.feedTypeId = body.feedTypeId
     if (body.penId !== undefined) updateData.penId = body.penId || null
+    if (body.goatId !== undefined) updateData.goatId = body.goatId || null
+    if (body.recipeId !== undefined) updateData.recipeId = body.recipeId || null
     if (body.dailyAmount !== undefined || body.quantity !== undefined) updateData.quantity = Number(body.dailyAmount ?? body.quantity ?? 0)
     if (body.feedingTimes !== undefined || body.frequency !== undefined) updateData.frequency = Number(body.feedingTimes ?? body.frequency ?? 2)
     if (body.startDate) updateData.startDate = new Date(body.startDate)

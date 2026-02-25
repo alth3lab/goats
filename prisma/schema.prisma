@@ -49,23 +49,24 @@ model Farm {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
-  userFarms            UserFarm[]
-  pens                 Pen[]
-  goats                Goat[]
-  owners               Owner[]
-  healthRecords        HealthRecord[]
-  breedings            Breeding[]
-  sales                Sale[]
-  expenses             Expense[]
-  inventoryItems       InventoryItem[]
-  feedTypes            FeedType[]
-  feedStocks           FeedStock[]
-  feedingSchedules     FeedingSchedule[]
-  feedingRecords       FeedingRecord[]
+  userFarms             UserFarm[]
+  pens                  Pen[]
+  goats                 Goat[]
+  owners                Owner[]
+  healthRecords         HealthRecord[]
+  breedings             Breeding[]
+  sales                 Sale[]
+  expenses              Expense[]
+  inventoryItems        InventoryItem[]
+  feedTypes             FeedType[]
+  feedStocks            FeedStock[]
+  feedingSchedules      FeedingSchedule[]
+  feedingRecords        FeedingRecord[]
   dailyFeedConsumptions DailyFeedConsumption[]
-  calendarEvents       CalendarEvent[]
-  activityLogs         ActivityLog[]
-  vaccinationProtocols VaccinationProtocol[]
+  feedRecipes           FeedRecipe[]
+  calendarEvents        CalendarEvent[]
+  activityLogs          ActivityLog[]
+  vaccinationProtocols  VaccinationProtocol[]
 
   @@index([tenantId])
 }
@@ -127,23 +128,23 @@ enum SubscriptionStatus {
 // ==================== Users ====================
 
 model User {
-  id        String    @id @default(uuid())
-  tenantId  String    @default("")
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  username  String    @unique
-  email     String    @unique
-  password  String
-  fullName  String
-  phone     String?
-  role      UserRole  @default(USER)
-  isActive  Boolean   @default(true)
-  lastLogin DateTime?
+  id               String    @id @default(uuid())
+  tenantId         String    @default("")
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  username         String    @unique
+  email            String    @unique
+  password         String
+  fullName         String
+  phone            String?
+  role             UserRole  @default(USER)
+  isActive         Boolean   @default(true)
+  lastLogin        DateTime?
   resetToken       String?
   resetTokenExpiry DateTime?
   emailVerified    Boolean   @default(false)
   verifyToken      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   permissions UserPermission[]
   activities  ActivityLog[]
@@ -344,9 +345,11 @@ model Goat {
   kidBirths    Birth[] @relation("KidGoat")
 
   healthRecords    HealthRecord[]
-  breedingAsMother Breeding[]      @relation("MotherGoat")
-  breedingAsFather Breeding[]      @relation("FatherGoat")
+  breedingAsMother Breeding[]             @relation("MotherGoat")
+  breedingAsFather Breeding[]             @relation("FatherGoat")
   feedingRecords   FeedingRecord[]
+  feedingSchedules FeedingSchedule[]      @relation("GoatSchedules")
+  feedConsumptions DailyFeedConsumption[] @relation("GoatConsumptions")
   sales            Sale[]
 
   @@unique([tenantId, tagId])
@@ -467,22 +470,22 @@ model Birth {
 // ==================== Feeding ====================
 
 model FeedingRecord {
-  id         String    @id @default(uuid())
-  tenantId   String    @default("")
-  farmId     String    @default("")
-  farm       Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  goatId     String?
-  goat       Goat?     @relation(fields: [goatId], references: [id], onDelete: SetNull)
-  date       DateTime
-  feedType   String
-  feedTypeId String?
+  id          String    @id @default(uuid())
+  tenantId    String    @default("")
+  farmId      String    @default("")
+  farm        Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  goatId      String?
+  goat        Goat?     @relation(fields: [goatId], references: [id], onDelete: SetNull)
+  date        DateTime
+  feedType    String
+  feedTypeId  String?
   feedTypeRef FeedType? @relation(fields: [feedTypeId], references: [id], onDelete: SetNull)
-  quantity   Float
-  unit       String
-  cost       Float?
-  notes      String?   @db.Text
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  quantity    Float
+  unit        String
+  cost        Float?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([tenantId])
   @@index([farmId])
@@ -681,26 +684,27 @@ model InventoryTransaction {
 // ==================== Feed ====================
 
 model FeedType {
-  id        String       @id @default(uuid())
-  tenantId  String       @default("")
-  farmId    String       @default("")
-  farm      Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  name      String
-  nameAr    String
+  id           String       @id @default(uuid())
+  tenantId     String       @default("")
+  farmId       String       @default("")
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name         String
+  nameAr       String
   category     FeedCategory
   protein      Float?
   energy       Float?
   unitPrice    Float?
-  reorderLevel Float?        @default(50)
+  reorderLevel Float?       @default(50)
   supplier     String?
-  notes     String?      @db.Text
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  notes        String?      @db.Text
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   stock          FeedStock[]
   schedules      FeedingSchedule[]
   consumptions   DailyFeedConsumption[]
   feedingRecords FeedingRecord[]
+  recipeItems    FeedRecipeItem[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -732,27 +736,33 @@ model FeedStock {
 }
 
 model FeedingSchedule {
-  id         String    @id @default(uuid())
-  tenantId   String    @default("")
-  farmId     String    @default("")
-  farm       Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  id         String      @id @default(uuid())
+  tenantId   String      @default("")
+  farmId     String      @default("")
+  farm       Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
   feedTypeId String
-  feedType   FeedType  @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
+  feedType   FeedType    @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
+  recipeId   String?
+  recipe     FeedRecipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
   penId      String?
-  pen        Pen?      @relation(fields: [penId], references: [id], onDelete: SetNull)
+  pen        Pen?        @relation(fields: [penId], references: [id], onDelete: SetNull)
+  goatId     String?
+  goat       Goat?       @relation("GoatSchedules", fields: [goatId], references: [id], onDelete: SetNull)
   quantity   Float
-  frequency  Int       @default(2)
+  frequency  Int         @default(2)
   startDate  DateTime
   endDate    DateTime?
-  isActive   Boolean   @default(true)
-  notes      String?   @db.Text
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  isActive   Boolean     @default(true)
+  notes      String?     @db.Text
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   @@index([tenantId])
   @@index([farmId])
   @@index([feedTypeId])
+  @@index([recipeId])
   @@index([penId])
+  @@index([goatId])
   @@index([isActive])
 }
 
@@ -766,6 +776,8 @@ model DailyFeedConsumption {
   feedType   FeedType @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
   penId      String?
   pen        Pen?     @relation(fields: [penId], references: [id], onDelete: SetNull)
+  goatId     String?
+  goat       Goat?    @relation("GoatConsumptions", fields: [goatId], references: [id], onDelete: SetNull)
   quantity   Float
   cost       Float?
   notes      String?  @db.Text
@@ -778,6 +790,45 @@ model DailyFeedConsumption {
   @@index([date])
   @@index([feedTypeId])
   @@index([penId])
+  @@index([goatId])
+}
+
+// ==================== Feed Recipes (خلطات الأعلاف) ====================
+
+model FeedRecipe {
+  id          String   @id @default(uuid())
+  tenantId    String   @default("")
+  farmId      String   @default("")
+  farm        Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name        String
+  nameAr      String
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items     FeedRecipeItem[]
+  schedules FeedingSchedule[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([farmId])
+  @@index([isActive])
+}
+
+model FeedRecipeItem {
+  id         String     @id @default(uuid())
+  recipeId   String
+  recipe     FeedRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  feedTypeId String
+  feedType   FeedType   @relation(fields: [feedTypeId], references: [id], onDelete: Cascade)
+  percentage Float // e.g. 60 for 60%
+  notes      String?    @db.Text
+  createdAt  DateTime   @default(now())
+
+  @@unique([recipeId, feedTypeId])
+  @@index([recipeId])
+  @@index([feedTypeId])
 }
 
 // ==================== Calendar ====================
