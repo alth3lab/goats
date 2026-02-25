@@ -7,8 +7,120 @@ import {
   type DataGridProps,
   type GridDensity,
   type GridRowClassNameParams,
-  type GridValidRowModel
+  type GridValidRowModel,
+  type GridLocaleText
 } from '@mui/x-data-grid'
+
+/* ── Arabic locale for DataGrid ── */
+const arLocale: Partial<GridLocaleText> = {
+  // Root
+  noRowsLabel: 'لا توجد بيانات',
+  noResultsOverlayLabel: 'لم يتم العثور على نتائج',
+
+  // Density
+  toolbarDensity: 'الكثافة',
+  toolbarDensityLabel: 'الكثافة',
+  toolbarDensityCompact: 'مضغوط',
+  toolbarDensityStandard: 'عادي',
+  toolbarDensityComfortable: 'مريح',
+
+  // Columns
+  toolbarColumns: 'الأعمدة',
+  toolbarColumnsLabel: 'إدارة الأعمدة',
+
+  // Filters
+  toolbarFilters: 'الفلاتر',
+  toolbarFiltersLabel: 'إظهار الفلاتر',
+  toolbarFiltersTooltipHide: 'إخفاء الفلاتر',
+  toolbarFiltersTooltipShow: 'إظهار الفلاتر',
+  toolbarFiltersTooltipActive: (count) => `${count} فلتر نشط`,
+
+  // Quick filter
+  toolbarQuickFilterPlaceholder: 'بحث...',
+  toolbarQuickFilterLabel: 'بحث',
+  toolbarQuickFilterDeleteIconLabel: 'مسح',
+
+  // Export
+  toolbarExport: 'تصدير',
+  toolbarExportLabel: 'تصدير',
+  toolbarExportCSV: 'تصدير CSV',
+  toolbarExportPrint: 'طباعة',
+
+  // Columns management
+  columnsManagementSearchTitle: 'بحث',
+  columnsManagementNoColumns: 'لا توجد أعمدة',
+  columnsManagementShowHideAllText: 'إظهار/إخفاء الكل',
+  columnsManagementReset: 'إعادة تعيين',
+
+  // Filter panel
+  filterPanelAddFilter: 'إضافة فلتر',
+  filterPanelRemoveAll: 'حذف الكل',
+  filterPanelDeleteIconLabel: 'حذف',
+  filterPanelLogicOperator: 'عامل منطقي',
+  filterPanelOperator: 'العامل',
+  filterPanelOperatorAnd: 'و',
+  filterPanelOperatorOr: 'أو',
+  filterPanelColumns: 'العمود',
+  filterPanelInputLabel: 'القيمة',
+  filterPanelInputPlaceholder: 'قيمة الفلتر',
+
+  // Filter operators
+  filterOperatorContains: 'يحتوي',
+  filterOperatorDoesNotContain: 'لا يحتوي',
+  filterOperatorEquals: 'يساوي',
+  filterOperatorDoesNotEqual: 'لا يساوي',
+  filterOperatorStartsWith: 'يبدأ بـ',
+  filterOperatorEndsWith: 'ينتهي بـ',
+  filterOperatorIs: 'هو',
+  filterOperatorNot: 'ليس',
+  filterOperatorAfter: 'بعد',
+  filterOperatorOnOrAfter: 'في أو بعد',
+  filterOperatorBefore: 'قبل',
+  filterOperatorOnOrBefore: 'في أو قبل',
+  filterOperatorIsEmpty: 'فارغ',
+  filterOperatorIsNotEmpty: 'غير فارغ',
+  filterOperatorIsAnyOf: 'أي من',
+
+  // Column header
+  columnHeaderFiltersTooltipActive: (count) => `${count} فلتر نشط`,
+  columnHeaderFiltersLabel: 'إظهار الفلاتر',
+  columnHeaderSortIconLabel: 'ترتيب',
+
+  // Rows
+  footerRowSelected: (count) => `${count} صف محدد`,
+
+  // Footer / Pagination
+  footerTotalRows: 'إجمالي الصفوف:',
+  footerTotalVisibleRows: (visibleCount, totalCount) => `${visibleCount} من ${totalCount}`,
+  MuiTablePagination: {
+    labelRowsPerPage: 'صفوف في الصفحة:',
+    labelDisplayedRows: ({ from, to, count }) => `${from}–${to} من ${count !== -1 ? count : `أكثر من ${to}`}`,
+  },
+
+  // Checkbox
+  checkboxSelectionHeaderName: 'تحديد',
+  checkboxSelectionSelectAllRows: 'تحديد الكل',
+  checkboxSelectionUnselectAllRows: 'إلغاء تحديد الكل',
+  checkboxSelectionSelectRow: 'تحديد الصف',
+  checkboxSelectionUnselectRow: 'إلغاء تحديد الصف',
+
+  // Boolean cell
+  booleanCellTrueLabel: 'نعم',
+  booleanCellFalseLabel: 'لا',
+
+  // Actions
+  actionsCellMore: 'المزيد',
+
+  // Column menu
+  columnMenuLabel: 'القائمة',
+  columnMenuShowColumns: 'إظهار الأعمدة',
+  columnMenuManageColumns: 'إدارة الأعمدة',
+  columnMenuFilter: 'فلتر',
+  columnMenuHideColumn: 'إخفاء العمود',
+  columnMenuUnsort: 'إلغاء الترتيب',
+  columnMenuSortAsc: 'ترتيب تصاعدي',
+  columnMenuSortDesc: 'ترتيب تنازلي',
+}
 
 interface AppDataGridProps extends Omit<DataGridProps, 'density'> {
   title?: string
@@ -62,9 +174,9 @@ export function AppDataGrid({
                 }
               }}
             >
-              <ToggleButton value="compact">Compact</ToggleButton>
-              <ToggleButton value="standard">Standard</ToggleButton>
-              <ToggleButton value="comfortable">Comfortable</ToggleButton>
+              <ToggleButton value="compact">مضغوط</ToggleButton>
+              <ToggleButton value="standard">عادي</ToggleButton>
+              <ToggleButton value="comfortable">مريح</ToggleButton>
             </ToggleButtonGroup>
           )}
         </Stack>
@@ -73,6 +185,7 @@ export function AppDataGrid({
       <Box sx={{ width: '100%', overflowX: 'auto' }}>
         <DataGrid
           density={density}
+          localeText={arLocale}
           disableRowSelectionOnClick
           getRowClassName={resolvedRowClassName}
           pageSizeOptions={[10, 25, 50, 100]}
