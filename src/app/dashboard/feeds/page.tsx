@@ -41,7 +41,7 @@ const CATEGORIES = [
 const catLabel = (v: string) => CATEGORIES.find(c => c.value === v)?.label ?? v
 
 // ─── Types ───
-interface FeedType { id: string; name: string; nameAr: string; category: string; protein?: number; energy?: number; notes?: string }
+interface FeedType { id: string; name: string; nameAr: string; category: string; protein?: number; energy?: number; reorderLevel?: number; notes?: string }
 interface Stock { id: string; feedTypeId: string; feedType: FeedType; quantity: number; unit: string; cost?: number; purchaseDate: string; expiryDate?: string; supplier?: string; notes?: string }
 interface Schedule { id: string; feedTypeId: string; feedType: FeedType; penId?: string; pen?: { id: string; nameAr: string; _count?: { goats: number } }; quantity: number; frequency: number; startDate: string; endDate?: string; isActive: boolean; notes?: string }
 interface Pen { id: string; nameAr: string; name: string; _count?: { goats: number }; goats?: any[] }
@@ -229,13 +229,14 @@ export default function FeedsPage() {
   const [scheduleDialog, setScheduleDialog] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{ type: 'stock' | 'type' | 'schedule'; item: any } | null>(null)
   const [consumeSubmitting, setConsumeSubmitting] = useState(false)
+  const [smartScheduleLoading, setSmartScheduleLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
 
   // Forms
   const [editingType, setEditingType] = useState<FeedType | null>(null)
   const [editingStock, setEditingStock] = useState<Stock | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
-  const [typeForm, setTypeForm] = useState({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, description: '' })
+  const [typeForm, setTypeForm] = useState({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, reorderLevel: 50, description: '' })
   const [stockForm, setStockForm] = useState({ feedTypeId: '', quantity: 0, unit: 'كجم', unitPrice: 0, purchaseDate: today(), expiryDate: '', supplier: '', notes: '' })
   const [scheduleForm, setScheduleForm] = useState({ penId: '', feedTypeId: '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '' })
   const [aiSuggestion, setAiSuggestion] = useState<FeedSuggestion | null>(null)
@@ -338,7 +339,7 @@ export default function FeedsPage() {
         byType[id].lowestExpiry = s.expiryDate
       }
     })
-    Object.values(byType).forEach(v => { v.isLow = v.totalQty < 50 })
+    Object.values(byType).forEach(v => { v.isLow = v.totalQty < (v.feedType.reorderLevel || 50) })
     return Object.values(byType).sort((a, b) => a.totalQty - b.totalQty)
   }, [stocks])
 
@@ -353,7 +354,7 @@ export default function FeedsPage() {
     const low = stockSummary.filter(s => s.isLow)
     if (expired.length) list.push({ severity: 'error', text: `${expired.length} أصناف منتهية الصلاحية — يجب التخلص منها فوراً` })
     if (expiring.length) list.push({ severity: 'warning', text: `${expiring.length} أصناف ستنتهي صلاحيتها خلال 30 يوم` })
-    if (low.length) list.push({ severity: 'warning', text: `${low.length} أنواع أعلاف بمخزون منخفض (أقل من 50 كجم)` })
+    if (low.length) list.push({ severity: 'warning', text: `${low.length} أنواع أعلاف بمخزون منخفض` })
     if (activeSchedules.length === 0 && pens.length > 0) list.push({ severity: 'info', text: 'لا توجد جداول تغذية نشطة — أنشئ جدول لبدء التتبع' })
     return list
   }, [stocks, stockSummary, activeSchedules, pens])
@@ -384,7 +385,8 @@ export default function FeedsPage() {
       const expD = s.expiryDate ? daysUntil(s.expiryDate) : null
       const isExpired = expD !== null && expD <= 0
       const isExpiring = expD !== null && expD > 0 && expD <= 30
-      const isLow = s.quantity < 50
+      const reorderLvl = s.feedType?.reorderLevel || 50
+      const isLow = s.quantity < reorderLvl
       const dailyUse = dailyConsumptionByType[s.feedTypeId] || 0
       return {
         id: s.id,
@@ -454,8 +456,8 @@ export default function FeedsPage() {
   ], [])
 
   // ─── Handlers ───
-  const openAddType = () => { setEditingType(null); setTypeForm({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, description: '' }); setTypeDialog(true) }
-  const openEditType = (t: FeedType) => { setEditingType(t); setTypeForm({ nameAr: t.nameAr, nameEn: t.name, category: t.category, protein: t.protein || 0, energy: t.energy || 0, description: t.notes || '' }); setTypeDialog(true) }
+  const openAddType = () => { setEditingType(null); setTypeForm({ nameAr: '', nameEn: '', category: 'HAY', protein: 0, energy: 0, reorderLevel: 50, description: '' }); setTypeDialog(true) }
+  const openEditType = (t: FeedType) => { setEditingType(t); setTypeForm({ nameAr: t.nameAr, nameEn: t.name, category: t.category, protein: t.protein || 0, energy: t.energy || 0, reorderLevel: t.reorderLevel || 50, description: t.notes || '' }); setTypeDialog(true) }
 
   const openAddStock = () => { setEditingStock(null); setStockForm({ feedTypeId: feedTypes[0]?.id || '', quantity: 0, unit: 'كجم', unitPrice: 0, purchaseDate: today(), expiryDate: '', supplier: '', notes: '' }); setStockDialog(true) }
   const openEditStock = (s: Stock) => { setEditingStock(s); setStockForm({ feedTypeId: s.feedTypeId, quantity: s.quantity, unit: s.unit, unitPrice: s.cost || 0, purchaseDate: s.purchaseDate.split('T')[0], expiryDate: s.expiryDate ? s.expiryDate.split('T')[0] : '', supplier: s.supplier || '', notes: s.notes || '' }); setStockDialog(true) }
@@ -550,6 +552,31 @@ export default function FeedsPage() {
       setActionMessage({ type: 'error', text: 'حدث خطأ أثناء تنفيذ صرف الأعلاف' })
     } finally {
       setConsumeSubmitting(false)
+    }
+  }
+
+  const generateSmartSchedules = async () => {
+    if (smartScheduleLoading) return
+    if (!confirm('سيتم إنشاء جداول تغذية ذكية لجميع الحظائر بناءً على أعمار الحيوانات وأنواع الأعلاف المتاحة. الجداول الحالية سيتم استبدالها. هل تريد المتابعة؟')) return
+    setSmartScheduleLoading(true)
+    setActionMessage(null)
+    try {
+      const res = await fetch('/api/feeds/schedule/monthly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replaceExisting: true })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: data.message || 'تم إنشاء الجداول الذكية بنجاح' })
+        await fetchAll()
+      } else {
+        setActionMessage({ type: 'error', text: data.error || 'فشل في إنشاء الجداول الذكية' })
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'حدث خطأ أثناء إنشاء الجداول' })
+    } finally {
+      setSmartScheduleLoading(false)
     }
   }
 
@@ -1089,6 +1116,9 @@ export default function FeedsPage() {
           <Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2}>
               <Button variant="contained" startIcon={<AddIcon />} onClick={openAddSchedule}>إضافة جدول تغذية</Button>
+              <Button variant="outlined" color="secondary" startIcon={<CalendarIcon />} onClick={generateSmartSchedules} disabled={smartScheduleLoading}>
+                {smartScheduleLoading ? 'جاري الإنشاء...' : 'جداول ذكية شهرية'}
+              </Button>
             </Stack>
 
             {schedules.length === 0 ? (
@@ -1237,6 +1267,7 @@ export default function FeedsPage() {
               <TextField fullWidth type="number" label="بروتين (%)" value={typeForm.protein} onChange={e => setTypeForm({ ...typeForm, protein: Number(e.target.value) })} />
               <TextField fullWidth type="number" label="طاقة (kcal)" value={typeForm.energy} onChange={e => setTypeForm({ ...typeForm, energy: Number(e.target.value) })} />
             </Stack>
+            <TextField fullWidth type="number" label="حد إعادة الطلب (كجم)" helperText="عند انخفاض المخزون عن هذه الكمية سيظهر تنبيه" value={typeForm.reorderLevel} onChange={e => setTypeForm({ ...typeForm, reorderLevel: Number(e.target.value) })} InputProps={{ endAdornment: <InputAdornment position="end">كجم</InputAdornment> }} />
             <TextField fullWidth multiline rows={2} label="وصف" value={typeForm.description} onChange={e => setTypeForm({ ...typeForm, description: e.target.value })} />
           </Stack>
         </DialogContent>

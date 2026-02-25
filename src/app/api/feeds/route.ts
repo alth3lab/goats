@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       protein: body.protein ? parseFloat(body.protein) : null,
       energy: body.energy ? parseFloat(body.energy) : null,
       unitPrice: body.unitPrice ? parseFloat(body.unitPrice) : null,
+      reorderLevel: body.reorderLevel ? parseFloat(body.reorderLevel) : 50,
       supplier: body.supplier || null,
       notes: body.description || body.notes || null
     }

@@ -53,6 +53,25 @@ export async function POST(request: NextRequest) {
       include: { feedType: true }
     })
 
+    // Auto-create expense record for the purchase
+    const totalCost = stock.quantity * (stock.cost || 0)
+    if (totalCost > 0) {
+      try {
+        await prisma.expense.create({
+          data: {
+            date: stock.purchaseDate,
+            category: 'FEED',
+            description: `شراء علف: ${stock.feedType.nameAr} — ${stock.quantity} ${stock.unit}`,
+            amount: totalCost,
+            notes: stock.supplier ? `المورد: ${stock.supplier}` : null
+          }
+        })
+      } catch (e) {
+        // Don't fail the stock creation if expense creation fails
+        console.error('Failed to auto-create expense:', e)
+      }
+    }
+
     await logActivity({
       userId: userId || undefined,
       action: 'CREATE',

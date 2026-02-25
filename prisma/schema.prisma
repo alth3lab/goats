@@ -683,11 +683,12 @@ model FeedType {
   farm      Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
   name      String
   nameAr    String
-  category  FeedCategory
-  protein   Float?
-  energy    Float?
-  unitPrice Float?
-  supplier  String?
+  category     FeedCategory
+  protein      Float?
+  energy       Float?
+  unitPrice    Float?
+  reorderLevel Float?        @default(50)
+  supplier     String?
   notes     String?      @db.Text
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt

@@ -33,6 +33,7 @@ export async function PUT(
       protein: body.protein ? parseFloat(body.protein) : null,
       energy: body.energy ? parseFloat(body.energy) : null,
       unitPrice: body.unitPrice ? parseFloat(body.unitPrice) : null,
+      reorderLevel: body.reorderLevel !== undefined ? parseFloat(body.reorderLevel) : undefined,
       supplier: body.supplier || null,
       notes: body.description || body.notes || null
     }
