@@ -322,6 +322,13 @@ export const theme = createTheme(
             borderRadius: 8
           }
         }
+      },
+      MuiTablePagination: {
+        defaultProps: {
+          labelRowsPerPage: 'صفوف في الصفحة:',
+          labelDisplayedRows: ({ from, to, count }: { from: number; to: number; count: number }) =>
+            `${from}–${to} من ${count !== -1 ? count : `أكثر من ${to}`}`,
+        }
       }
     }
   },

@@ -92,10 +92,6 @@ const arLocale: Partial<GridLocaleText> = {
   // Footer / Pagination
   footerTotalRows: 'إجمالي الصفوف:',
   footerTotalVisibleRows: (visibleCount, totalCount) => `${visibleCount} من ${totalCount}`,
-  MuiTablePagination: {
-    labelRowsPerPage: 'صفوف في الصفحة:',
-    labelDisplayedRows: ({ from, to, count }) => `${from}–${to} من ${count !== -1 ? count : `أكثر من ${to}`}`,
-  },
 
   // Checkbox
   checkboxSelectionHeaderName: 'تحديد',
