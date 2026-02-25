@@ -12,12 +12,23 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
+    const searchParams = request.nextUrl.searchParams
+    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : null
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : null
+
     const stocks = await prisma.feedStock.findMany({
       include: {
         feedType: true
       },
-      orderBy: { purchaseDate: 'desc' }
+      orderBy: { purchaseDate: 'desc' },
+      ...(page !== null && limit ? { skip: (page - 1) * limit, take: limit } : {})
     })
+
+    // If paginated, include total count
+    if (page !== null && limit) {
+      const total = await prisma.feedStock.count()
+      return NextResponse.json({ data: stocks, total, page, limit })
+    }
 
     return NextResponse.json(stocks)
   

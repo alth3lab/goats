@@ -8,6 +8,174 @@ export const runtime = 'nodejs'
 
 type RequiredItem = { feedTypeName: string; required: number }
 
+/* ── GET: Consumption history ── */
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'view_feeds')
+    if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+
+    const searchParams = request.nextUrl.searchParams
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 30
+
+    const where: any = {}
+    if (startDate || endDate) {
+      where.date = {}
+      if (startDate) where.date.gte = new Date(startDate)
+      if (endDate) where.date.lte = new Date(endDate)
+    }
+
+    const records = await prisma.dailyFeedConsumption.findMany({
+      where,
+      include: {
+        feedType: { select: { nameAr: true, category: true } },
+        pen: { select: { nameAr: true } }
+      },
+      orderBy: { date: 'desc' },
+      take: limit * 10 // Get enough to group by date
+    })
+
+    // Group by date
+    const byDate = new Map<string, {
+      date: string;
+      totalQty: number;
+      totalCost: number;
+      items: Array<{ feedType: string; pen: string | null; quantity: number; cost: number; category: string }>
+    }>()
+
+    for (const r of records) {
+      const key = r.date.toISOString().slice(0, 10)
+      const existing = byDate.get(key)
+      const item = {
+        feedType: r.feedType?.nameAr || '-',
+        pen: r.pen?.nameAr || null,
+        quantity: r.quantity,
+        cost: r.cost || 0,
+        category: r.feedType?.category || 'OTHER'
+      }
+
+      if (existing) {
+        existing.totalQty += r.quantity
+        existing.totalCost += (r.cost || 0)
+        existing.items.push(item)
+      } else {
+        byDate.set(key, {
+          date: key,
+          totalQty: r.quantity,
+          totalCost: r.cost || 0,
+          items: [item]
+        })
+      }
+    }
+
+    const history = Array.from(byDate.values()).slice(0, limit)
+
+    return NextResponse.json(history)
+
+    })
+  } catch (error) {
+    console.error('Error fetching consumption history:', error)
+    return NextResponse.json({ error: 'فشل في جلب سجل الاستهلاك' }, { status: 500 })
+  }
+}
+
+/* ── DELETE: Undo consumption for a specific date ── */
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'manage_feeds')
+    if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+
+    const actorId = await getUserIdFromRequest(request)
+    if (!actorId) {
+      return NextResponse.json({ error: 'تعذر تحديد المستخدم' }, { status: 401 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const date = body?.date
+    if (!date) {
+      return NextResponse.json({ error: 'التاريخ مطلوب' }, { status: 400 })
+    }
+
+    const targetDate = dayStart(new Date(date))
+    const key = dateKey(targetDate)
+
+    // Check if consumption exists for this date
+    const marker = await prisma.activityLog.findFirst({
+      where: { action: 'CREATE', entity: 'FeedConsumption', entityId: key }
+    })
+
+    if (!marker) {
+      return NextResponse.json({ error: `لا يوجد صرف مسجل لتاريخ ${key}` }, { status: 404 })
+    }
+
+    // Get consumption records for this date
+    const consumptions = await prisma.dailyFeedConsumption.findMany({
+      where: { date: targetDate },
+      include: { feedType: { select: { nameAr: true } } }
+    })
+
+    // Execute undo inside transaction
+    await prisma.$transaction(async (tx) => {
+      // Restore stock quantities (add back consumed amounts, distribute to newest stock)
+      for (const c of consumptions) {
+        if (c.quantity <= 0) continue
+
+        // Find stocks for this feed type, newest first (reverse FIFO for undo)
+        const stocks = await tx.feedStock.findMany({
+          where: { feedTypeId: c.feedTypeId },
+          orderBy: [{ purchaseDate: 'desc' }, { createdAt: 'desc' }]
+        })
+
+        if (stocks.length > 0) {
+          // Add quantity back to newest stock
+          await tx.feedStock.update({
+            where: { id: stocks[0].id },
+            data: { quantity: { increment: Number(c.quantity.toFixed(4)) } }
+          })
+        }
+      }
+
+      // Delete consumption records
+      await tx.dailyFeedConsumption.deleteMany({
+        where: { date: targetDate }
+      })
+
+      // Delete the marker
+      if (marker.id) {
+        await tx.activityLog.delete({ where: { id: marker.id } })
+      }
+
+      // Log the undo action
+      await tx.activityLog.create({
+        data: {
+          userId: actorId,
+          action: 'DELETE',
+          entity: 'FeedConsumption',
+          entityId: key,
+          description: `تراجع عن صرف أعلاف يومي (${key}) — تم استرجاع ${consumptions.reduce((s, c) => s + c.quantity, 0).toFixed(1)} كجم`,
+          ipAddress: request.headers.get('x-forwarded-for') || undefined,
+          userAgent: request.headers.get('user-agent') || undefined
+        }
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+
+    return NextResponse.json({
+      success: true,
+      date: key,
+      restoredQty: Number(consumptions.reduce((s, c) => s + c.quantity, 0).toFixed(2)),
+      message: `تم التراجع عن صرف ${key} واسترجاع المخزون بنجاح`
+    })
+
+    })
+  } catch (error) {
+    console.error('Error undoing consumption:', error)
+    return NextResponse.json({ error: 'فشل في التراجع عن الصرف' }, { status: 500 })
+  }
+}
+
 function dayStart(input: Date | string) {
   const d = new Date(input)
   d.setUTCHours(0, 0, 0, 0)

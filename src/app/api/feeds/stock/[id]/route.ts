@@ -105,6 +105,21 @@ export async function DELETE(
       where: { id }
     })
 
+    // MD-06: Delete associated expense (auto-created on stock purchase)
+    try {
+      const descPattern = `شراء علف: ${stock.feedType.nameAr} — ${stock.quantity} ${stock.unit}`
+      await prisma.expense.deleteMany({
+        where: {
+          category: 'FEED',
+          description: descPattern,
+          date: stock.purchaseDate
+        }
+      })
+    } catch {
+      // Non-critical — don't fail deletion if expense cleanup fails
+      console.warn('Could not clean up associated expense for stock:', id)
+    }
+
     await logActivity({
       userId: userId || undefined,
       action: 'DELETE',

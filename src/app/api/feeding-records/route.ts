@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     const goatId = searchParams.get('goatId')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
+    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : null
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : null
 
     const where: any = {}
     if (goatId) where.goatId = goatId
@@ -42,8 +44,14 @@ export async function GET(request: NextRequest) {
           }
         }
       },
-      orderBy: { date: 'desc' }
+      orderBy: { date: 'desc' },
+      ...(page !== null && limit ? { skip: (page - 1) * limit, take: limit } : {})
     })
+
+    if (page !== null && limit) {
+      const total = await prisma.feedingRecord.count({ where })
+      return NextResponse.json({ data: records, total, page, limit })
+    }
 
     return NextResponse.json(records)
   

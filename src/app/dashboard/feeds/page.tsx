@@ -7,7 +7,7 @@ import {
   TextField, MenuItem, Alert, Card, CardContent,
   Stack, LinearProgress, Tooltip, InputAdornment,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Divider, Fade, Skeleton, useMediaQuery
+  Fade, Skeleton, useMediaQuery
 } from '@mui/material'
 import MuiGrid from '@mui/material/Grid'
 import { useTheme, alpha } from '@mui/material/styles'
@@ -16,11 +16,12 @@ import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Grass as GrassIcon, Inventory as InventoryIcon,
-  Warning as WarningIcon, Schedule as ScheduleIcon,
-  Today as TodayIcon, TrendingDown as LowIcon,
-  ShoppingCart as BuyIcon, LocalShipping as SupplierIcon,
+  Schedule as ScheduleIcon,
+  Today as TodayIcon,
   CalendarMonth as CalendarIcon, PictureAsPdf as PdfIcon,
-  Description as ExcelIcon
+  Description as ExcelIcon,
+  History as HistoryIcon, Undo as UndoIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material'
 import * as XLSX from 'xlsx'
 import { generateArabicPDF } from '@/lib/pdfHelper'
@@ -196,7 +197,7 @@ function suggestFeedAmount(penGoats: { gender: string; birthDate: string; status
 }
 
 // ─── View Enum ───
-type View = 'today' | 'stock' | 'schedules'
+type View = 'today' | 'stock' | 'schedules' | 'history'
 
 export default function FeedsPage() {
   const theme = useTheme()
@@ -241,9 +242,15 @@ export default function FeedsPage() {
   const [scheduleForm, setScheduleForm] = useState({ penId: '', feedTypeId: '', dailyAmount: 0, feedingTimes: '2', startDate: today(), endDate: '', notes: '' })
   const [aiSuggestion, setAiSuggestion] = useState<FeedSuggestion | null>(null)
 
+  // History & Filtering
+  const [consumptionHistory, setConsumptionHistory] = useState<any[]>([])
+  const [undoingDate, setUndoingDate] = useState<string | null>(null)
+  const [stockCategoryFilter, setStockCategoryFilter] = useState<string>('ALL')
+
   // ─── Fetch ───
   useEffect(() => {
     fetchAll()
+    fetchHistory()
     // HI-06: Removed auto-consume from page load — user should trigger explicitly
   }, [])
 
@@ -299,6 +306,42 @@ export default function FeedsPage() {
       console.error('fetchAll failed')
       setActionMessage({ type: 'error', text: 'فشل في تحميل البيانات' })
     } finally { setLoading(false) }
+  }
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch('/api/feeds/consume?limit=30')
+      if (res.ok) {
+        const data = await res.json()
+        setConsumptionHistory(Array.isArray(data) ? data : [])
+      }
+    } catch {
+      console.error('fetchHistory failed')
+    }
+  }
+
+  const undoConsumption = async (date: string) => {
+    if (!confirm(`هل تريد التراجع عن صرف يوم ${date}؟ سيتم استرجاع المخزون.`)) return
+    setUndoingDate(date)
+    try {
+      const res = await fetch('/api/feeds/consume', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: data.message || 'تم التراجع عن الصرف واسترجاع المخزون بنجاح' })
+        fetchAll()
+        fetchHistory()
+      } else {
+        setActionMessage({ type: 'error', text: data.error || 'فشل في التراجع عن الصرف' })
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'فشل في الاتصال بالخادم' })
+    } finally {
+      setUndoingDate(null)
+    }
   }
 
   // ─── Computed ───
@@ -423,6 +466,14 @@ export default function FeedsPage() {
       }
     })
   }, [stocks, dailyConsumptionByType])
+
+  const filteredStockRows = useMemo(() => {
+    if (stockCategoryFilter === 'ALL') return stockRows
+    return stockRows.filter((r: any) => {
+      const stock = r.item as Stock
+      return stock.feedType?.category === stockCategoryFilter
+    })
+  }, [stockRows, stockCategoryFilter])
 
   const stockColumns = useMemo<GridColDef[]>(() => [
     { field: 'feedName', headerName: 'نوع العلف', flex: 1.2, minWidth: 140 },
@@ -680,7 +731,8 @@ export default function FeedsPage() {
   const navItems: { key: View; label: string; icon: any; count?: number }[] = [
     { key: 'today', label: 'لوحة اليوم', icon: <TodayIcon /> },
     { key: 'stock', label: 'المخزون', icon: <InventoryIcon />, count: stocks.length },
-    { key: 'schedules', label: 'جداول التغذية', icon: <ScheduleIcon />, count: activeSchedules.length }
+    { key: 'schedules', label: 'جداول التغذية', icon: <ScheduleIcon />, count: activeSchedules.length },
+    { key: 'history', label: 'سجل الاستهلاك', icon: <HistoryIcon />, count: consumptionHistory.length }
   ]
 
   if (loading) return (
@@ -1079,14 +1131,37 @@ export default function FeedsPage() {
                 <InventoryIcon color="primary" />
                 <Typography variant="h6" fontWeight="bold">المخزون ({stocks.length})</Typography>
               </Stack>
-              {stocks.length === 0 ? (
-                <Alert severity="info" variant="outlined">لا يوجد مخزون</Alert>
+
+              {/* Stock Category Filter */}
+              <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
+                <Chip
+                  icon={<FilterIcon />}
+                  label="الكل"
+                  variant={stockCategoryFilter === 'ALL' ? 'filled' : 'outlined'}
+                  color={stockCategoryFilter === 'ALL' ? 'primary' : 'default'}
+                  onClick={() => setStockCategoryFilter('ALL')}
+                  size="small"
+                />
+                {CATEGORIES.map(c => (
+                  <Chip
+                    key={c.value}
+                    label={c.label}
+                    variant={stockCategoryFilter === c.value ? 'filled' : 'outlined'}
+                    color={stockCategoryFilter === c.value ? 'primary' : 'default'}
+                    onClick={() => setStockCategoryFilter(c.value)}
+                    size="small"
+                    sx={stockCategoryFilter === c.value ? {} : { borderColor: catColor(c.value), color: catColor(c.value) }}
+                  />
+                ))}
+              </Stack>
+              {filteredStockRows.length === 0 ? (
+                <Alert severity="info" variant="outlined">{stockCategoryFilter === 'ALL' ? 'لا يوجد مخزون' : 'لا يوجد مخزون في هذه الفئة'}</Alert>
               ) : (
                 <>
                   {/* Tablet/Mobile Cards View */}
                   <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
                     <Stack spacing={1.5}>
-                      {stockRows.map((row: any) => (
+                      {filteredStockRows.map((row: any) => (
                         <Card key={row.id} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
                           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Stack spacing={1}>
@@ -1150,7 +1225,7 @@ export default function FeedsPage() {
                       title=""
                       showDensityToggle={false}
                       autoHeight
-                      rows={stockRows}
+                      rows={filteredStockRows}
                       columns={stockColumns}
                       initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
                     />
@@ -1298,6 +1373,92 @@ export default function FeedsPage() {
                 </Table>
               </TableContainer>
               </>
+            )}
+          </Box>
+        </Fade>
+      )}
+
+      {/* ═══════════════════ VIEW: HISTORY ═══════════════════ */}
+      {view === 'history' && (
+        <Fade in>
+          <Box>
+            <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+              <HistoryIcon color="primary" sx={{ fontSize: 28 }} />
+              <Typography variant="h6" fontWeight="bold">سجل الاستهلاك اليومي</Typography>
+              <Button size="small" variant="outlined" onClick={fetchHistory} startIcon={<HistoryIcon />}>تحديث</Button>
+            </Stack>
+
+            {consumptionHistory.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                <HistoryIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">لا يوجد سجل استهلاك</Typography>
+                <Typography variant="body2" color="text.secondary">سيظهر هنا سجل الصرف اليومي بعد تنفيذ الصرف التلقائي</Typography>
+              </Paper>
+            ) : (
+              <Stack spacing={2}>
+                {consumptionHistory.map((day: any) => (
+                  <Card key={day.date} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                    <CardContent sx={{ p: 2 }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1} mb={1.5}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <CalendarIcon fontSize="small" color="primary" />
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {new Date(day.date).toLocaleDateString('ar-AE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Chip label={`${day.totalQty?.toFixed(1) || 0} كجم`} size="small" color="primary" variant="outlined" />
+                          <Chip label={`${day.totalCost?.toFixed(0) || 0} د.إ`} size="small" color="warning" variant="outlined" />
+                          <Tooltip title="التراجع عن هذا الصرف واسترجاع المخزون">
+                            <span>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                startIcon={<UndoIcon />}
+                                disabled={undoingDate === day.date}
+                                onClick={() => undoConsumption(day.date)}
+                                sx={{ borderRadius: 2, fontSize: 12 }}
+                              >
+                                {undoingDate === day.date ? 'جاري التراجع...' : 'تراجع'}
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </Stack>
+                      </Stack>
+
+                      {/* Consumption Items */}
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'action.hover' }}>
+                            <TableCell><strong>نوع العلف</strong></TableCell>
+                            <TableCell><strong>الحظيرة</strong></TableCell>
+                            <TableCell><strong>الكمية</strong></TableCell>
+                            <TableCell><strong>التكلفة</strong></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(day.items || []).map((item: any, idx: number) => (
+                            <TableRow key={idx} hover>
+                              <TableCell>
+                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                  <Typography variant="body2">{item.feedType || '-'}</Typography>
+                                  {item.category && (
+                                    <Chip label={catLabel(item.category)} size="small" sx={{ height: 18, fontSize: 10, bgcolor: alpha(catColor(item.category), 0.14), color: catColor(item.category) }} />
+                                  )}
+                                </Stack>
+                              </TableCell>
+                              <TableCell><Typography variant="body2">{item.pen || '-'}</Typography></TableCell>
+                              <TableCell><Typography variant="body2" fontWeight="bold">{item.quantity?.toFixed(1)} كجم</Typography></TableCell>
+                              <TableCell><Typography variant="body2">{item.cost?.toFixed(0) || 0} د.إ</Typography></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
             )}
           </Box>
         </Fade>
