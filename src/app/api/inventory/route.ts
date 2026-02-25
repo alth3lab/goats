@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { createInventoryItemSchema, validateBody } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_inventory')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
@@ -36,7 +38,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(items)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المخزون' }, { status: 500 })
   }
 }
@@ -45,6 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_inventory')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const validation = validateBody(createInventoryItemSchema, body)
@@ -56,7 +61,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(item, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة الصنف' }, { status: 500 })
   }
 }

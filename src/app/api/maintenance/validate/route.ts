@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'manage_permissions')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const issues: string[] = []
 
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
     })
     const goatsWithoutBreed = allGoats - goatsWithBreed
     if (goatsWithoutBreed > 0) {
-      issues.push(`${goatsWithoutBreed} ماعز بدون سلالة محددة`)
+      issues.push(`${goatsWithoutBreed} حيوان بدون سلالة محددة`)
     }
 
     // 2. births بدون kidGoatId
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
     })
     const birthsWithoutKid = allBirths - birthsWithKid
     if (birthsWithoutKid > 0) {
-      issues.push(`${birthsWithoutKid} سجل ولادة بدون ربط بالماعز`)
+      issues.push(`${birthsWithoutKid} سجل ولادة بدون ربط بالحيوان`)
     }
 
     // 3. breeding delivered بدون births
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
       }
     })
     if (soldInPen > 0) {
-      issues.push(`${soldInPen} ماعز مباع لا يزال في حظيرة`)
+      issues.push(`${soldInPen} حيوان مباع لا يزال في حظيرة`)
     }
 
     // 6. health records بـ nextDueDate في الماضي
@@ -113,7 +115,7 @@ export async function GET(request: NextRequest) {
     })
     const goatsWithMismatchedParents = goatsWithMotherTagOnly + goatsWithFatherTagOnly
     if (goatsWithMismatchedParents > 0) {
-      issues.push(`${goatsWithMismatchedParents} ماعز: معلومات الأبوين غير متطابقة`)
+      issues.push(`${goatsWithMismatchedParents} حيوان: معلومات الأبوين غير متطابقة`)
     }
 
     return NextResponse.json({
@@ -124,7 +126,9 @@ export async function GET(request: NextRequest) {
         ? 'البيانات سليمة ✓' 
         : `تم العثور على ${issues.length} مشكلة`
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error validating data:', error)
     return NextResponse.json({ error: 'فشل في التحقق من البيانات' }, { status: 500 })
   }

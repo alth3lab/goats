@@ -21,6 +21,13 @@ import {
   DialogActions
 } from '@mui/material'
 import { formatDate } from '@/lib/formatters'
+import { useAuth } from '@/lib/useAuth'
+
+const animalLabel: Record<string, { file: string; edit: string; add: string }> = {
+  SHEEP: { file: 'ملف الأغنام', edit: 'تعديل بيانات الأغنام', add: 'إضافة أغنام جديد' },
+  CAMEL: { file: 'ملف البعير', edit: 'تعديل بيانات البعير', add: 'إضافة بعير جديد' },
+  MIXED: { file: 'ملف الحيوان', edit: 'تعديل بيانات الحيوان', add: 'إضافة حيوان جديد' },
+}
 
 interface Goat {
   id: string
@@ -114,6 +121,8 @@ interface GoatFormDialogProps {
 }
 
 export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly = false }: GoatFormDialogProps) {
+  const { farm } = useAuth()
+  const lbl = animalLabel[farm?.farmType || 'SHEEP'] || animalLabel.SHEEP
   const [types, setTypes] = useState<Array<{ id: string; nameAr: string }>>([])
   const [breeds, setBreeds] = useState<Array<{ id: string; nameAr: string }>>([])
   const [pens, setPens] = useState<Array<{ id: string; nameAr: string }>>([])
@@ -143,7 +152,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
       loadPens()
       loadGoats() // Need all goats for parent selection
     }
-  }, [open])
+  }, [open, farm?.farmType])
 
   useEffect(() => {
     if (open && goat && readOnly) {
@@ -203,7 +212,8 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
 
   const loadTypes = async () => {
     try {
-      const res = await fetch('/api/types')
+      const params = farm?.farmType ? `?farmType=${farm.farmType}` : ''
+      const res = await fetch(`/api/types${params}`)
       const data = await res.json()
       setTypes(Array.isArray(data) ? data : [])
     } catch { setTypes([]) }
@@ -298,7 +308,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth={readOnly ? 'md' : 'sm'}>
-      <DialogTitle>{readOnly ? 'ملف الماعز' : goat ? 'تعديل بيانات الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
+      <DialogTitle>{readOnly ? lbl.file : goat ? lbl.edit : lbl.add}</DialogTitle>
       <DialogContent sx={{ pt: 2 }} dividers={readOnly}>
         {readOnly ? (
           goat ? (

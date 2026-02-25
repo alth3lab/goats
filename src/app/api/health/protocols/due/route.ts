@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { calculateGoatAge } from '@/lib/ageCalculator'
+import { runWithTenant } from '@/lib/tenantContext'
+import { calculateGoatAge, AnimalSpecies } from '@/lib/ageCalculator'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_health')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     // Get active protocols
     const protocols = await prisma.vaccinationProtocol.findMany({
@@ -156,7 +158,9 @@ export async function GET(request: NextRequest) {
     dueList.sort((a, b) => statusOrder[a.status] - statusOrder[b.status])
 
     return NextResponse.json(dueList)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب التطعيمات المستحقة' }, { status: 500 })
   }
 }

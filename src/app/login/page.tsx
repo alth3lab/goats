@@ -9,7 +9,8 @@ import {
   Stack,
   InputAdornment,
   IconButton,
-  Alert
+  Alert,
+  Link as MuiLink
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import {
@@ -21,6 +22,7 @@ import {
 } from '@mui/icons-material'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const theme = useTheme()
@@ -94,7 +96,7 @@ export default function LoginPage() {
           </Box>
           <Box textAlign="center">
             <Typography variant="h4" fontWeight="bold">
-              نظام إدارة الماعز
+              نظام إدارة المواشي
             </Typography>
             <Typography variant="body2" color="text.secondary">
               تسجيل الدخول إلى لوحة التحكم
@@ -154,8 +156,19 @@ export default function LoginPage() {
             {loading ? 'جاري الدخول...' : 'دخول'}
           </Button>
 
+          <MuiLink component={Link} href="/forgot-password" variant="body2" underline="hover">
+            نسيت كلمة المرور؟
+          </MuiLink>
+
           <Typography variant="caption" color="text.secondary">
             بالضغط على دخول، أنت توافق على شروط الاستخدام
+          </Typography>
+
+          <Typography variant="body2" align="center">
+            ليس لديك حساب؟{' '}
+            <MuiLink component={Link} href="/register">
+              إنشاء حساب جديد
+            </MuiLink>
           </Typography>
         </Stack>
       </Paper>

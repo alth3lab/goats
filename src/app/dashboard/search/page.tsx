@@ -80,7 +80,7 @@ function SearchPageContent() {
         <Stack spacing={2}>
           <Typography variant="h4" fontWeight="bold">بحث موحّد</Typography>
           <TextField
-            placeholder="ابحث عن ماعز، حظيرة، سلالة، عملية بيع..."
+            placeholder="ابحث عن حيوان، حظيرة، سلالة، عملية بيع..."
             value={query}
             onChange={(event) => {
               setQuery(event.target.value)

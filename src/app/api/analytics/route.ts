@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_reports')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const year = Number(searchParams.get('year')) || new Date().getFullYear()
@@ -164,7 +166,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(payload)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب التقرير' }, { status: 500 })
   }
 }

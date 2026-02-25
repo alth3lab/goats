@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +14,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_sales')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     
@@ -22,7 +24,9 @@ export async function GET(
     })
 
     return NextResponse.json(payments)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب الدفعات' }, { status: 500 })
   }
 }
@@ -35,6 +39,7 @@ export async function POST(
   try {
     const auth = await requirePermission(request, 'edit_sale')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -113,7 +118,9 @@ export async function POST(
     })
 
     return NextResponse.json(payment, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error adding payment:', error)
     return NextResponse.json({ error: 'فشل في إضافة الدفعة' }, { status: 500 })
   }

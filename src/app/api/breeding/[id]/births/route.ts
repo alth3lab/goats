@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { recordBirth } from '@/lib/services/birthService'
 import { recordBirthSchema } from '@/lib/validators/birth'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { ZodError } from 'zod'
 
 export const runtime = 'nodejs'
@@ -14,6 +15,7 @@ export async function POST(
   try {
     const auth = await requirePermission(request, 'edit_breeding')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const bodyData = await request.json()
@@ -32,7 +34,9 @@ export async function POST(
     })
 
     return NextResponse.json({ created: results }, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Birth recording error:', error)
     
     if (error instanceof ZodError) {

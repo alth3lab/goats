@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'manage_permissions')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
@@ -60,7 +62,9 @@ export async function POST(request: NextRequest) {
       message: 'تم تنظيف البيانات بنجاح',
       results
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error in cleanup:', error)
     return NextResponse.json({ error: 'فشل في تنظيف البيانات' }, { status: 500 })
   }

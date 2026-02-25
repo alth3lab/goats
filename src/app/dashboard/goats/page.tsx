@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Box,
   Paper,
@@ -35,6 +36,7 @@ import {
   CardContent,
   CardActions,
   Grid,
+  Avatar,
   useMediaQuery
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -65,6 +67,15 @@ import * as XLSX from 'xlsx'
 import { generateArabicPDF } from '@/lib/pdfHelper'
 import { formatDate } from '@/lib/formatters'
 import { EntityHistory } from '@/components/EntityHistory'
+import FamilyTree from '@/components/FamilyTree'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useAuth } from '@/lib/useAuth'
+
+const farmTypePageLabels: Record<string, { title: string; animal: string; animalPlural: string }> = {
+  SHEEP: { title: 'إدارة الأغنام', animal: 'أغنام', animalPlural: 'الأغنام' },
+  CAMEL: { title: 'إدارة الإبل', animal: 'إبل', animalPlural: 'الإبل' },
+  MIXED: { title: 'إدارة الحيوانات', animal: 'حيوان', animalPlural: 'الحيوانات' },
+}
 
 interface Goat {
   id: string
@@ -76,7 +87,10 @@ interface Goat {
   status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
   motherTagId?: string | null
   fatherTagId?: string | null
+  ownerId?: string | null
+  owner?: { id: string; name: string; phone?: string } | null
   notes?: string | null
+  thumbnail?: string | null
   pen?: { nameAr: string } | null
   breed: {
     id: string
@@ -98,17 +112,7 @@ interface Goat {
   dueDate?: string | null
 }
 
-interface FamilyMember {
-  id: string
-  tagId: string
-  name?: string
-  gender: 'MALE' | 'FEMALE'
-  birthDate: string
-  status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
-  breed: { nameAr: string }
-  mother?: FamilyMember | null
-  father?: FamilyMember | null
-}
+
 
 const maleIconColor = 'info.main'
 const femaleIconColor = '#EC4899'
@@ -144,54 +148,13 @@ const formatDaysRemaining = (days: number | null): string => {
   return `${weeks} أسبوع متبقي`
 }
 
-const GoatNode = ({ member, label, color = "default" }: { member?: FamilyMember | null | Goat, label: string, color?: "default" | "primary" | "secondary" }) => (
-  <Paper 
-    elevation={member ? 2 : 0} 
-    sx={{ 
-      p: 1.5, 
-      textAlign: 'center', 
-      minWidth: 120, 
-      bgcolor: member ? (color === "primary" ? 'primary.light' : color === "secondary" ? 'secondary.light' : 'background.paper') : 'action.hover',
-      border: member ? 1 : 1,
-      borderColor: member ? 'divider' : 'transparent',
-      borderStyle: member ? 'solid' : 'dashed'
-    }}
-  >
-    <Typography variant="caption" display="block" color="text.secondary" gutterBottom>
-      {label}
-    </Typography>
-    {member ? (
-      <>
-        <Typography variant="body2" fontWeight="bold">
-          {member.tagId}
-        </Typography>
-        <Typography variant="caption" display="block" noWrap sx={{ maxWidth: 100, mx: 'auto' }}>
-          {member.name || '-'}
-        </Typography>
-        <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-          {member.breed?.nameAr}
-        </Typography>
-      </>
-    ) : (
-      <Typography variant="caption" color="text.disabled">
-        غير معروف
-      </Typography>
-    )}
-  </Paper>
-)
 
-
-interface FamilyResponse {
-  goat: Goat
-  mother?: FamilyMember | null
-  father?: FamilyMember | null
-  siblings: FamilyMember[]
-  offspring: FamilyMember[]
-}
 
 export default function GoatsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { farm } = useAuth()
+  const pageLabels = farmTypePageLabels[farm?.farmType || 'SHEEP'] || farmTypePageLabels.SHEEP
   const [goats, setGoats] = useState<Goat[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -202,9 +165,6 @@ export default function GoatsPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedGoat, setSelectedGoat] = useState<Goat | null>(null)
-  const [familyData, setFamilyData] = useState<FamilyResponse | null>(null)
-  const [familyLoading, setFamilyLoading] = useState(false)
-  const [familyError, setFamilyError] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [deathDialogOpen, setDeathDialogOpen] = useState(false)
   const [deathForm, setDeathForm] = useState({ date: new Date().toISOString().split('T')[0], notes: '' })
@@ -222,8 +182,10 @@ export default function GoatsPage() {
   const [filterBreed, setFilterBreed] = useState('ALL')
   const [filterPen, setFilterPen] = useState('ALL')
   const [filterPregnant, setFilterPregnant] = useState(false)
+  const [filterOwner, setFilterOwner] = useState('ALL')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([]) 
   const [form, setForm] = useState({
     tagId: '',
     name: '',
@@ -235,18 +197,20 @@ export default function GoatsPage() {
     status: 'ACTIVE',
     motherTagId: '',
     fatherTagId: '',
-    penId: ''
+    penId: '',
+    ownerId: ''
   })
 
   useEffect(() => {
     loadGoats()
     loadTypes()
     loadPens()
+    loadOwners()
   }, [])
 
   useEffect(() => {
     setPage(0)
-  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant])
+  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant, filterOwner])
 
   // Calculate statistics
   const activeGoats = goats.filter(g => ['ACTIVE', 'QUARANTINE'].includes(g.status))
@@ -286,7 +250,7 @@ export default function GoatsPage() {
     })
     
     await generateArabicPDF({
-      title: 'تقرير قطيع الماعز',
+      title: `تقرير ${pageLabels.title}`,
       date: new Date().toLocaleDateString('en-GB'),
       stats: [
         { label: 'إجمالي القطيع', value: stats.total },
@@ -348,7 +312,7 @@ export default function GoatsPage() {
     
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, statsSheet, 'الإحصائيات')
-    XLSX.utils.book_append_sheet(wb, goatsSheet, 'قائمة الماعز')
+    XLSX.utils.book_append_sheet(wb, goatsSheet, `قائمة ${pageLabels.animalPlural}`)
     
     XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
@@ -368,7 +332,8 @@ export default function GoatsPage() {
 
   const loadTypes = async () => {
     try {
-      const res = await fetch('/api/types')
+      const params = farm?.farmType ? `?farmType=${farm.farmType}` : ''
+      const res = await fetch(`/api/types${params}`)
       const data = await res.json()
       setTypes(Array.isArray(data) ? data : [])
     } catch {
@@ -398,6 +363,18 @@ export default function GoatsPage() {
     }
   }
 
+  const loadOwners = async () => {
+    try {
+      const res = await fetch('/api/owners?active=true')
+      if (res.ok) {
+        const data = await res.json()
+        setOwners(data.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })))
+      }
+    } catch {
+      setOwners([])
+    }
+  }
+
   const handleOpen = () => {
     setEditMode(false)
     setSelectedGoat(null) // Clear any selected goat
@@ -412,7 +389,8 @@ export default function GoatsPage() {
       status: 'ACTIVE', 
       motherTagId: '', 
       fatherTagId: '',
-      penId: ''
+      penId: '',
+      ownerId: ''
     })
     setOpen(true)
     loadPens()
@@ -436,31 +414,15 @@ export default function GoatsPage() {
       status: 'ACTIVE',
       motherTagId: '',
       fatherTagId: '',
-      penId: ''
+      penId: '',
+      ownerId: ''
     })
   }
 
-  const handleView = async (goat: Goat) => {
-    setSelectedGoat(goat)
-    setViewDialogOpen(true)
-    setFamilyLoading(true)
-    setFamilyData(null)
-    setFamilyError(null)
-    try {
-      const res = await fetch(`/api/goats/${goat.id}/family`)
-      const data = await res.json()
-      if (!res.ok) {
-        setFamilyError(data?.error || 'تعذر تحميل بيانات العائلة')
-        setFamilyData(null)
-        return
-      }
-      setFamilyData(data)
-    } catch {
-      setFamilyError('تعذر الاتصال بخدمة العائلة')
-      setFamilyData(null)
-    } finally {
-      setFamilyLoading(false)
-    }
+  const router = useRouter()
+
+  const handleView = (goat: Goat) => {
+    router.push(`/dashboard/goats/${goat.id}`)
   }
 
   const handleAddOffspring = async (mother: Goat) => {
@@ -485,7 +447,8 @@ export default function GoatsPage() {
       status: 'ACTIVE',
       motherTagId: mother.tagId,
       fatherTagId: '',
-      penId: (mother as any).penId || ''
+      penId: (mother as any).penId || '',
+      ownerId: (mother as any).ownerId || ''
     })
     setOpen(true)
   }
@@ -512,7 +475,8 @@ export default function GoatsPage() {
       status: goat.status,
       motherTagId: goat.motherTagId || '',
       fatherTagId: goat.fatherTagId || '',
-      penId: (goat as any).penId || ''
+      penId: (goat as any).penId || '',
+      ownerId: goat.ownerId || ''
     })
     setOpen(true)
   }
@@ -522,18 +486,28 @@ export default function GoatsPage() {
     setDeleteDialogOpen(true)
   }
 
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
   const handleDelete = async () => {
     if (!selectedGoat) return
-    
+    setDeleteLoading(true)
     try {
-      await fetch(`/api/goats/${selectedGoat.id}`, {
+      const res = await fetch(`/api/goats/${selectedGoat.id}`, {
         method: 'DELETE'
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || 'فشل حذف الحيوان')
+        return
+      }
       setDeleteDialogOpen(false)
       setSelectedGoat(null)
       loadGoats()
     } catch (error) {
-      console.error('خطأ في حذف الماعز:', error)
+      console.error('خطأ في الحذف:', error)
+      alert('خطأ في الاتصال بالخادم')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -546,7 +520,8 @@ export default function GoatsPage() {
       breedId: form.breedId,
       weight: form.weight ? Number(form.weight) : null,
       status: form.status,
-      penId: form.penId || null
+      penId: form.penId || null,
+      ownerId: form.ownerId || null
     }
 
     const url = editMode && selectedGoat ? `/api/goats/${selectedGoat.id}` : '/api/goats'
@@ -573,11 +548,11 @@ export default function GoatsPage() {
 
       if (!parentageRes.ok) {
         const errorData = await parentageRes.json()
-        alert(`تم حفظ الماعز ولكن فشل تحديث النسب: ${errorData.error}`)
+        alert(`تم الحفظ ولكن فشل تحديث النسب: ${errorData.error}`)
       }
     }
 
-    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '', penId: '' })
+    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '', penId: '', ownerId: '' })
     setOpen(false)
     setEditMode(false)
     setSelectedGoat(null)
@@ -614,11 +589,12 @@ export default function GoatsPage() {
     const matchesType = filterType === 'ALL' || goat.breed.type.id === filterType
     const matchesBreed = filterBreed === 'ALL' || goat.breed.id === filterBreed
     const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
+    const matchesOwner = filterOwner === 'ALL' || (filterOwner === 'NONE' ? !(goat as any).ownerId : (goat as any).ownerId === filterOwner)
     
     // Pregnancy filter
     const matchesPregnancy = !filterPregnant || (goat.gender === 'FEMALE' && goat.pregnancyStatus)
 
-    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesPregnancy
+    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesOwner && matchesPregnancy
   }).sort((a, b) => {
     // ترتيب تنازلي حسب تاريخ الولادة المتوقع (الماعز الحوامل أولاً)
     if (a.dueDate && b.dueDate) {
@@ -897,7 +873,7 @@ export default function GoatsPage() {
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {upcomingBirths} ماعز متوقع ولادتها خلال 7 أيام. انقر للعرض.
+                  يوجد {upcomingBirths} {pageLabels.animal} متوقع ولادتها خلال 7 أيام. انقر للعرض.
                 </Typography>
               </Paper>
             )}
@@ -911,7 +887,7 @@ export default function GoatsPage() {
                   </Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  يوجد {overdueBirths} ماعز تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
+                  يوجد {overdueBirths} {pageLabels.animal} تجاوزت موعد الولادة المتوقع. يُرجى الفحص.
                 </Typography>
               </Paper>
             )}
@@ -961,8 +937,8 @@ export default function GoatsPage() {
              </Button>
            }
          >
-           <AlertTitle>الماعز الحوامل</AlertTitle>
-           يوجد <strong>{pregnantGoats}</strong> ماعز حامل 
+           <AlertTitle>الإناث الحوامل</AlertTitle>
+           يوجد <strong>{pregnantGoats}</strong> حامل 
            {upcomingBirths > 0 && <>, منها <strong>{upcomingBirths}</strong> متوقع ولادتها خلال أسبوع</>}.
          </Alert>
       )}
@@ -971,7 +947,7 @@ export default function GoatsPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={2} spacing={1.5}>
           <Box>
             <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold" gutterBottom>
-              إدارة الماعز والخرفان
+              {pageLabels.title}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               إجمالي: {filteredGoats.length} حيوان
@@ -1185,6 +1161,22 @@ export default function GoatsPage() {
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>المالك</InputLabel>
+                  <Select
+                    value={filterOwner}
+                    label="المالك"
+                    onChange={(e) => setFilterOwner(e.target.value)}
+                  >
+                    <MenuItem value="ALL">الكل</MenuItem>
+                    <MenuItem value="NONE">بدون مالك</MenuItem>
+                    {owners.map(owner => (
+                      <MenuItem key={owner.id} value={owner.id}>{owner.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
           )}
         </Box>
@@ -1217,16 +1209,18 @@ export default function GoatsPage() {
                       {/* Header */}
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pr: 5 }}>
                         <Stack direction="row" spacing={1} alignItems="center">
+                          {goat.thumbnail ? (
+                            <Avatar src={goat.thumbnail} sx={{ width: 40, height: 40 }} />
+                          ) : goat.gender === 'MALE' ? (
+                            <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
+                          ) : (
+                            <FemaleIcon sx={{ color: femaleIconColor, fontSize: 32 }} />
+                          )}
                           <Chip 
                             label={goat.tagId} 
                             color="primary" 
                             sx={{ fontSize: '1.1rem', fontWeight: 'bold', px: 2 }}
                           />
-                          {goat.gender === 'MALE' ? (
-                            <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
-                          ) : (
-                            <FemaleIcon sx={{ color: femaleIconColor, fontSize: 32 }} />
-                          )}
                         </Stack>
                         <Chip 
                           label={getStatusLabel(goat.status)} 
@@ -1352,7 +1346,10 @@ export default function GoatsPage() {
                   />
                   <CardContent>
                     <Stack spacing={2}>
-                      <Stack direction="row" justifyContent="center" spacing={1}>
+                      <Stack direction="row" justifyContent="center" spacing={1} alignItems="center">
+                        {goat.thumbnail && (
+                          <Avatar src={goat.thumbnail} sx={{ width: 48, height: 48, border: '2px solid', borderColor: goat.gender === 'MALE' ? 'info.main' : 'secondary.main' }} />
+                        )}
                         <Chip 
                           label={goat.tagId} 
                           color="primary" 
@@ -1476,6 +1473,7 @@ export default function GoatsPage() {
               <TableCell><strong>الحمل</strong></TableCell>
               <TableCell><strong>العمر</strong></TableCell>
               <TableCell><strong>الحظيرة</strong></TableCell>
+              <TableCell><strong>المالك</strong></TableCell>
               <TableCell><strong>الحالة</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
@@ -1483,11 +1481,11 @@ export default function GoatsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">جاري التحميل...</TableCell>
+                <TableCell colSpan={10} align="center">جاري التحميل...</TableCell>
               </TableRow>
             ) : filteredGoats.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">لا توجد بيانات</TableCell>
+                <TableCell colSpan={10} align="center">لا توجد بيانات</TableCell>
               </TableRow>
             ) : (
               paginatedGoats.map((goat) => (
@@ -1500,7 +1498,10 @@ export default function GoatsPage() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip label={goat.tagId} color="primary" size="small" />
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {goat.thumbnail && <Avatar src={goat.thumbnail} sx={{ width: 32, height: 32 }} />}
+                      <Chip label={goat.tagId} color="primary" size="small" />
+                    </Stack>
                   </TableCell>
                   <TableCell>{goat.breed.nameAr}</TableCell>
                   <TableCell>
@@ -1562,6 +1563,11 @@ export default function GoatsPage() {
                   <TableCell>
                     {goat.pen ? (
                       <Chip label={goat.pen.nameAr} size="small" variant="outlined" />
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {goat.owner ? (
+                      <Chip label={goat.owner.name} size="small" variant="outlined" color="secondary" />
                     ) : '-'}
                   </TableCell>
                   <TableCell>
@@ -1635,7 +1641,7 @@ export default function GoatsPage() {
       />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
-        <DialogTitle>{editMode ? 'تعديل الماعز' : 'إضافة ماعز جديد'}</DialogTitle>
+        <DialogTitle>{editMode ? `تعديل ${pageLabels.animal}` : `إضافة ${pageLabels.animal} جديد`}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <TextField
@@ -1787,6 +1793,23 @@ export default function GoatsPage() {
               </Select>
             </FormControl>
             <FormControl>
+              <InputLabel>المالك</InputLabel>
+              <Select
+                value={form.ownerId}
+                label="المالك"
+                onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+              >
+                <MenuItem value="">
+                  <em>غير محدد</em>
+                </MenuItem>
+                {owners.map((owner) => (
+                  <MenuItem key={owner.id} value={owner.id}>
+                    {owner.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
               <InputLabel>الحالة</InputLabel>
               <Select
                 value={form.status}
@@ -1812,15 +1835,13 @@ export default function GoatsPage() {
         open={viewDialogOpen}
         onClose={() => {
           setViewDialogOpen(false)
-          setFamilyData(null)
-          setFamilyError(null)
         }}
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
         scroll="paper"
       >
-        <DialogTitle>تفاصيل الماعز</DialogTitle>
+        <DialogTitle>تفاصيل {pageLabels.animal}</DialogTitle>
         <DialogContent dividers sx={{ maxHeight: '70vh' }}>
           {selectedGoat && (
             <Stack spacing={2} mt={2}>
@@ -1856,99 +1877,38 @@ export default function GoatsPage() {
               </Paper>
 
               <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>العائلة</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="h6">شجرة الأنساب</Typography>
+                  <Stack direction="row" spacing={1}>
+                    {selectedGoat.gender === 'FEMALE' && (
+                      <Button
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={() => selectedGoat && handleAddOffspring(selectedGoat)}
+                      >
+                        إضافة ابن
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => window.open(`/dashboard/goats/family?id=${selectedGoat.id}`, '_blank')}
+                    >
+                      عرض الشجرة كاملة
+                    </Button>
+                  </Stack>
+                </Stack>
                 <Divider sx={{ mb: 2 }} />
-                {familyLoading ? (
-                  <Stack alignItems="center" py={2}>
-                    <CircularProgress size={28} />
-                    <Typography variant="body2" sx={{ mt: 1 }}>جاري تحميل بيانات العائلة...</Typography>
-                  </Stack>
-                ) : familyError ? (
-                  <Typography variant="body2" color="error">{familyError}</Typography>
-                ) : familyData ? (
-                  <Stack spacing={2}>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', overflowX: 'auto' }}>
-                      <Stack spacing={3} alignItems="center" minWidth={500}>
-                        {/* الأجداد */}
-                        <Stack direction="row" spacing={4} justifyContent="center">
-                          <Stack spacing={1} alignItems="center">
-                            <Typography variant="caption" color="text.secondary">أهل الأب</Typography>
-                            <Stack direction="row" spacing={1}>
-                              <GoatNode member={familyData.father?.father} label="أب الأب" />
-                              <GoatNode member={familyData.father?.mother} label="أم الأب" />
-                            </Stack>
-                          </Stack>
-                          <Stack spacing={1} alignItems="center">
-                            <Typography variant="caption" color="text.secondary">أهل الأم</Typography>
-                            <Stack direction="row" spacing={1}>
-                              <GoatNode member={familyData.mother?.father} label="أب الأم" />
-                              <GoatNode member={familyData.mother?.mother} label="أم الأم" />
-                            </Stack>
-                          </Stack>
-                        </Stack>
-
-                        {/* الآباء */}
-                        <Stack direction="row" spacing={12} position="relative">
-                          <GoatNode member={familyData.father} label="الأب" color="secondary" />
-                          <GoatNode member={familyData.mother} label="الأم" color="secondary" />
-                        </Stack>
-
-                        {/* الماعز الحالي */}
-                        <GoatNode member={selectedGoat} label="الحيوان المختار" color="primary" />
-                      </Stack>
-                    </Paper>
-                    
-                    <Divider />
-
-                    <Stack spacing={1}>
-                      <Typography fontWeight="bold">الإخوة (نفس الأم ونفس الولادة)</Typography>
-                      {familyData.siblings.length > 0 ? (
-                        <Stack direction="row" flexWrap="wrap" gap={1}>
-                          {familyData.siblings.map((sibling) => (
-                            <Chip
-                              key={sibling.id}
-                              label={`${sibling.tagId} - ${sibling.breed.nameAr}`}
-                              size="small"
-                            />
-                          ))}
-                        </Stack>
-                      ) : (
-                        <Typography variant="body2">لا يوجد</Typography>
-                      )}
-                    </Stack>
-
-                    <Stack spacing={1}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography fontWeight="bold">الأبناء (من الأم)</Typography>
-                        <Button 
-                          size="small" 
-                          startIcon={<AddIcon />}
-                          onClick={() => selectedGoat && handleAddOffspring(selectedGoat)}
-                          disabled={selectedGoat?.gender !== 'FEMALE'}
-                        >
-                          إضافة ابن
-                        </Button>
-                      </Stack>
-                      {familyData.offspring.length > 0 ? (
-                        <Stack direction="row" flexWrap="wrap" gap={1}>
-                          {familyData.offspring.map((kid) => (
-                            <Chip
-                              key={kid.id}
-                              label={`${kid.tagId} - ${kid.breed.nameAr}`}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                            />
-                          ))}
-                        </Stack>
-                      ) : (
-                        <Typography variant="body2">لا يوجد</Typography>
-                      )}
-                    </Stack>
-                  </Stack>
-                ) : (
-                  <Typography variant="body2">تعذر تحميل بيانات العائلة</Typography>
-                )}
+                <FamilyTree
+                  goatId={selectedGoat.id}
+                  compact
+                  onNavigate={(id) => {
+                    const g = goats.find(g => g.id === id)
+                    if (g) {
+                      setSelectedGoat(g)
+                    }
+                  }}
+                />
               </Paper>
 
               <Paper sx={{ p: 2 }}>
@@ -1977,7 +1937,7 @@ export default function GoatsPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <Alert severity="warning">
-              سيتم تغيير حالة الماعز <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
+              سيتم تغيير حالة <strong>{selectedGoat?.tagId}</strong> إلى "متوفى".
             </Alert>
             <TextField
               label="تاريخ النفوق"
@@ -2007,23 +1967,17 @@ export default function GoatsPage() {
       </Dialog>
 
       {/* Dialog تأكيد الحذف */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="xs" fullScreen={isMobile}>
-        <DialogTitle>تأكيد الحذف</DialogTitle>
-        <DialogContent>
-          <Typography>
-            هل أنت متأكد من حذف الماعز <strong>{selectedGoat?.tagId}</strong>؟
-          </Typography>
-          <Typography color="error" sx={{ mt: 1 }}>
-            لا يمكن التراجع عن هذا الإجراء!
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
-            حذف
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="حذف الحيوان"
+        message={`هل أنت متأكد من حذف ${selectedGoat?.tagId}؟ هذا الإجراء لا يمكن التراجع عنه.`}
+        severity="error"
+        confirmText="حذف نهائي"
+        cancelText="إلغاء"
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
 
       {/* Dialog نقل جماعي */}
       <Dialog

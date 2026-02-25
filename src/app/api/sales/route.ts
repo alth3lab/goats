@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,9 +10,15 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_sales')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const format = request.nextUrl.searchParams.get('format')
+    const ownerId = request.nextUrl.searchParams.get('ownerId')
+    const salesWhere: Record<string, unknown> = {}
+    if (ownerId) salesWhere.ownerId = ownerId === 'none' ? null : ownerId
+
     const sales = await prisma.sale.findMany({
+      where: salesWhere,
       include: { 
         goat: {
           include: {
@@ -19,7 +26,8 @@ export async function GET(request: NextRequest) {
               include: {
                 type: true
               }
-            }
+            },
+            owner: { select: { id: true, name: true } }
           }
         },
         payments: {
@@ -83,7 +91,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(salesWithPayments)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المبيعات' }, { status: 500 })
   }
 }
@@ -92,11 +102,12 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_sale')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const userId = await getUserIdFromRequest(request)
 
-    // التحقق من أن الماعز ليس في تكاثر نشط
+    // التحقق من عدم وجود تكاثر نشط
     if (body.goatId) {
       const activeBreeding = await prisma.breeding.findFirst({
         where: {
@@ -119,15 +130,15 @@ export async function POST(request: NextRequest) {
         })
         const role = goat?.gender === 'FEMALE' ? 'أم' : 'أب'
         return NextResponse.json(
-          { error: `لا يمكن بيع الماعز ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
+          { error: `لا يمكن بيع ${goat?.tagId} لأنه ${role} في سجل تكاثر نشط (${activeBreeding.pregnancyStatus})` },
           { status: 400 }
         )
       }
     }
 
-    // استخدام transaction لضمان إنشاء البيع وتحديث حالة الماعز معاً
+    // استخدام transaction لضمان إنشاء البيع وتحديث الحالة معاً
     const sale = await prisma.$transaction(async (tx) => {
-      // 0. التحقق من أن الماعز ليس مستخدماً في تكاثر نشط
+      // 0. التحقق من عدم وجود تكاثر نشط
       if (body.goatId) {
         const activeBreeding = await tx.breeding.findFirst({
           where: {
@@ -142,14 +153,25 @@ export async function POST(request: NextRequest) {
 
         if (activeBreeding) {
           const goatRole = activeBreeding.motherId === body.goatId ? 'أم' : 'أب'
-          throw new Error(`لا يمكن بيع هذا الماعز لأنه ${goatRole} في سجل تكاثر نشط`)
+          throw new Error(`لا يمكن البيع لأنه ${goatRole} في سجل تكاثر نشط`)
         }
       }
 
       // 1. إنشاء سجل البيع مبدئياً بحالة معلق
+      // Auto-resolve ownerId from goat if not provided
+      let resolvedOwnerId = body.ownerId || null
+      if (!resolvedOwnerId && body.goatId) {
+        const goatOwner = await tx.goat.findUnique({
+          where: { id: body.goatId },
+          select: { ownerId: true }
+        })
+        resolvedOwnerId = goatOwner?.ownerId || null
+      }
+
       const newSale = await tx.sale.create({
         data: {
           goatId: body.goatId || null,
+          ownerId: resolvedOwnerId,
           date: new Date(body.date),
           buyerName: body.buyerName,
           buyerPhone: body.buyerPhone,
@@ -190,13 +212,13 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // 3. تحديث حالة الماعز إلى "مباع" وتصفير الحظيرة إذا كان البيع مرتبطاً بماعز
+      // 3. تحديث الحالة إلى "مباع" وتصفير الحظيرة
       if (body.goatId) {
         await tx.goat.update({
           where: { id: body.goatId },
           data: { 
             status: 'SOLD',
-            penId: null // إزالة الماعز من الحظيرة
+            penId: null // إزالة من الحظيرة
           }
         })
       }
@@ -205,7 +227,8 @@ export async function POST(request: NextRequest) {
       return { ...newSale, paymentStatus: finalStatus }
     })
 
-    // إنشاء حدث في التقويم للبيع    try {
+    // إنشاء حدث في التقويم للبيع
+    try {
       const goat = body.goatId ? await prisma.goat.findUnique({ where: { id: body.goatId } }) : null
       await prisma.calendarEvent.create({
         data: {
@@ -233,7 +256,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(sale, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error creating sale:', error)
     const message = error instanceof Error ? error.message : 'فشل في إضافة البيع'
     return NextResponse.json({ error: message }, { status: 500 })

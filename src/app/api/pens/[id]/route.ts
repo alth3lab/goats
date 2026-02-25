@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_pens')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const pen = await prisma.pen.findUnique({
@@ -36,7 +38,9 @@ export async function GET(
     }
 
     return NextResponse.json(pen)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب بيانات الحظيرة' }, { status: 500 })
   }
 }
@@ -48,6 +52,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'edit_pen')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -76,7 +81,9 @@ export async function PUT(
     })
 
     return NextResponse.json(pen)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تحديث الحظيرة' }, { status: 500 })
   }
 }
@@ -88,6 +95,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'delete_pen')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -114,7 +122,9 @@ export async function DELETE(
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json({ message: 'تم الحذف بنجاح' })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف الحظيرة' }, { status: 500 })
   }
 }

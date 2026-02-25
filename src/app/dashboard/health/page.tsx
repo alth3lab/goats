@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/useAuth'
+import { getAnimalLabels } from '@/lib/animalLabels'
 import {
   Box,
   Paper,
@@ -112,6 +114,8 @@ const typeLabels: Record<string, string> = {
 export default function HealthPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { farm } = useAuth()
+  const animalLbl = getAnimalLabels(farm?.farmType)
   const [records, setRecords] = useState<HealthRecord[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -967,10 +971,10 @@ export default function HealthPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2} mt={1}>
             <FormControl>
-              <InputLabel>الماعز</InputLabel>
+              <InputLabel>{animalLbl.plural}</InputLabel>
               <Select
                 value={form.goatId}
-                label="الماعز"
+                label={animalLbl.plural}
                 onChange={(e) => setForm({ ...form, goatId: e.target.value })}
               >
                 {goats.map(g => (
@@ -1015,7 +1019,7 @@ export default function HealthPage() {
                         onChange={(e) => setForm({...form, moveToIsolation: e.target.checked})}
                     />
                 }
-                label="نقل الماعز إلى العزل الصحي تلقائياً"
+                label={`نقل ${animalLbl.plural} إلى العزل الصحي تلقائياً`}
             />
 
             <TextField

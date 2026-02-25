@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, getUserIdFromRequest } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { logActivity } from '@/lib/activityLogger'
 import { createCalendarEventSchema, validateBody } from '@/lib/validators/schemas'
 
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const start = searchParams.get('start')
@@ -40,7 +42,9 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json(events)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب الأحداث' }, { status: 500 })
   }
 }
@@ -49,6 +53,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const validation = validateBody(createCalendarEventSchema, body)
@@ -75,7 +80,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(event, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة الحدث' }, { status: 500 })
   }
 }

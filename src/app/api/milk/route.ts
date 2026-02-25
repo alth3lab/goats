@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 // import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
-// TODO: MilkProduction model not found in schema.prisma
-// This API is temporarily disabled until the model is created
+// NOTE: MilkProduction model not in schema.prisma — API returns 501 until model is created
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     return NextResponse.json({ error: 'MilkProduction API is not yet implemented' }, { status: 501 })
     
@@ -34,7 +35,9 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(records)
     */
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب سجلات الحليب' }, { status: 500 })
   }
 }
@@ -43,6 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     return NextResponse.json({ error: 'MilkProduction API is not yet implemented' }, { status: 501 })
 
@@ -54,7 +58,9 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(record, { status: 201 })
     */
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة سجل الحليب' }, { status: 500 })
   }
 }

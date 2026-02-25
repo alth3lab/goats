@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 
 interface ActivityInput {
   userId?: string
+  tenantId?: string
+  farmId?: string
   action: string
   entity: string
   entityId?: string
@@ -10,28 +12,37 @@ interface ActivityInput {
   userAgent?: string | null
 }
 
-async function getFallbackUserId() {
+async function getFallbackUser() {
   const admin = await prisma.user.findFirst({
     where: { role: 'ADMIN', isActive: true },
     orderBy: { createdAt: 'asc' }
   })
-  if (admin) return admin.id
+  if (admin) return admin
 
   const anyUser = await prisma.user.findFirst({
     where: { isActive: true },
     orderBy: { createdAt: 'asc' }
   })
-  return anyUser?.id || null
+  return anyUser || null
 }
 
 export async function logActivity(input: ActivityInput) {
   try {
-    const actorId = input.userId || (await getFallbackUserId())
-    if (!actorId) return
+    let actorId = input.userId
+    let tenantId = input.tenantId
+
+    if (!actorId) {
+      const fallback = await getFallbackUser()
+      if (!fallback) return
+      actorId = fallback.id
+      tenantId = tenantId || fallback.tenantId
+    }
 
     await prisma.activityLog.create({
       data: {
         userId: actorId,
+        tenantId: tenantId || '',
+        farmId: input.farmId || undefined,
         action: input.action,
         entity: input.entity,
         entityId: input.entityId,

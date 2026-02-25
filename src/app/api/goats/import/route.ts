@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const contentType = request.headers.get('content-type') || ''
     let rows: Record<string, string>[] = []
@@ -67,6 +69,25 @@ export async function POST(request: NextRequest) {
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'لا توجد بيانات للاستيراد' }, { status: 400 })
+    }
+
+    // Check goat limit across entire tenant (not just current farm)
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    if (tenant) {
+      const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
+      const remaining = tenant.maxGoats - goatCount
+      if (remaining <= 0) {
+        return NextResponse.json(
+          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { status: 403 }
+        )
+      }
+      if (rows.length > remaining) {
+        return NextResponse.json(
+          { error: `يمكن إضافة ${remaining} رأس فقط من أصل ${rows.length}. الحد الأقصى ${tenant.maxGoats}.` },
+          { status: 403 }
+        )
+      }
     }
 
     const breeds = await prisma.breed.findMany({
@@ -129,12 +150,14 @@ export async function POST(request: NextRequest) {
         })
         created += 1
       } catch (error) {
-        errors.push({ row: i + 2, message: 'فشل في إنشاء الماعز (قد يكون رقم التاج مكرر)' })
+        errors.push({ row: i + 2, message: 'فشل في الإنشاء (قد يكون رقم التاج مكرر)' })
       }
     }
 
     return NextResponse.json({ created, errors })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في الاستيراد' }, { status: 500 })
   }
 }

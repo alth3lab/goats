@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لا يوجد اتصال — وبر وصوف</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: linear-gradient(135deg, #1a2e1a 0%, #2e4d2e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      direction: rtl;
+    }
+    .container {
+      text-align: center;
+      padding: 40px 24px;
+      max-width: 480px;
+    }
+    .icon {
+      font-size: 80px;
+      margin-bottom: 24px;
+      display: block;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #a5d6a7;
+    }
+    p {
+      font-size: 1rem;
+      color: #c8e6c9;
+      line-height: 1.7;
+      margin-bottom: 32px;
+    }
+    .tips {
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: right;
+      margin-bottom: 32px;
+    }
+    .tips h3 {
+      font-size: 0.9rem;
+      color: #a5d6a7;
+      margin-bottom: 12px;
+    }
+    .tips ul {
+      list-style: none;
+      padding: 0;
+    }
+    .tips li {
+      font-size: 0.85rem;
+      color: #e8f5e9;
+      padding: 4px 0;
+      padding-right: 20px;
+      position: relative;
+    }
+    .tips li::before {
+      content: '✓';
+      position: absolute;
+      right: 0;
+      color: #66bb6a;
+    }
+    .btn {
+      display: inline-block;
+      background: #2e7d32;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #388e3c; }
+    .version {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="icon">🌿</span>
+    <h1>لا يوجد اتصال بالإنترنت</h1>
+    <p>
+      تحقق من اتصالك بالشبكة وأعد المحاولة.<br />
+      البيانات المحفوظة مسبقاً متاحة عند استعادة الاتصال.
+    </p>
+    <div class="tips">
+      <h3>ماذا يمكنك فعله الآن؟</h3>
+      <ul>
+        <li>تحقق من اتصال الواي فاي أو البيانات</li>
+        <li>الصفحات التي زرتها محفوظة في الكاش</li>
+        <li>أي إدخال ستقوم به سيُرسل تلقائياً عند عودة الاتصال</li>
+      </ul>
+    </div>
+    <button class="btn" onclick="window.location.reload()">إعادة المحاولة</button>
+    <p class="version">وبر وصوف — نظام إدارة المواشي</p>
+  </div>
+</body>
+</html>

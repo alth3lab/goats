@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_breeding')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const record = await prisma.breeding.findUnique({
@@ -28,7 +30,9 @@ export async function GET(
     }
     
     return NextResponse.json(record)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب البيانات' }, { status: 500 })
   }
 }
@@ -40,6 +44,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'edit_breeding')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -103,7 +108,7 @@ export async function PUT(
       if (existingActive) {
         return NextResponse.json(
           {
-            error: `لا يمكن حفظ التعديل: الأنثى ${mother.tagId} لديها سجل نشط (${existingActive.pregnancyStatus}) مع الأب ${existingActive.father.tagId}`
+            error: `لا يمكن حفظ التعديل: الأنثى ${mother.tagId} لديها سجل نشط (${existingActive.pregnancyStatus}) مع الأب ${existingActive.father?.tagId || 'خارجي'}`
           },
           { status: 400 }
         )
@@ -115,7 +120,8 @@ export async function PUT(
       data: body
     })
     
-    // مزامنة تلقائية مع التقويم    try {
+    // مزامنة تلقائية مع التقويم
+    try {
       // 1. إذا تغير dueDate أو تمت إضافته
       if (body.dueDate !== undefined && body.dueDate !== existing.dueDate) {
         // البحث عن حدث الولادة المتوقعة الموجود باستخدام breedingId
@@ -236,7 +242,9 @@ export async function PUT(
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(record)
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Breeding update error:', error)
     return NextResponse.json({ error: 'فشل في تحديث البيانات' }, { status: 500 })
   }
@@ -249,11 +257,13 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'delete_breeding')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
     
-    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل    try {
+    // حذف أحداث التقويم المرتبطة بسجل التكاثر قبل حذف السجل
+    try {
       await prisma.calendarEvent.deleteMany({
         where: { breedingId: id }
       })
@@ -275,7 +285,9 @@ export async function DELETE(
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json({ message: 'تم الحذف بنجاح' })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف السجل' }, { status: 500 })
   }
 }

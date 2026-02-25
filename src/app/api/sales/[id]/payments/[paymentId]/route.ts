@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'edit_sale')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id: saleId, paymentId } = await params
     const userId = await getUserIdFromRequest(request)
@@ -61,7 +63,9 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error deleting payment:', error)
     return NextResponse.json({ error: 'فشل في حذف الدفعة' }, { status: 500 })
   }

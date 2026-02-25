@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_feeds')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
 
@@ -33,7 +35,9 @@ export async function GET(
     }
 
     return NextResponse.json(record)
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error fetching feeding record:', error)
     return NextResponse.json({ error: 'فشل في جلب السجل' }, { status: 500 })
   }
@@ -46,6 +50,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -77,13 +82,16 @@ export async function PUT(
       action: 'UPDATE',
       entity: 'FeedingRecord',
       entityId: record.id,
-      description: `تم تحديث سجل التغذية${record.goat ? ` للماعز ${record.goat.tagId}` : ''}`,
+      description: `تم تحديث سجل التغذية${record.goat ? ` لـ ${record.goat.tagId}` : ''}`,
+
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
 
     return NextResponse.json(record)
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error updating feeding record:', error)
     return NextResponse.json({ error: 'فشل في تحديث السجل' }, { status: 500 })
   }
@@ -96,6 +104,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -118,7 +127,9 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error deleting feeding record:', error)
     return NextResponse.json({ error: 'فشل في حذف السجل' }, { status: 500 })
   }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
+import { calculateGoatAge, formatAge, AnimalSpecies } from '@/lib/ageCalculator'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { createGoatSchema, validateBody, parsePagination, paginatedResponse } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
@@ -11,12 +12,15 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_goats')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const format = searchParams.get('format')
+    const ownerId = searchParams.get('ownerId')
 
-    const where = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' } : undefined
+    const where: Record<string, unknown> = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' | 'EXTERNAL' } : { status: { not: 'EXTERNAL' as const } }
+    if (ownerId) where.ownerId = ownerId === 'none' ? null : ownerId
 
     // CSV export returns all data without pagination
     if (format === 'csv') {
@@ -62,6 +66,7 @@ export async function GET(request: NextRequest) {
         include: {
           breed: { include: { type: true } },
           pen: true,
+          owner: { select: { id: true, name: true, phone: true } },
           healthRecords: { take: 5, orderBy: { date: 'desc' } },
           breedingAsMother: {
             where: { pregnancyStatus: 'PREGNANT' },
@@ -76,11 +81,15 @@ export async function GET(request: NextRequest) {
     ])
     
     const goatsWithAge = goats.map(goat => {
-      const age = calculateGoatAge(goat.birthDate)
+      const species = (goat.breed?.type?.name === 'CAMEL' ? 'CAMEL' : 'GOAT') as AnimalSpecies
+      const age = calculateGoatAge(goat.birthDate, species)
       const currentBreeding = goat.breedingAsMother && goat.breedingAsMother.length > 0 ? goat.breedingAsMother[0] : null
       
+      // Exclude full-size image from list response (keep thumbnail)
+      const { image: _img, ...goatWithoutImage } = goat
+      
       return {
-        ...goat,
+        ...goatWithoutImage,
         age: {
           years: age.years,
           months: age.months,
@@ -98,7 +107,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(paginatedResponse(goatsWithAge, total, page, limit))
     }
     return NextResponse.json(goatsWithAge)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب البيانات' }, { status: 500 })
   }
 }
@@ -107,11 +118,24 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const validation = validateBody(createGoatSchema, body)
     if (!validation.success) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+
+    // Check goat limit across entire tenant (not just current farm)
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    if (tenant) {
+      const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
+      if (goatCount >= tenant.maxGoats) {
+        return NextResponse.json(
+          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
+          { status: 403 }
+        )
+      }
     }
 
     const userId = await getUserIdFromRequest(request)
@@ -123,12 +147,14 @@ export async function POST(request: NextRequest) {
       action: 'CREATE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم إضافة الماعز: ${goat.tagId}`,
+      description: `تم إضافة: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(goat, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({ error: 'فشل في إضافة الماعز' }, { status: 500 })
+  
+    })
+} catch (error) {
+    return NextResponse.json({ error: 'فشل في الإضافة' }, { status: 500 })
   }
 }

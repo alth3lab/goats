@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/formatters'
 import { requireAuth } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -9,14 +10,16 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const today = new Date()
     const nextMonth = new Date()
-    nextMonth.setDate(today.getDate() + 30)    const settings = await prisma.appSetting.findFirst()
-    const alertPenCapacityPercent = settings?.alertPenCapacityPercent ?? 90
-    const alertDeathCount = settings?.alertDeathCount ?? 3
-    const alertDeathWindowDays = settings?.alertDeathWindowDays ?? 30
-    const alertBreedingOverdueDays = settings?.alertBreedingOverdueDays ?? 150
+    nextMonth.setDate(today.getDate() + 30)
+    const farm = await prisma.farm.findUnique({ where: { id: auth.farmId } })
+    const alertPenCapacityPercent = farm?.alertPenCapacityPercent ?? 90
+    const alertDeathCount = farm?.alertDeathCount ?? 3
+    const alertDeathWindowDays = farm?.alertDeathWindowDays ?? 30
+    const alertBreedingOverdueDays = farm?.alertBreedingOverdueDays ?? 150
 
     const deathWindowStart = new Date()
     deathWindowStart.setDate(today.getDate() - alertDeathWindowDays)
@@ -122,6 +125,8 @@ export async function GET(request: NextRequest) {
         SELECT id, nameAr, currentStock, minStock, unit
         FROM InventoryItem
         WHERE minStock IS NOT NULL AND currentStock <= minStock
+          AND farmId = ${auth.farmId}
+          AND tenantId = ${auth.tenantId}
       `.catch(() => []),
 
       // 8. Expiring Feeds
@@ -219,7 +224,8 @@ export async function GET(request: NextRequest) {
         type: 'HEALTH',
         severity: getSeverity(new Date(record.nextDueDate!), today),
         title: 'تطعيم/علاج مستحق',
-        message: `${record.type === 'VACCINATION' ? 'تطعيم' : 'علاج'} للماعز ${record.goat.tagId} - ${formatDate(record.nextDueDate!)}`,
+        message: `${record.type === 'VACCINATION' ? 'تطعيم' : 'علاج'} - ${record.goat.tagId} - ${formatDate(record.nextDueDate!)}`,
+
         date: record.nextDueDate
       })),
 
@@ -231,7 +237,7 @@ export async function GET(request: NextRequest) {
           type: 'WEANING',
           severity: 'info',
           title: 'فطام مقترح',
-          message: `الماعز ${kid.tagId} (عمر ${Math.floor(ageInDays/30)} شهر) - جاهز للفطام`,
+          message: `${kid.tagId} (عمر ${Math.floor(ageInDays/30)} شهر) - جاهز للفطام`,
           date: new Date() // Actionable now
         }
       }),
@@ -244,7 +250,9 @@ export async function GET(request: NextRequest) {
     ].sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
 
     return NextResponse.json(alerts)
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Error fetching alerts:', error)
     return NextResponse.json({ error: 'Failed to fetch alerts' }, { status: 500 })
   }

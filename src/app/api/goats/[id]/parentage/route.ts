@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parentageSchema } from '@/lib/validators/goatFamily'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -39,6 +40,7 @@ export async function PATCH(
   try {
     const auth = await requirePermission(request, 'edit_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = parentageSchema.parse(await request.json())
@@ -49,7 +51,7 @@ export async function PATCH(
     })
 
     if (!goat) {
-      return NextResponse.json({ error: 'الماعز غير موجود' }, { status: 404 })
+      return NextResponse.json({ error: 'غير موجود' }, { status: 404 })
     }
 
     let motherId = body.motherId ?? null
@@ -58,7 +60,7 @@ export async function PATCH(
     let fatherTagId = body.fatherTagId ?? null
 
     if (motherTagId && !motherId) {
-      const mother = await prisma.goat.findUnique({
+      const mother = await prisma.goat.findFirst({
         where: { tagId: motherTagId },
         select: { id: true, tagId: true, gender: true, status: true, birthDate: true }
       })
@@ -69,7 +71,7 @@ export async function PATCH(
     }
 
     if (fatherTagId && !fatherId) {
-      const father = await prisma.goat.findUnique({
+      const father = await prisma.goat.findFirst({
         where: { tagId: fatherTagId },
         select: { id: true, tagId: true, gender: true, status: true }
       })
@@ -129,7 +131,9 @@ export async function PATCH(
     })
 
     return NextResponse.json(updated)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تحديث النسب' }, { status: 500 })
   }
 }

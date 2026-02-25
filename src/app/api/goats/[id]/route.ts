@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { calculateGoatAge, formatAge } from '@/lib/ageCalculator'
+import { calculateGoatAge, formatAge, AnimalSpecies } from '@/lib/ageCalculator'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { updateGoatSchema, validateBody } from '@/lib/validators/schemas'
 
 export const runtime = 'nodejs'
@@ -14,6 +15,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_goats')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const goat = await prisma.goat.findUnique({
@@ -34,11 +36,12 @@ export async function GET(
     })
     
     if (!goat) {
-      return NextResponse.json({ error: 'الماعز غير موجود' }, { status: 404 })
+      return NextResponse.json({ error: 'غير موجود' }, { status: 404 })
     }
     
     // إضافة معلومات العمر
-    const age = calculateGoatAge(goat.birthDate)
+    const species = (goat.breed?.type?.name === 'CAMEL' ? 'CAMEL' : 'GOAT') as AnimalSpecies
+    const age = calculateGoatAge(goat.birthDate, species)
     const goatWithAge = {
       ...goat,
       age: {
@@ -52,7 +55,9 @@ export async function GET(
     }
     
     return NextResponse.json(goatWithAge)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب البيانات' }, { status: 500 })
   }
 }
@@ -64,6 +69,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'edit_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -88,12 +94,14 @@ export async function PUT(
       action: 'UPDATE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم تعديل الماعز: ${goat.tagId}`,
+      description: `تم تعديل: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(goat)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تحديث البيانات' }, { status: 500 })
   }
 }
@@ -105,6 +113,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'delete_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -123,7 +132,7 @@ export async function DELETE(
     if (activeBreeding) {
       const goat = await prisma.goat.findUnique({ where: { id }, select: { tagId: true } })
       return NextResponse.json(
-        { error: `لا يمكن حذف الماعز ${goat?.tagId || ''} لأنه في سجل تكاثر نشط` },
+        { error: `لا يمكن حذف ${goat?.tagId || ''} لأنه في سجل تكاثر نشط` },
         { status: 400 }
       )
     }
@@ -136,12 +145,14 @@ export async function DELETE(
       action: 'DELETE',
       entity: 'Goat',
       entityId: goat.id,
-      description: `تم حذف الماعز: ${goat.tagId}`,
+      description: `تم حذف: ${goat.tagId}`,
       ipAddress: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json({ message: 'تم الحذف بنجاح' })
-  } catch (error) {
-    return NextResponse.json({ error: 'فشل في حذف الماعز' }, { status: 500 })
+  
+    })
+} catch (error) {
+    return NextResponse.json({ error: 'فشل في الحذف' }, { status: 500 })
   }
 }

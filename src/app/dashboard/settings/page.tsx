@@ -26,9 +26,25 @@ import {
   Download as DownloadIcon,
   Upload as UploadIcon,
   Warning as WarningIcon,
+  NotificationsActive as NotifActiveIcon,
+  NotificationsOff as NotifOffIcon,
+  Send as SendIcon,
 } from '@mui/icons-material'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/useAuth'
+import { usePushNotifications } from '@/lib/usePushNotifications'
 
 export default function SettingsPage() {
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const canEdit = ['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(user?.role || '')
+
+  useEffect(() => {
+    if (!authLoading && !canEdit) {
+      router.push('/dashboard')
+    }
+  }, [authLoading, canEdit, router])
   const [settings, setSettings] = useState({
     farmName: '',
     phone: '',
@@ -52,6 +68,7 @@ export default function SettingsPage() {
   const [restoreFile, setRestoreFile] = useState<File | null>(null)
   const [restoreStats, setRestoreStats] = useState<Record<string, number> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const push = usePushNotifications()
 
   useEffect(() => {
     fetch('/api/settings')
@@ -202,8 +219,11 @@ export default function SettingsPage() {
     feedingSchedules: 'جداول التغذية',
     dailyFeedConsumptions: 'استهلاك الأعلاف اليومي',
     calendarEvents: 'أحداث التقويم',
-    appSettings: 'الإعدادات',
+    farms: 'المزارع',
   }
+
+  if (authLoading || !user) return <Box sx={{ p: 4 }}><CircularProgress /></Box>
+  if (!canEdit) return null
 
   return (
     <Box sx={{ width: '100%', overflowX: 'hidden' }}>
@@ -331,6 +351,7 @@ export default function SettingsPage() {
           </Box>
         </Box>
 
+        {canEdit && (
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="flex-end" mt={3}>
           <Button
             variant="contained"
@@ -342,9 +363,93 @@ export default function SettingsPage() {
             {saving ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
           </Button>
         </Stack>
+        )}
       </Paper>
 
-      {/* Section 3: Backup & Restore */}
+      {/* Section 3: Push Notifications */}
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
+        <Typography variant="h6" fontWeight="bold" gutterBottom>
+          إشعارات الجوال (Push Notifications)
+        </Typography>
+        <Divider sx={{ mb: 2 }} />
+
+        {!push.isSupported ? (
+          <Alert severity="warning">
+            متصفحك لا يدعم إشعارات Push. استخدم Chrome أو Edge أو Firefox للحصول على هذه الميزة.
+          </Alert>
+        ) : push.isDenied ? (
+          <Alert severity="error">
+            تم رفض الإشعارات من المتصفح. يرجى تفعيلها من إعدادات المتصفح ثم إعادة تحميل الصفحة.
+          </Alert>
+        ) : (
+          <Stack spacing={2}>
+            <Alert severity={push.isSubscribed ? 'success' : 'info'} icon={push.isSubscribed ? <NotifActiveIcon /> : <NotifOffIcon />}>
+              {push.isSubscribed
+                ? 'الإشعارات مفعّلة — ستصلك تنبيهات المزرعة تلقائياً (ولادات، تطعيمات، مخزون...)'
+                : 'فعّل الإشعارات لتصلك تنبيهات فورية عن المواعيد المهمة حتى عندما لا تكون في التطبيق'
+              }
+            </Alert>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              {push.isSubscribed ? (
+                <>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<NotifOffIcon />}
+                    onClick={async () => {
+                      const ok = await push.unsubscribe()
+                      if (ok) setSnackbar({ open: true, message: 'تم إلغاء الإشعارات', severity: 'success' })
+                    }}
+                    disabled={push.isLoading}
+                  >
+                    إلغاء الإشعارات
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<SendIcon />}
+                    onClick={async () => {
+                      const ok = await push.sendTestNotification()
+                      setSnackbar({
+                        open: true,
+                        message: ok ? 'تم إرسال إشعار تجريبي — تحقق من الإشعارات' : 'فشل في إرسال الإشعار التجريبي',
+                        severity: ok ? 'success' : 'error',
+                      })
+                    }}
+                  >
+                    إرسال إشعار تجريبي
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={push.isLoading ? <CircularProgress size={20} color="inherit" /> : <NotifActiveIcon />}
+                  onClick={async () => {
+                    const ok = await push.subscribe()
+                    if (ok) {
+                      setSnackbar({ open: true, message: 'تم تفعيل الإشعارات بنجاح! 🔔', severity: 'success' })
+                      // Send a test notification
+                      await push.sendTestNotification()
+                    } else if (push.isDenied) {
+                      setSnackbar({ open: true, message: 'تم رفض الإشعارات — فعّلها من إعدادات المتصفح', severity: 'error' })
+                    }
+                  }}
+                  disabled={push.isLoading}
+                  sx={{ px: 4, py: 1.5, fontSize: '1rem' }}
+                >
+                  تفعيل الإشعارات 🔔
+                </Button>
+              )}
+            </Stack>
+            {push.error && (
+              <Alert severity="error" variant="outlined">{push.error}</Alert>
+            )}
+          </Stack>
+        )}
+      </Paper>
+
+      {/* Section 4: Backup & Restore (SUPER_ADMIN only) */}
+      {isSuperAdmin && (
       <Paper sx={{ p: 3, borderRadius: 3 }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           النسخ الاحتياطي والاستعادة
@@ -388,6 +493,7 @@ export default function SettingsPage() {
           />
         </Stack>
       </Paper>
+      )}
 
       {/* Restore Confirmation Dialog */}
       <Dialog open={restoreConfirm} onClose={() => setRestoreConfirm(false)} maxWidth="sm" fullWidth>

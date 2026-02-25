@@ -26,7 +26,7 @@ async function main() {
     const data: { motherId?: string | null; fatherId?: string | null } = {}
 
     if (!goat.motherId && goat.motherTagId) {
-      const mother = await prisma.goat.findUnique({
+      const mother = await prisma.goat.findFirst({
         where: { tagId: goat.motherTagId },
         select: { id: true }
       })
@@ -34,7 +34,7 @@ async function main() {
     }
 
     if (!goat.fatherId && goat.fatherTagId) {
-      const father = await prisma.goat.findUnique({
+      const father = await prisma.goat.findFirst({
         where: { tagId: goat.fatherTagId },
         select: { id: true }
       })

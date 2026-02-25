@@ -1,16 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requirePermission } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
-// GET /api/settings/backup — Export full database as JSON
+// GET /api/settings/backup — Export current tenant/farm data as JSON (SUPER_ADMIN only)
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'view_settings')
+    const auth = await requireAuth(request)
     if (auth.response) return auth.response
 
-    // Fetch all tables in dependency order
+    if (auth.user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'فقط مدير النظام يمكنه تصدير النسخة الاحتياطية' }, { status: 403 })
+    }
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+
+    // Tenant & farm info (manual query - not in middleware)
+    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
+    const farms = await prisma.farm.findMany({ where: { tenantId: auth.tenantId } })
+    const userFarms = await prisma.userFarm.findMany({ where: { farm: { tenantId: auth.tenantId } } })
+    const subscriptions = await prisma.subscription.findMany({ where: { tenantId: auth.tenantId } })
+
+    // All data tables (auto-filtered by middleware)
     const [
       users,
       permissions,
@@ -35,9 +47,8 @@ export async function GET(request: NextRequest) {
       feedingSchedules,
       dailyFeedConsumptions,
       calendarEvents,
-      appSettings,
     ] = await Promise.all([
-      prisma.user.findMany(),
+      prisma.user.findMany({ select: { id: true, username: true, email: true, fullName: true, phone: true, role: true, isActive: true, tenantId: true, createdAt: true, updatedAt: true } }),
       prisma.permission.findMany(),
       prisma.userPermission.findMany(),
       prisma.activityLog.findMany(),
@@ -60,13 +71,18 @@ export async function GET(request: NextRequest) {
       prisma.feedingSchedule.findMany(),
       prisma.dailyFeedConsumption.findMany(),
       prisma.calendarEvent.findMany(),
-      prisma.appSetting.findMany(),
     ])
 
     const backup = {
-      version: '1.0',
+      version: '2.0',
       exportDate: new Date().toISOString(),
+      tenantId: auth.tenantId,
+      farmId: auth.farmId,
       data: {
+        tenant,
+        farms,
+        userFarms,
+        subscriptions,
         users,
         permissions,
         userPermissions,
@@ -90,13 +106,10 @@ export async function GET(request: NextRequest) {
         feedingSchedules,
         dailyFeedConsumptions,
         calendarEvents,
-        appSettings,
       },
       stats: {
+        farms: farms.length,
         users: users.length,
-        permissions: permissions.length,
-        userPermissions: userPermissions.length,
-        activityLogs: activityLogs.length,
         goatTypes: goatTypes.length,
         breeds: breeds.length,
         pens: pens.length,
@@ -116,7 +129,7 @@ export async function GET(request: NextRequest) {
         feedingSchedules: feedingSchedules.length,
         dailyFeedConsumptions: dailyFeedConsumptions.length,
         calendarEvents: calendarEvents.length,
-        appSettings: appSettings.length,
+        activityLogs: activityLogs.length,
       },
     }
 
@@ -127,7 +140,9 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="goats-backup-${new Date().toISOString().split('T')[0]}.json"`,
       },
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Backup error:', error)
     return NextResponse.json({ error: 'فشل في إنشاء النسخة الاحتياطية' }, { status: 500 })
   }

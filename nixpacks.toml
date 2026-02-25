@@ -9,12 +9,15 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "npx prisma generate",
   "npm run build"
+]
+envs = [
+  "DATABASE_URL=mysql://build:build@localhost:3306/build_db",
+  "JWT_SECRET=build-time-placeholder-32-chars-min"
 ]
 
 [start]
-cmd = "npm run start"
+cmd = "node .next/standalone/server.js"
 
 [variables]
-NODE_ENV = "production"
+NIXPACKS_PATH = "/opt/nixpacks"

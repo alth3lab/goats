@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function GET(
   try {
     const auth = await requirePermission(request, 'view_expenses')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const expense = await prisma.expense.findUnique({ where: { id } })
@@ -21,7 +23,9 @@ export async function GET(
     }
 
     return NextResponse.json(expense)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المصروف' }, { status: 500 })
   }
 }
@@ -33,6 +37,7 @@ export async function PUT(
   try {
     const auth = await requirePermission(request, 'add_expense')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const body = await request.json()
@@ -71,7 +76,9 @@ export async function PUT(
     })
 
     return NextResponse.json(updated)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في تعديل المصروف' }, { status: 500 })
   }
 }
@@ -83,6 +90,7 @@ export async function DELETE(
   try {
     const auth = await requirePermission(request, 'add_expense')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
@@ -105,7 +113,9 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في حذف المصروف' }, { status: 500 })
   }
 }

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 
 export async function PUT(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'edit_goat')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const { goatIds, penId } = body
@@ -42,7 +44,9 @@ export async function PUT(request: NextRequest) {
     })
 
     return NextResponse.json({ message: 'Updated successfully' })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Batch update error:', error)
     return NextResponse.json({ error: 'Failed to update goats' }, { status: 500 })
   }

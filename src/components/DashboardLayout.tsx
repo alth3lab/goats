@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import {
   AppBar,
   Box,
@@ -20,7 +20,15 @@ import {
   Stack,
   TextField,
   InputAdornment,
-  useMediaQuery
+  useMediaQuery,
+  Menu,
+  MenuItem,
+  ListSubheader,
+  Chip,
+  Backdrop,
+  CircularProgress,
+  Badge,
+  Tooltip,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -42,7 +50,11 @@ import {
   Grass as FeedsIcon,
   CalendarMonth as CalendarIcon,
   ChevronLeft as CollapseIcon,
-  ChevronRight as ExpandIcon
+  ChevronRight as ExpandIcon,
+  Agriculture as FarmIcon,
+  SwapHoriz as SwitchIcon,
+  NotificationsActive as NotifIcon,
+  SmartToy as AiIcon,
 } from '@mui/icons-material'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -53,20 +65,30 @@ import { alpha, useTheme } from '@mui/material/styles'
 const expandedDrawerWidth = 260
 const collapsedDrawerWidth = 86
 
-// تعريف المجموعات
-const menuGroups = [
+// Farm type labels
+const farmTypeLabels: Record<string, { herd: string; animal: string; icon: string }> = {
+  SHEEP: { herd: 'إدارة الأغنام', animal: 'أغنام', icon: '🐑' },
+  CAMEL: { herd: 'إدارة الإبل', animal: 'إبل', icon: '🐪' },
+  MIXED: { herd: 'إدارة الحيوانات', animal: 'حيوانات', icon: '🐾' },
+}
+
+// تعريف المجموعات - dynamic based on farm type
+const getMenuGroups = (farmType?: string) => {
+  const labels = farmTypeLabels[farmType || 'SHEEP'] || farmTypeLabels.SHEEP
+  return [
   {
     title: 'عام',
     items: [
       { text: 'لوحة التحكم', icon: <DashboardIcon />, href: '/dashboard' },
       { text: 'بحث موحّد', icon: <SearchIcon />, href: '/dashboard/search' },
+      { text: 'المساعد الذكي', icon: <AiIcon />, href: '/dashboard/ai' },
       { text: 'التقويم', icon: <CalendarIcon />, href: '/dashboard/calendar' },
     ]
   },
   {
     title: 'القطيع والإنتاج',
     items: [
-      { text: 'إدارة الماعز', icon: <PetsIcon />, href: '/dashboard/goats' },
+      { text: labels.herd, icon: <PetsIcon />, href: '/dashboard/goats' },
       { text: 'التكاثر', icon: <BreedingIcon />, href: '/dashboard/breeding' },
       { text: 'السجلات الصحية', icon: <HealthIcon />, href: '/dashboard/health' },
       { text: 'إدارة الحظائر', icon: <PenIcon />, href: '/dashboard/pens' },
@@ -75,6 +97,7 @@ const menuGroups = [
   {
     title: 'الموارد والمالية',
     items: [
+      { text: 'الملاك', icon: <UsersIcon />, href: '/dashboard/owners' },
       { text: 'المخزون', icon: <InventoryIcon />, href: '/dashboard/inventory' },
       { text: 'الأعلاف', icon: <FeedsIcon />, href: '/dashboard/feeds' },
       { text: 'المبيعات', icon: <SalesIcon />, href: '/dashboard/sales' },
@@ -87,25 +110,52 @@ const menuGroups = [
       { text: 'التقارير', icon: <ReportsIcon />, href: '/dashboard/reports' },
       { text: 'سجل النشاطات', icon: <HistoryIcon />, href: '/dashboard/activities' },
       { text: 'المستخدمين', icon: <UsersIcon />, href: '/dashboard/users' },
+      { text: 'فريق العمل', icon: <UsersIcon />, href: '/dashboard/team' },
+      { text: 'المزارع', icon: <FarmIcon />, href: '/dashboard/farms' },
+      { text: 'الاشتراك', icon: <SettingsIcon />, href: '/dashboard/billing' },
       { text: 'الأنواع والسلالات', icon: <TypesIcon />, href: '/dashboard/types' },
-      { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' }
+      { text: 'الإعدادات', icon: <SettingsIcon />, href: '/dashboard/settings' },
+      { text: 'إدارة النظام', icon: <SettingsIcon />, href: '/dashboard/admin' }
     ]
   }
 ]
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [farmMenuAnchor, setFarmMenuAnchor] = useState<null | HTMLElement>(null)
+  const [alertCount, setAlertCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
-  const { can, loading: authLoading } = useAuth()
+  const { user, can, loading: authLoading, farm, farms, switchFarm, switching } = useAuth()
+  const [farmSearch, setFarmSearch] = useState('')
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
   const drawerWidth = collapsed ? collapsedDrawerWidth : expandedDrawerWidth
-  const mobileAppBarHeight = '88px'
-  const mobileAppBarOffset = `calc(${mobileAppBarHeight} + env(safe-area-inset-top))`
+
+  const menuGroups = getMenuGroups(farm?.farmType)
+  const labels = farmTypeLabels[farm?.farmType || 'SHEEP'] || farmTypeLabels.SHEEP
+
+  // Fetch alert count for badge
+  useEffect(() => {
+    fetch('/api/alerts')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAlertCount(data.filter((a: { severity: string }) => a.severity === 'error' || a.severity === 'warning').length)
+        }
+      })
+      .catch(() => {})
+  }, [farm?.id])
+
+  // Global auth guard: redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [authLoading, user, router])
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -138,18 +188,31 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%', justifyContent: collapsed ? 'center' : 'space-between' }}>
           {!collapsed && (
             <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>
+              <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '1.3rem' }}>{labels.icon}</Avatar>
               <Box>
-                <Typography variant="h6" fontWeight="bold">
-                  إدارة الماعز
+                <Typography variant="h6" fontWeight="bold" noWrap>
+                  {farm?.name || labels.herd}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Goat Management
-                </Typography>
+                {farms.length > 1 && (
+                  <Typography 
+                    variant="caption" 
+                    color="primary" 
+                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                    onClick={(e) => setFarmMenuAnchor(e.currentTarget)}
+                  >
+                    <SwitchIcon sx={{ fontSize: 12, mr: 0.5 }} />
+                    تبديل المزرعة
+                  </Typography>
+                )}
+                {farms.length <= 1 && (
+                  <Typography variant="caption" color="text.secondary">
+                    {labels.herd}
+                  </Typography>
+                )}
               </Box>
             </Stack>
           )}
-          {collapsed && <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>G</Avatar>}
+          {collapsed && <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: '1.3rem' }}>{labels.icon}</Avatar>}
           <IconButton size="small" onClick={() => setCollapsed(prev => !prev)} sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: 'rgba(79,122,87,0.08)' }}>
             {collapsed ? <ExpandIcon fontSize="small" /> : <CollapseIcon fontSize="small" />}
           </IconButton>
@@ -159,7 +222,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <List sx={{ px: 1, flexGrow: 1 }}>
         {menuGroups.map((group, index) => {
           const filteredItems = group.items.filter(
-            (item) => authLoading || can(menuPermissions[item.href])
+            (item) => {
+              if (authLoading) return true
+              const perm = menuPermissions[item.href]
+              return can(perm)
+            }
           )
 
           if (filteredItems.length === 0) return null
@@ -246,7 +313,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         sx={{
           width: isDesktop ? `calc(100% - ${drawerWidth}px)` : '100%',
           ml: isDesktop ? `${drawerWidth}px` : 0,
-          zIndex: (theme) => theme.zIndex.modal + 200,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
           bgcolor: 'background.paper',
           color: 'text.primary',
           boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
@@ -261,9 +328,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           sx={{
             gap: 1,
             alignItems: 'center',
-            flexWrap: { xs: 'wrap', sm: 'nowrap' },
-            py: { xs: 0.75, sm: 0 },
-            minHeight: { xs: mobileAppBarHeight, sm: 64 }
+            flexWrap: 'nowrap',
+            minHeight: 64
           }}
         >
           <IconButton
@@ -271,10 +337,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ 
-              display: { xs: 'inline-flex', sm: 'none' },
+              display: { xs: 'inline-flex', lg: 'none' },
               ml: 1,
-              position: 'relative',
-              zIndex: 1,
+              flexShrink: 0,
               bgcolor: 'background.paper',
               border: '1px solid',
               borderColor: 'divider'
@@ -283,26 +348,35 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <MenuIcon />
           </IconButton>
           <Typography
-            variant={isMobile ? 'subtitle1' : 'h6'}
-            noWrap={!isMobile}
+            variant="subtitle1"
+            noWrap
             component="div"
             sx={{
-              flexGrow: { xs: 1, sm: 0 },
-              minWidth: 0,
-              maxWidth: { xs: 'calc(100% - 52px)', sm: 'none' }
+              flexShrink: 0,
+              fontWeight: 'bold',
+              display: { xs: 'block', lg: 'none' }
             }}
           >
-            {isMobile ? 'نظام الإدارة' : 'نظام إدارة الماعز والخرفان'}
+            وبر وصوف
+          </Typography>
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{
+              flexShrink: 0,
+              fontWeight: 'bold',
+              display: { xs: 'none', lg: 'block' }
+            }}
+          >
+            {`وبر وصوف — ${labels.herd}`}
           </Typography>
           {(authLoading || can('view_search')) && (
             <Box
               sx={{
                 flexGrow: 1,
                 display: 'flex',
-                justifyContent: 'flex-end',
-                width: { xs: '100%', sm: 'auto' },
-                mt: { xs: 0.5, sm: 0 },
-                order: { xs: 3, sm: 0 }
+                justifyContent: 'flex-end'
               }}
             >
               <TextField
@@ -313,7 +387,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') handleSearch()
                 }}
-                sx={{ width: { xs: '100%', sm: 280 }, ml: { xs: 0, sm: 2 } }}
+                sx={{ width: { xs: 180, sm: 240, md: 300 }, ml: 1 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -324,6 +398,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               />
             </Box>
           )}
+          {/* Notification Bell */}
+          <Tooltip title={alertCount > 0 ? `${alertCount} تنبيه عاجل` : 'لا توجد تنبيهات'}>
+            <IconButton
+              component={Link}
+              href="/dashboard"
+              sx={{
+                ml: 1,
+                flexShrink: 0,
+                color: alertCount > 0 ? 'warning.main' : 'text.secondary',
+              }}
+            >
+              <Badge
+                badgeContent={alertCount}
+                color="error"
+                max={99}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.65rem',
+                    minWidth: 18,
+                    height: 18,
+                  }
+                }}
+              >
+                <NotifIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -345,20 +446,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           }}
           sx={{
             display: { xs: 'block', lg: 'none' },
-            zIndex: (t) => t.zIndex.modal + 50,
             '& .MuiDrawer-paper': {
               width: { xs: '88vw', sm: '72vw', md: '62vw' },
               maxWidth: 360,
               boxSizing: 'border-box',
               position: 'fixed',
-              top: 0,
-              height: '100dvh',
-              paddingTop: 'env(safe-area-inset-top)',
+              top: '64px',
+              height: 'calc(100dvh - 64px)',
               WebkitOverflowScrolling: 'touch',
-              zIndex: (t) => t.zIndex.modal + 51
             },
             '& .MuiBackdrop-root': {
-              zIndex: (t) => t.zIndex.modal + 49,
+              top: '64px',
               backgroundColor: (t) => alpha(t.palette.common.black, 0.35)
             }
           }}
@@ -395,9 +493,117 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           overflowX: 'hidden'
         }}
       >
-        <Box sx={{ height: { xs: mobileAppBarOffset, sm: '64px', lg: '64px' } }} />
+        <Box sx={{ height: '64px' }} />
         <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>{children}</Box>
       </Box>
+
+      {/* Farm Switch Menu */}
+      <Menu
+        anchorEl={farmMenuAnchor}
+        open={Boolean(farmMenuAnchor)}
+        onClose={() => { setFarmMenuAnchor(null); setFarmSearch('') }}
+        slotProps={{ paper: { sx: { maxHeight: 480, minWidth: 300 } } }}
+      >
+        {/* Search field for SUPER_ADMIN with many farms */}
+        {user?.role === 'SUPER_ADMIN' && farms.length > 5 && (
+          <Box sx={{ px: 2, py: 1, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+            <TextField
+              placeholder="بحث في المزارع..."
+              size="small"
+              fullWidth
+              value={farmSearch}
+              onChange={(e) => setFarmSearch(e.target.value)}
+              autoFocus
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
+        )}
+        {(() => {
+          const searchTerm = farmSearch.trim().toLowerCase()
+          const filteredFarms = searchTerm
+            ? farms.filter(f => 
+                (f.nameAr || '').toLowerCase().includes(searchTerm) || 
+                f.name.toLowerCase().includes(searchTerm) ||
+                (f.tenantName || '').toLowerCase().includes(searchTerm)
+              )
+            : farms
+
+          const getFarmTypeIcon = (type?: string) => {
+            const t = farmTypeLabels[type || 'SHEEP'] || farmTypeLabels.SHEEP
+            return t.icon
+          }
+
+          // Group farms by tenant for SUPER_ADMIN
+          if (user?.role === 'SUPER_ADMIN' && filteredFarms.some(f => f.tenantName)) {
+            const grouped = filteredFarms.reduce<Record<string, typeof farms>>((acc, f) => {
+              const key = f.tenantName || 'غير محدد'
+              if (!acc[key]) acc[key] = []
+              acc[key].push(f)
+              return acc
+            }, {})
+            const items = Object.entries(grouped).map(([tenantName, tenantFarms]) => [
+              <ListSubheader key={`header-${tenantName}`} sx={{ fontWeight: 'bold', lineHeight: '32px', bgcolor: 'grey.100' }}>
+                {tenantName}
+              </ListSubheader>,
+              ...tenantFarms.map((f) => (
+                <MenuItem
+                  key={f.id}
+                  selected={f.id === farm?.id}
+                  onClick={() => {
+                    setFarmMenuAnchor(null)
+                    setFarmSearch('')
+                    if (f.id !== farm?.id) switchFarm(f.id)
+                  }}
+                  sx={{ pr: 4, gap: 1 }}
+                >
+                  <Typography sx={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'center' }}>{getFarmTypeIcon(f.farmType)}</Typography>
+                  <ListItemText>{f.nameAr || f.name}</ListItemText>
+                  <Chip label={farmTypeLabels[f.farmType || 'SHEEP']?.animal || 'أغنام'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                </MenuItem>
+              ))
+            ]).flat()
+            if (items.length === 0 && searchTerm) {
+              return <MenuItem disabled><ListItemText>لا توجد نتائج</ListItemText></MenuItem>
+            }
+            return items
+          }
+          // Regular users - flat list
+          const items = filteredFarms.map((f) => (
+            <MenuItem
+              key={f.id}
+              selected={f.id === farm?.id}
+              onClick={() => {
+                setFarmMenuAnchor(null)
+                setFarmSearch('')
+                if (f.id !== farm?.id) switchFarm(f.id)
+              }}
+              sx={{ gap: 1 }}
+            >
+              <Typography sx={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'center' }}>{getFarmTypeIcon(f.farmType)}</Typography>
+              <ListItemText>{f.nameAr || f.name}</ListItemText>
+              <Chip label={farmTypeLabels[f.farmType || 'SHEEP']?.animal || 'أغنام'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+            </MenuItem>
+          ))
+          if (items.length === 0 && searchTerm) {
+            return <MenuItem disabled><ListItemText>لا توجد نتائج</ListItemText></MenuItem>
+          }
+          return items
+        })()}
+      </Menu>
+
+      {/* Loading overlay during farm switch */}
+      <Backdrop open={switching} sx={{ zIndex: (theme) => theme.zIndex.modal + 300, bgcolor: 'rgba(255,255,255,0.85)' }}>
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress color="primary" />
+          <Typography variant="body1" fontWeight="bold" color="text.primary">جاري تبديل المزرعة...</Typography>
+        </Stack>
+      </Backdrop>
     </Box>
   )
 }

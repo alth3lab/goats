@@ -4,6 +4,11 @@ import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
 export const runtime = 'nodejs'
 
+function isSecureRequest(request: NextRequest): boolean {
+  const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '')
+  return proto === 'https'
+}
+
 export async function POST(request: NextRequest) {
   const token = request.cookies.get(TOKEN_COOKIE)?.value
   let userId: string | undefined
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true })
   response.cookies.set(TOKEN_COOKIE, '', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureRequest(request),
     sameSite: 'lax',
     path: '/',
     expires: new Date(0)

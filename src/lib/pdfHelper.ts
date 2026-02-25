@@ -59,8 +59,8 @@ export const generateArabicPDF = async (options: PDFOptions) => {
       <div style="text-align:right; display:flex; align-items:center; gap:12px; flex:1;">
         ${SVG_LOGO}
         <div>
-          <div style="font-size:24px; font-weight:800; color:${PRIMARY}; margin-bottom:2px;">نظام إدارة الماعز</div>
-          <div style="font-size:11px; color:#6b7280;">Goat Management System</div>
+          <div style="font-size:24px; font-weight:800; color:${PRIMARY}; margin-bottom:2px;">نظام إدارة المواشي</div>
+          <div style="font-size:11px; color:#6b7280;">Livestock Management System</div>
         </div>
       </div>
       <div style="text-align:left; flex:1;">
@@ -143,7 +143,7 @@ export const generateArabicPDF = async (options: PDFOptions) => {
   const footerHtml = (pageNum: number, totalPages: number) => `
     <div style="margin-top:20px; padding-top:10px; border-top:2px solid #e5e7eb; display:flex; justify-content:space-between; font-size:10px; color:#9ca3af;">
       <div>عدد السجلات: ${data.length} | صفحة ${pageNum} من ${totalPages}</div>
-      <div>تم إنشاؤه بواسطة نظام إدارة الماعز • ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+      <div>تم إنشاؤه بواسطة نظام إدارة المواشي • ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
     </div>
   `
 

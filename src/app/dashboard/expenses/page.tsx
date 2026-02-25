@@ -44,7 +44,8 @@ import {
   History as HistoryIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material'
 import { EntityHistory } from '@/components/EntityHistory'
 import { useNotifier } from '@/components/AppNotifier'
@@ -56,6 +57,8 @@ interface Expense {
   description: string
   amount: number
   paymentMethod?: string
+  ownerId?: string | null
+  owner?: { id: string; name: string } | null
 }
 
 const categoryLabels: Record<string, string> = {
@@ -85,23 +88,28 @@ export default function ExpensesPage() {
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
+  const [owners, setOwners] = useState<Array<{ id: string; name: string }>>([])
+  const [filterOwner, setFilterOwner] = useState('ALL')
   const [form, setForm] = useState({
     date: '',
     category: 'FEED',
     description: '',
     amount: '',
-    paymentMethod: ''
+    paymentMethod: '',
+    ownerId: ''
   })
   const [editForm, setEditForm] = useState({
     date: '',
     category: 'FEED',
     description: '',
     amount: '',
-    paymentMethod: ''
+    paymentMethod: '',
+    ownerId: ''
   })
 
   useEffect(() => {
     loadExpenses()
+    loadOwners()
   }, [])
 
   useEffect(() => {
@@ -112,13 +120,18 @@ export default function ExpensesPage() {
     }
 
     setFilteredExpenses(
-      expenses.filter((expense) =>
-        expense.description.toLowerCase().includes(query) ||
-        (expense.paymentMethod || '').toLowerCase().includes(query) ||
-        (categoryLabels[expense.category] || expense.category).toLowerCase().includes(query)
-      )
+      expenses.filter((expense) => {
+        const matchesSearch = !query || 
+          expense.description.toLowerCase().includes(query) ||
+          (expense.paymentMethod || '').toLowerCase().includes(query) ||
+          (categoryLabels[expense.category] || expense.category).toLowerCase().includes(query) ||
+          (expense.owner?.name || '').toLowerCase().includes(query)
+        const matchesOwner = filterOwner === 'ALL' || 
+          (filterOwner === 'NONE' ? !expense.ownerId : expense.ownerId === filterOwner)
+        return matchesSearch && matchesOwner
+      })
     )
-  }, [expenses, searchQuery])
+  }, [expenses, searchQuery, filterOwner])
 
   const loadExpenses = async () => {
     try {
@@ -139,6 +152,18 @@ export default function ExpensesPage() {
     }
   }
 
+  const loadOwners = async () => {
+    try {
+      const res = await fetch('/api/owners?active=true')
+      if (res.ok) {
+        const data = await res.json()
+        setOwners(data.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })))
+      }
+    } catch {
+      setOwners([])
+    }
+  }
+
   const handleSubmit = async () => {
     if (submitting) return
     setSubmitting(true)
@@ -151,7 +176,8 @@ export default function ExpensesPage() {
           category: form.category,
           description: form.description,
           amount: Number(form.amount),
-          paymentMethod: form.paymentMethod || null
+          paymentMethod: form.paymentMethod || null,
+          ownerId: form.ownerId || null
         })
       })
 
@@ -161,7 +187,7 @@ export default function ExpensesPage() {
         return
       }
 
-      setForm({ date: '', category: 'FEED', description: '', amount: '', paymentMethod: '' })
+      setForm({ date: '', category: 'FEED', description: '', amount: '', paymentMethod: '', ownerId: '' })
       setOpen(false)
       notify('تمت إضافة المصروف بنجاح', { severity: 'success' })
       await loadExpenses()
@@ -184,7 +210,8 @@ export default function ExpensesPage() {
       category: expense.category,
       description: expense.description,
       amount: expense.amount.toString(),
-      paymentMethod: expense.paymentMethod || ''
+      paymentMethod: expense.paymentMethod || '',
+      ownerId: expense.ownerId || ''
     })
     setEditOpen(true)
   }
@@ -201,7 +228,8 @@ export default function ExpensesPage() {
           category: editForm.category,
           description: editForm.description,
           amount: Number(editForm.amount),
-          paymentMethod: editForm.paymentMethod || null
+          paymentMethod: editForm.paymentMethod || null,
+          ownerId: editForm.ownerId || null
         })
       })
 
@@ -318,20 +346,35 @@ export default function ExpensesPage() {
             </Button>
           </Stack>
         </Stack>
-        <TextField
-          sx={{ mt: 2 }}
-          fullWidth
-          placeholder="بحث بالوصف أو الفئة أو طريقة الدفع..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            )
-          }}
-        />
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} mt={2}>
+          <TextField
+            fullWidth
+            placeholder="بحث بالوصف أو الفئة أو طريقة الدفع..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              )
+            }}
+          />
+          <FormControl sx={{ minWidth: 180 }}>
+            <InputLabel>المالك</InputLabel>
+            <Select
+              value={filterOwner}
+              label="المالك"
+              onChange={(e) => setFilterOwner(e.target.value)}
+            >
+              <MenuItem value="ALL">الكل</MenuItem>
+              <MenuItem value="NONE">بدون مالك</MenuItem>
+              {owners.map(o => (
+                <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
       </Paper>
 
       {/* Mobile Cards View */}
@@ -373,6 +416,12 @@ export default function ExpensesPage() {
                           <Typography variant="body1">{e.paymentMethod}</Typography>
                         </Grid>
                       )}
+                      {e.owner && (
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="body2" color="text.secondary">المالك</Typography>
+                          <Chip label={e.owner.name} size="small" variant="outlined" color="primary" />
+                        </Grid>
+                      )}
                     </Grid>
                   </Stack>
                 </CardContent>
@@ -403,14 +452,15 @@ export default function ExpensesPage() {
               <TableCell><strong>الوصف</strong></TableCell>
               <TableCell><strong>المبلغ</strong></TableCell>
               <TableCell><strong>طريقة الدفع</strong></TableCell>
+              <TableCell><strong>المالك</strong></TableCell>
               <TableCell><strong>الإجراءات</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} align="center">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center">جاري التحميل...</TableCell></TableRow>
             ) : filteredExpenses.length === 0 ? (
-              <TableRow><TableCell colSpan={6} align="center">لا توجد بيانات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center">لا توجد بيانات</TableCell></TableRow>
             ) : (
               filteredExpenses.map(e => (
                 <TableRow key={e.id} hover>
@@ -421,6 +471,9 @@ export default function ExpensesPage() {
                   <TableCell>{e.description}</TableCell>
                   <TableCell>{formatCurrency(e.amount)}</TableCell>
                   <TableCell>{e.paymentMethod || '-'}</TableCell>
+                  <TableCell>
+                    {e.owner ? <Chip label={e.owner.name} size="small" variant="outlined" color="primary" /> : '-'}
+                  </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="عرض">
@@ -491,6 +544,19 @@ export default function ExpensesPage() {
               value={form.paymentMethod}
               onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
             />
+            <FormControl>
+              <InputLabel>المالك</InputLabel>
+              <Select
+                value={form.ownerId}
+                label="المالك"
+                onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+              >
+                <MenuItem value="">بدون مالك</MenuItem>
+                {owners.map(o => (
+                  <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -545,6 +611,19 @@ export default function ExpensesPage() {
               value={editForm.paymentMethod}
               onChange={(e) => setEditForm({ ...editForm, paymentMethod: e.target.value })}
             />
+            <FormControl>
+              <InputLabel>المالك</InputLabel>
+              <Select
+                value={editForm.ownerId}
+                label="المالك"
+                onChange={(e) => setEditForm({ ...editForm, ownerId: e.target.value })}
+              >
+                <MenuItem value="">بدون مالك</MenuItem>
+                {owners.map(o => (
+                  <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -585,6 +664,7 @@ export default function ExpensesPage() {
               <Typography><strong>الوصف:</strong> {selectedExpense.description}</Typography>
               <Typography><strong>المبلغ:</strong> {formatCurrency(selectedExpense.amount)}</Typography>
               <Typography><strong>طريقة الدفع:</strong> {selectedExpense.paymentMethod || '-'}</Typography>
+              <Typography><strong>المالك:</strong> {selectedExpense.owner?.name || 'غير محدد'}</Typography>
               <Stack direction="row" spacing={1} alignItems="center" mt={1}>
                 <HistoryIcon color="action" />
                 <Typography variant="h6">سجل التغييرات</Typography>

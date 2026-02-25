@@ -1,14 +1,184 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
+import { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
 type RequiredItem = { feedTypeName: string; required: number }
 
+/* ── GET: Consumption history ── */
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'view_feeds')
+    if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+
+    const searchParams = request.nextUrl.searchParams
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 30
+
+    const where: any = {}
+    if (startDate || endDate) {
+      where.date = {}
+      if (startDate) where.date.gte = new Date(startDate)
+      if (endDate) where.date.lte = new Date(endDate)
+    }
+
+    const records = await prisma.dailyFeedConsumption.findMany({
+      where,
+      include: {
+        feedType: { select: { nameAr: true, category: true } },
+        pen: { select: { nameAr: true } }
+      },
+      orderBy: { date: 'desc' },
+      take: limit * 10 // Get enough to group by date
+    })
+
+    // Group by date
+    const byDate = new Map<string, {
+      date: string;
+      totalQty: number;
+      totalCost: number;
+      items: Array<{ feedType: string; pen: string | null; quantity: number; cost: number; category: string }>
+    }>()
+
+    for (const r of records) {
+      const key = r.date.toISOString().slice(0, 10)
+      const existing = byDate.get(key)
+      const item = {
+        feedType: r.feedType?.nameAr || '-',
+        pen: r.pen?.nameAr || null,
+        quantity: r.quantity,
+        cost: r.cost || 0,
+        category: r.feedType?.category || 'OTHER'
+      }
+
+      if (existing) {
+        existing.totalQty += r.quantity
+        existing.totalCost += (r.cost || 0)
+        existing.items.push(item)
+      } else {
+        byDate.set(key, {
+          date: key,
+          totalQty: r.quantity,
+          totalCost: r.cost || 0,
+          items: [item]
+        })
+      }
+    }
+
+    const history = Array.from(byDate.values()).slice(0, limit)
+
+    return NextResponse.json(history)
+
+    })
+  } catch (error) {
+    console.error('Error fetching consumption history:', error)
+    return NextResponse.json({ error: 'فشل في جلب سجل الاستهلاك' }, { status: 500 })
+  }
+}
+
+/* ── DELETE: Undo consumption for a specific date ── */
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requirePermission(request, 'manage_feeds')
+    if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+
+    const actorId = await getUserIdFromRequest(request)
+    if (!actorId) {
+      return NextResponse.json({ error: 'تعذر تحديد المستخدم' }, { status: 401 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const date = body?.date
+    if (!date) {
+      return NextResponse.json({ error: 'التاريخ مطلوب' }, { status: 400 })
+    }
+
+    const targetDate = dayStart(new Date(date))
+    const key = dateKey(targetDate)
+
+    // Check if consumption exists for this date
+    const marker = await prisma.activityLog.findFirst({
+      where: { action: 'CREATE', entity: 'FeedConsumption', entityId: key }
+    })
+
+    if (!marker) {
+      return NextResponse.json({ error: `لا يوجد صرف مسجل لتاريخ ${key}` }, { status: 404 })
+    }
+
+    // Get consumption records for this date
+    const consumptions = await prisma.dailyFeedConsumption.findMany({
+      where: { date: targetDate },
+      include: { feedType: { select: { nameAr: true } } }
+    })
+
+    // Execute undo inside transaction
+    await prisma.$transaction(async (tx) => {
+      // Restore stock quantities (add back consumed amounts, distribute to newest stock)
+      for (const c of consumptions) {
+        if (c.quantity <= 0) continue
+
+        // Find stocks for this feed type, newest first (reverse FIFO for undo)
+        const stocks = await tx.feedStock.findMany({
+          where: { feedTypeId: c.feedTypeId },
+          orderBy: [{ purchaseDate: 'desc' }, { createdAt: 'desc' }]
+        })
+
+        if (stocks.length > 0) {
+          // Add quantity back to newest stock
+          await tx.feedStock.update({
+            where: { id: stocks[0].id },
+            data: { quantity: { increment: Number(c.quantity.toFixed(4)) } }
+          })
+        }
+      }
+
+      // Delete consumption records
+      await tx.dailyFeedConsumption.deleteMany({
+        where: { date: targetDate }
+      })
+
+      // Delete the marker
+      if (marker.id) {
+        await tx.activityLog.delete({ where: { id: marker.id } })
+      }
+
+      // Log the undo action
+      await tx.activityLog.create({
+        data: {
+          userId: actorId,
+          action: 'DELETE',
+          entity: 'FeedConsumption',
+          entityId: key,
+          description: `تراجع عن صرف أعلاف يومي (${key}) — تم استرجاع ${consumptions.reduce((s, c) => s + c.quantity, 0).toFixed(1)} كجم`,
+          ipAddress: request.headers.get('x-forwarded-for') || undefined,
+          userAgent: request.headers.get('user-agent') || undefined
+        }
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+
+    return NextResponse.json({
+      success: true,
+      date: key,
+      restoredQty: Number(consumptions.reduce((s, c) => s + c.quantity, 0).toFixed(2)),
+      message: `تم التراجع عن صرف ${key} واسترجاع المخزون بنجاح`
+    })
+
+    })
+  } catch (error) {
+    console.error('Error undoing consumption:', error)
+    return NextResponse.json({ error: 'فشل في التراجع عن الصرف' }, { status: 500 })
+  }
+}
+
 function dayStart(input: Date | string) {
   const d = new Date(input)
-  d.setHours(0, 0, 0, 0)
+  d.setUTCHours(0, 0, 0, 0)
   return d
 }
 
@@ -27,25 +197,6 @@ function dateRange(start: Date, end: Date) {
   return out
 }
 
-async function resolveActorId(request: NextRequest) {
-  const fromCookie = await getUserIdFromRequest(request)
-  if (fromCookie) return fromCookie
-
-  const admin = await prisma.user.findFirst({
-    where: { role: 'ADMIN', isActive: true },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true }
-  })
-  if (admin) return admin.id
-
-  const anyActive = await prisma.user.findFirst({
-    where: { isActive: true },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true }
-  })
-  return anyActive?.id || null
-}
-
 /* ── حساب المطلوب من الجداول المخزنة مسبقاً (بدون استعلام DB) ── */
 function requiredForDateFromCache(
   targetDate: Date,
@@ -53,12 +204,13 @@ function requiredForDateFromCache(
     feedTypeId: string
     feedType: { nameAr: string }
     quantity: number
+    penId: string | null
     startDate: Date
     endDate: Date | null
     pen: { _count: { goats: number } } | null
   }>
-): Map<string, RequiredItem> {
-  const result = new Map<string, RequiredItem>()
+): Map<string, { feedTypeName: string; required: number; byPen: Map<string, number> }> {
+  const result = new Map<string, { feedTypeName: string; required: number; byPen: Map<string, number> }>()
   const t = dayStart(targetDate).getTime()
 
   for (const s of allSchedules) {
@@ -69,11 +221,16 @@ function requiredForDateFromCache(
     const required = s.quantity * heads
     if (required <= 0) continue
 
+    const penKey = s.penId || '__none__'
+
     const existing = result.get(s.feedTypeId)
     if (existing) {
       existing.required += required
+      existing.byPen.set(penKey, (existing.byPen.get(penKey) || 0) + required)
     } else {
-      result.set(s.feedTypeId, { feedTypeName: s.feedType.nameAr, required })
+      const byPen = new Map<string, number>()
+      byPen.set(penKey, required)
+      result.set(s.feedTypeId, { feedTypeName: s.feedType.nameAr, required, byPen })
     }
   }
   return result
@@ -83,8 +240,10 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'manage_feeds')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
-    const actorId = await resolveActorId(request)
+    // SEC-01: No fallback — only authenticated user
+    const actorId = await getUserIdFromRequest(request)
     if (!actorId) {
       return NextResponse.json({ error: 'تعذر تحديد المستخدم المنفذ للعملية' }, { status: 401 })
     }
@@ -116,7 +275,12 @@ export async function POST(request: NextRequest) {
         return start < min ? start : min
       }, dayStart(schedules[0].startDate))
 
-      executionDates = dateRange(earliest, targetDate)
+      // PERF-03: Limit auto-consume to max 90 days back
+      const maxLookback = dayStart(new Date())
+      maxLookback.setDate(maxLookback.getDate() - 90)
+      const effectiveStart = earliest > maxLookback ? earliest : maxLookback
+
+      executionDates = dateRange(effectiveStart, targetDate)
     } else {
       executionDates = [targetDate]
     }
@@ -146,19 +310,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    /* ── تحميل الجداول والمخزون مرة واحدة فقط ── */
+    /* ── تحميل الجداول مرة واحدة فقط ── */
     const allSchedules = await prisma.feedingSchedule.findMany({
       where: { isActive: true },
       include: {
         feedType: { select: { nameAr: true } },
         pen: { include: { _count: { select: { goats: true } } } }
       }
-    })
-
-    // تحميل كل المخزون المتاح مرة واحدة (FIFO)
-    let allStocks = await prisma.feedStock.findMany({
-      where: { quantity: { gt: 0 } },
-      orderBy: [{ purchaseDate: 'asc' }, { createdAt: 'asc' }]
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || undefined
@@ -173,144 +331,185 @@ export async function POST(request: NextRequest) {
       const requiredByFeedType = requiredForDateFromCache(pendingDate, allSchedules)
 
       if (requiredByFeedType.size === 0) {
-        await prisma.activityLog.create({
-          data: {
-            userId: actorId,
-            action: 'CREATE',
-            entity: 'FeedConsumption',
-            entityId: key,
-            description: `تنفيذ صرف أعلاف يومي (${key}) - لا يوجد صرف فعلي`,
-            ipAddress,
-            userAgent
-          }
-        })
+        try {
+          // CR-01: Use Serializable transaction to prevent race condition
+          await prisma.$transaction(async (tx) => {
+            // Double-check inside transaction
+            const existing = await tx.activityLog.findFirst({
+              where: { action: 'CREATE', entity: 'FeedConsumption', entityId: key }
+            })
+            if (existing) return // Already executed by another request
+
+            await tx.activityLog.create({
+              data: {
+                userId: actorId,
+                action: 'CREATE',
+                entity: 'FeedConsumption',
+                entityId: key,
+                description: `تنفيذ صرف أعلاف يومي (${key}) - لا يوجد صرف فعلي`,
+                ipAddress,
+                userAgent
+              }
+            })
+          }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+        } catch {
+          // Race condition caught — another request executed it
+          continue
+        }
         executedDates.push(key)
         continue
       }
 
-      /* فحص الكفاية + بناء خطة الخصم من المخزون المحمّل في الذاكرة */
-      const shortages: Array<{ feedTypeId: string; feedTypeName: string; required: number; available: number }> = []
-      const plans: Array<{ 
-        feedTypeId: string; 
-        feedTypeName: string; 
-        required: number; 
-        totalCost: number;
-        updates: Array<{ stockId: string; nextQty: number; used: number; cost: number }> 
-      }> = []
-
-      for (const [feedTypeId, req] of requiredByFeedType.entries()) {
-        const typeStocks = allStocks.filter((s) => s.feedTypeId === feedTypeId && s.quantity > 0)
-        const available = typeStocks.reduce((sum, s) => sum + s.quantity, 0)
-
-        if (available < req.required) {
-          shortages.push({
-            feedTypeId,
-            feedTypeName: req.feedTypeName,
-            required: Number(req.required.toFixed(2)),
-            available: Number(available.toFixed(2))
+      /* CR-01: Execute EVERYTHING inside a Serializable transaction */
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          // Double-check marker inside transaction
+          const existing = await tx.activityLog.findFirst({
+            where: { action: 'CREATE', entity: 'FeedConsumption', entityId: key }
           })
-          continue
-        }
+          if (existing) return { skipped: true as const }
 
-        let remaining = req.required
-        const updates: Array<{ stockId: string; nextQty: number; used: number; cost: number }> = []
-        let totalCost = 0
-        
-        for (const stock of typeStocks) {
-          if (remaining <= 0) break
-          const used = Math.min(stock.quantity, remaining)
-          const nextQty = Number((stock.quantity - used).toFixed(4))
-          const stockCost = stock.cost || 0
-          const itemCost = (stockCost / (stock.quantity + used)) * used  // تكلفة الكمية المستخدمة من هذه الدفعة
-          totalCost += itemCost
-          updates.push({ stockId: stock.id, nextQty, used: Number(used.toFixed(4)), cost: itemCost })
-          remaining -= used
-        }
+          // Read stocks INSIDE transaction for consistency (CR-01)
+          const currentStocks = await tx.feedStock.findMany({
+            where: { quantity: { gt: 0 } },
+            orderBy: [{ purchaseDate: 'asc' }, { createdAt: 'asc' }]
+          })
 
-        plans.push({ feedTypeId, feedTypeName: req.feedTypeName, required: Number(req.required.toFixed(2)), updates, totalCost: Number(totalCost.toFixed(2)) })
-      }
+          /* فحص الكفاية + بناء خطة الخصم */
+          const shortages: Array<{ feedTypeId: string; feedTypeName: string; required: number; available: number }> = []
+          const plans: Array<{
+            feedTypeId: string;
+            feedTypeName: string;
+            required: number;
+            totalCost: number;
+            byPen: Map<string, number>;
+            updates: Array<{ stockId: string; nextQty: number; used: number; cost: number }>
+          }> = []
 
-      if (shortages.length > 0) {
-        if (!isAuto) {
-          return NextResponse.json({ error: 'المخزون غير كافٍ لتنفيذ الصرف المطلوب', shortages }, { status: 400 })
-        }
-        skippedDates.push({ date: key, shortages })
-        continue
-      }
+          for (const [feedTypeId, req] of requiredByFeedType.entries()) {
+            const typeStocks = currentStocks.filter((s) => s.feedTypeId === feedTypeId && s.quantity > 0)
+            const available = typeStocks.reduce((sum, s) => sum + s.quantity, 0)
 
-      /* تنفيذ الخصم في قاعدة البيانات */
-      await prisma.$transaction(async (tx) => {
-        // تحديث المخزون
-        for (const plan of plans) {
-          for (const update of plan.updates) {
-            await tx.feedStock.update({ where: { id: update.stockId }, data: { quantity: update.nextQty } })
+            if (available < req.required) {
+              shortages.push({
+                feedTypeId,
+                feedTypeName: req.feedTypeName,
+                required: Number(req.required.toFixed(2)),
+                available: Number(available.toFixed(2))
+              })
+              continue
+            }
+
+            let remaining = req.required
+            const updates: Array<{ stockId: string; nextQty: number; used: number; cost: number }> = []
+            let totalCost = 0
+
+            for (const stock of typeStocks) {
+              if (remaining <= 0) break
+              const used = Math.min(stock.quantity, remaining)
+              const nextQty = Number((stock.quantity - used).toFixed(4))
+              const unitCost = stock.cost || 0
+              const itemCost = unitCost * used
+              totalCost += itemCost
+              updates.push({ stockId: stock.id, nextQty, used: Number(used.toFixed(4)), cost: itemCost })
+              // Update in-memory for subsequent entries in this loop
+              stock.quantity = nextQty
+              remaining -= used
+            }
+
+            plans.push({
+              feedTypeId,
+              feedTypeName: req.feedTypeName,
+              required: Number(req.required.toFixed(2)),
+              updates,
+              totalCost: Number(totalCost.toFixed(2)),
+              byPen: req.byPen
+            })
           }
-        }
-        
-        // حفظ سجلات الصرف التفصيلية في DailyFeedConsumption
-        for (const plan of plans) {
-          // البحث عن الحظائر التي تستخدم هذا النوع من العلف في هذا التاريخ
-          const schedulesForType = allSchedules.filter(
-            (s) => s.feedTypeId === plan.feedTypeId && 
-                   dayStart(s.startDate) <= pendingDate && 
-                   (!s.endDate || dayStart(s.endDate) >= pendingDate)
-          )
-          
-          // حفظ سجل لكل حظيرة أو سجل واحد إذا لم يكن مرتبط بحظائر
-          if (schedulesForType.length > 0) {
-            for (const schedule of schedulesForType) {
-              const penQuantity = schedule.quantity * (schedule.pen?._count?.goats || 0)
-              if (penQuantity > 0) {
-                const penCost = (plan.totalCost / plan.required) * penQuantity
+
+          if (shortages.length > 0) {
+            return { shortages, skipped: false as const }
+          }
+
+          // Execute stock updates
+          for (const plan of plans) {
+            for (const update of plan.updates) {
+              await tx.feedStock.update({ where: { id: update.stockId }, data: { quantity: update.nextQty } })
+            }
+          }
+
+// CR-02: Aggregate by penId before creating DailyFeedConsumption
+          for (const plan of plans) {
+            for (const [penKey, penQuantity] of plan.byPen.entries()) {
+              if (penQuantity <= 0) continue
+              const actualPenId = penKey === '__none__' ? null : penKey
+              const penCost = plan.required > 0 ? (plan.totalCost / plan.required) * penQuantity : 0
+
+              // CR-03: Manual findFirst + update/create instead of upsert (MySQL NULL != NULL in unique)
+              const existingRecord = await tx.dailyFeedConsumption.findFirst({
+                where: {
+                  tenantId: auth.tenantId,
+                  date: pendingDate,
+                  feedTypeId: plan.feedTypeId,
+                  penId: actualPenId
+                }
+              })
+
+              if (existingRecord) {
+                await tx.dailyFeedConsumption.update({
+                  where: { id: existingRecord.id },
+                  data: {
+                    quantity: { increment: Number(penQuantity.toFixed(2)) },
+                    cost: { increment: Number(penCost.toFixed(2)) }
+                  }
+                })
+              } else {
                 await tx.dailyFeedConsumption.create({
                   data: {
                     date: pendingDate,
                     feedTypeId: plan.feedTypeId,
-                    penId: schedule.penId,
+                    penId: actualPenId,
                     quantity: Number(penQuantity.toFixed(2)),
                     cost: Number(penCost.toFixed(2))
                   }
                 })
               }
             }
-          } else {
-            // إذا لم يكن هناك جداول (لا ينبغي أن يحدث، لكن للأمان)
-            await tx.dailyFeedConsumption.create({
-              data: {
-                date: pendingDate,
-                feedTypeId: plan.feedTypeId,
-                penId: null,
-                quantity: plan.required,
-                cost: plan.totalCost
-              }
-            })
+          }
+
+          // Create marker
+          await tx.activityLog.create({
+            data: { userId: actorId, action: 'CREATE', entity: 'FeedConsumption', entityId: key, description: `تنفيذ صرف أعلاف يومي (${key})`, ipAddress, userAgent }
+          })
+
+          return { plans, skipped: false as const }
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+
+        if (!result || result.skipped) continue
+
+        if ('shortages' in result && result.shortages) {
+          if (!isAuto) {
+            return NextResponse.json({ error: 'المخزون غير كافٍ لتنفيذ الصرف المطلوب', shortages: result.shortages }, { status: 400 })
+          }
+          skippedDates.push({ date: key, shortages: result.shortages })
+          continue
+        }
+
+        executedDates.push(key)
+        if ('plans' in result && result.plans) {
+          for (const plan of result.plans) {
+            const existing = consumedByType.get(plan.feedTypeId)
+            if (existing) {
+              existing.consumedKg += plan.required
+            } else {
+              consumedByType.set(plan.feedTypeId, { feedTypeName: plan.feedTypeName, consumedKg: plan.required })
+            }
           }
         }
-        
-        // حفظ marker في ActivityLog
-        await tx.activityLog.create({
-          data: { userId: actorId, action: 'CREATE', entity: 'FeedConsumption', entityId: key, description: `تنفيذ صرف أعلاف يومي (${key})`, ipAddress, userAgent }
-        })
-      })
-
-      /* تحديث المخزون المحلي حتى تتناسب الأيام اللاحقة */
-      for (const plan of plans) {
-        for (const update of plan.updates) {
-          const idx = allStocks.findIndex((s) => s.id === update.stockId)
-          if (idx !== -1) allStocks[idx] = { ...allStocks[idx], quantity: update.nextQty }
-        }
-      }
-      // حذف المخزون المنتهي
-      allStocks = allStocks.filter((s) => s.quantity > 0)
-
-      executedDates.push(key)
-      for (const plan of plans) {
-        const existing = consumedByType.get(plan.feedTypeId)
-        if (existing) {
-          existing.consumedKg += plan.required
-        } else {
-          consumedByType.set(plan.feedTypeId, { feedTypeName: plan.feedTypeName, consumedKg: plan.required })
-        }
+      } catch (error) {
+        // Race condition or unique constraint — skip this date
+        console.warn(`Consume skipped for ${key}:`, error instanceof Error ? error.message : error)
+        continue
       }
     }
 
@@ -335,7 +534,9 @@ export async function POST(request: NextRequest) {
           : 'تعذر تنفيذ الصرف التلقائي بسبب نقص المخزون في الأيام المطلوبة'
         : 'تم تنفيذ صرف الأعلاف اليومي بنجاح'
     })
-  } catch (error) {
+  
+    })
+} catch (error) {
     console.error('Feed consumption execution error:', error)
     return NextResponse.json({ error: 'فشل في تنفيذ صرف الأعلاف اليومي' }, { status: 500 })
   }

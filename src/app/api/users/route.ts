@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/activityLogger'
 import { getUserIdFromRequest, requirePermission } from '@/lib/auth'
+import { runWithTenant } from '@/lib/tenantContext'
 import { createUserSchema, validateBody } from '@/lib/validators/schemas'
 import bcrypt from 'bcryptjs'
 
@@ -11,12 +12,16 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_users')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const users = await prisma.user.findMany({
+      where: { role: { not: 'SUPER_ADMIN' } },
       orderBy: { createdAt: 'desc' }
     })
     return NextResponse.json(users)
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المستخدمين' }, { status: 500 })
   }
 }
@@ -25,6 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'add_user')
     if (auth.response) return auth.response
+    return runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const body = await request.json()
     const validation = validateBody(createUserSchema, body)
@@ -47,7 +53,9 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent')
     })
     return NextResponse.json(user, { status: 201 })
-  } catch (error) {
+  
+    })
+} catch (error) {
     return NextResponse.json({ error: 'فشل في إضافة المستخدم' }, { status: 500 })
   }
 }
