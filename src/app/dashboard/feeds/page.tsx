@@ -202,7 +202,6 @@ export default function FeedsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { farm } = useAuth()
-  const isTabletOrBelow = useMediaQuery(theme.breakpoints.down('lg'))
   const categoryColors = useMemo<Record<string, string>>(() => ({
     HAY: theme.palette.warning.dark,
     GRAINS: theme.palette.warning.main,
@@ -244,11 +243,8 @@ export default function FeedsPage() {
 
   // ─── Fetch ───
   useEffect(() => {
-    // تحميل البيانات فوراً أولاً
-    fetchAll().then(() => {
-      // ثم تشغيل الصرف التلقائي بالخلفية بعد التحميل
-      runAutoConsume()
-    })
+    fetchAll()
+    // HI-06: Removed auto-consume from page load — user should trigger explicitly
   }, [])
 
   const runAutoConsume = async () => {
@@ -298,7 +294,11 @@ export default function FeedsPage() {
         fetch('/api/pens').then(r => r.ok ? r.json() : [])
       ])
       setFeedTypes(t); setStocks(s); setSchedules(sc); setPens(p)
-    } catch { /* silent */ } finally { setLoading(false) }
+    } catch {
+      // MD-09: Log error instead of silent catch
+      console.error('fetchAll failed')
+      setActionMessage({ type: 'error', text: 'فشل في تحميل البيانات' })
+    } finally { setLoading(false) }
   }
 
   // ─── Computed ───
@@ -373,13 +373,29 @@ export default function FeedsPage() {
     return byType
   }, [activeSchedules])
 
+  // HI-05: Use weighted average price per feed type for accurate daily cost
+  const weightedPriceByType = useMemo(() => {
+    const byType: Record<string, number> = {}
+    const qtyByType: Record<string, number> = {}
+    stocks.forEach(s => {
+      const id = s.feedTypeId
+      byType[id] = (byType[id] || 0) + s.quantity * (s.cost || 0)
+      qtyByType[id] = (qtyByType[id] || 0) + s.quantity
+    })
+    const result: Record<string, number> = {}
+    for (const id of Object.keys(byType)) {
+      result[id] = qtyByType[id] > 0 ? byType[id] / qtyByType[id] : 0
+    }
+    return result
+  }, [stocks])
+
   const dailyCost = useMemo(() => {
     return activeSchedules.reduce((sum, s) => {
       const heads = s.pen?._count?.goats || 0
-      const stock = stocks.find(st => st.feedTypeId === s.feedTypeId)
-      return sum + (s.quantity * heads * (stock?.cost || 0))
+      const avgPrice = weightedPriceByType[s.feedTypeId] || 0
+      return sum + (s.quantity * heads * avgPrice)
     }, 0)
-  }, [activeSchedules, stocks])
+  }, [activeSchedules, weightedPriceByType])
 
   const stockRows = useMemo(() => {
     return stocks.map((s) => {
@@ -519,7 +535,14 @@ export default function FeedsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isActive: !s.isActive })
     })
-    if (res.ok) fetchAll()
+    // MD-08: Add success/error feedback
+    if (res.ok) {
+      setActionMessage({ type: 'success', text: s.isActive ? 'تم إيقاف الجدول' : 'تم تفعيل الجدول' })
+      fetchAll()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setActionMessage({ type: 'error', text: d.error || 'فشل في تغيير حالة الجدول' })
+    }
   }
 
   const confirmDelete = async () => {
@@ -543,6 +566,8 @@ export default function FeedsPage() {
 
   const executeTodayConsumption = async () => {
     if (consumeSubmitting) return
+    // MD-10: Confirmation before executing consumption
+    if (!confirm('هل تريد تنفيذ صرف الأعلاف اليومي لهذا اليوم؟')) return
     setConsumeSubmitting(true)
     setActionMessage(null)
 
@@ -811,7 +836,8 @@ export default function FeedsPage() {
                                     <TableBody>
                                       {p.items.map((item, i) => {
                                         const totalForItem = item.amount * p.heads
-                                        const daysRemaining = item.stockQty > 0 ? Math.floor(item.stockQty / totalForItem) : 0
+                                        // HI-01: Prevent division by zero
+                                        const daysRemaining = totalForItem > 0 && item.stockQty > 0 ? Math.floor(item.stockQty / totalForItem) : 0
                                         const schedule = schedules.find(s => s.id === item.scheduleId)
                                         return (
                                           <TableRow key={i} sx={{ '&:last-child td': { borderBottom: 0 } }}>
@@ -898,7 +924,9 @@ export default function FeedsPage() {
                   ) : (
                     <Grid container spacing={2}>
                       {stockSummary.map(s => {
-                        const pct = Math.min(100, (s.totalQty / ((s.feedType.reorderLevel || 50) * 4)) * 100)
+                        // MD-02: Use reorderLevel directly instead of arbitrary ×4 multiplier
+                        const reorderLevelVal = s.feedType.reorderLevel || 50
+                        const pct = Math.min(100, (s.totalQty / reorderLevelVal) * 100)
                         const expDays = s.lowestExpiry ? daysUntil(s.lowestExpiry) : null
                         const isExpired = expDays !== null && expDays <= 0
                         const dailyUse = dailyConsumptionByType[s.feedType.id] || 0
@@ -1405,26 +1433,6 @@ export default function FeedsPage() {
         </DialogActions>
       </Dialog>
     </Box>
-  )
-}
-
-// ─── Helper Components ───
-
-function KpiCard({ icon, color, label, value }: { icon: React.ReactNode; color: string; label: string; value: string | number }) {
-  return (
-    <Card sx={{ borderRadius: 2 }}>
-      <CardContent sx={{ py: 2 }}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box sx={{ p: 1, bgcolor: `${color}20`, borderRadius: 2, display: 'flex' }}>
-            {icon}
-          </Box>
-          <Box>
-            <Typography variant="h5" fontWeight="bold">{value}</Typography>
-            <Typography variant="caption" color="text.secondary">{label}</Typography>
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
   )
 }
 

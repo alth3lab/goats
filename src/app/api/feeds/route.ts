@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
   
     })
 } catch (error) {
+    console.error('Error fetching feeds:', error)
     return NextResponse.json({ error: 'فشل في جلب الأعلاف' }, { status: 500 })
   }
 }
@@ -63,15 +64,15 @@ export async function POST(request: NextRequest) {
     const categoryMap: Record<string, string> = { GRAIN: 'GRAINS', SUPPLEMENT: 'SUPPLEMENTS' }
     const normalizedCategory = categoryMap[body.category] || body.category
     
-    // Convert field names from frontend to database schema
+    // MD-01/MD-11: Fix falsy 0 values  
     const createData: any = {
-      name: body.nameEn || body.nameAr, // Use nameEn as name field
+      name: body.nameEn || body.nameAr,
       nameAr: body.nameAr.trim(),
       category: normalizedCategory,
-      protein: body.protein ? parseFloat(body.protein) : null,
-      energy: body.energy ? parseFloat(body.energy) : null,
-      unitPrice: body.unitPrice ? parseFloat(body.unitPrice) : null,
-      reorderLevel: body.reorderLevel ? parseFloat(body.reorderLevel) : 50,
+      protein: body.protein !== undefined && body.protein !== null && body.protein !== '' ? parseFloat(body.protein) : null,
+      energy: body.energy !== undefined && body.energy !== null && body.energy !== '' ? parseFloat(body.energy) : null,
+      unitPrice: body.unitPrice !== undefined && body.unitPrice !== null && body.unitPrice !== '' ? parseFloat(body.unitPrice) : null,
+      reorderLevel: body.reorderLevel !== undefined && body.reorderLevel !== null && body.reorderLevel !== '' ? parseFloat(body.reorderLevel) : 50,
       supplier: body.supplier || null,
       notes: body.description || body.notes || null
     }
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
   
     })
 } catch (error) {
+    console.error('Error creating feed type:', error)
     return NextResponse.json({ error: 'فشل في إضافة نوع العلف' }, { status: 500 })
   }
 }

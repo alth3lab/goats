@@ -63,54 +63,45 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const userId = await getUserIdFromRequest(request)
 
-    const record = await prisma.feedingRecord.create({
-      data: {
-        goatId: body.goatId || null,
-        date: new Date(body.date),
-        feedType: body.feedType,
-        feedTypeId: body.feedTypeId || null,
-        quantity: Number(body.quantity),
-        unit: body.unit,
-        cost: body.cost ? Number(body.cost) : null,
-        notes: body.notes || null
-      },
-      include: {
-        goat: {
-          select: {
-            tagId: true,
-            name: true
-          }
+    // CR-04: Wrap record creation + stock deduction in a single transaction
+    const record = await prisma.$transaction(async (tx) => {
+      const created = await tx.feedingRecord.create({
+        data: {
+          goatId: body.goatId || null,
+          date: new Date(body.date),
+          feedType: body.feedType,
+          feedTypeId: body.feedTypeId || null,
+          quantity: Number(body.quantity),
+          unit: body.unit,
+          cost: body.cost ? Number(body.cost) : null,
+          notes: body.notes || null
         },
-        feedTypeRef: {
-          select: {
-            nameAr: true,
-            category: true
-          }
+        include: {
+          goat: { select: { tagId: true, name: true } },
+          feedTypeRef: { select: { nameAr: true, category: true } }
         }
-      }
-    })
+      })
 
-    // Deduct from stock if feedTypeId is provided (DI-03)
-    if (record.feedTypeId && record.quantity > 0) {
-      try {
-        const stocks = await prisma.feedStock.findMany({
-          where: { feedTypeId: record.feedTypeId, quantity: { gt: 0 } },
+      // Deduct from stock if feedTypeId is provided (FIFO)
+      if (created.feedTypeId && created.quantity > 0) {
+        const stocks = await tx.feedStock.findMany({
+          where: { feedTypeId: created.feedTypeId, quantity: { gt: 0 } },
           orderBy: [{ purchaseDate: 'asc' }, { createdAt: 'asc' }]
         })
-        let remaining = record.quantity
+        let remaining = created.quantity
         for (const stock of stocks) {
           if (remaining <= 0) break
           const used = Math.min(stock.quantity, remaining)
-          await prisma.feedStock.update({
+          await tx.feedStock.update({
             where: { id: stock.id },
             data: { quantity: Number((stock.quantity - used).toFixed(4)) }
           })
           remaining -= used
         }
-      } catch (e) {
-        console.error('Failed to deduct stock for feeding record:', e)
       }
-    }
+
+      return created
+    })
 
     await logActivity({
       userId: userId || undefined,

@@ -46,6 +46,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   
     })
 } catch (error) {
+    console.error('Error updating schedule:', error)
     return NextResponse.json({ error: 'فشل في تعديل الجدول' }, { status: 500 })
   }
 }
@@ -58,6 +59,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const { id } = await params
     const userId = await getUserIdFromRequest(request)
+
+    // MD-13: Check existence before delete
+    const existing = await prisma.feedingSchedule.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'الجدول غير موجود' }, { status: 404 })
+    }
 
     const schedule = await prisma.feedingSchedule.delete({
       where: { id },
@@ -78,6 +85,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   
     })
 } catch (error) {
+    console.error('Error deleting schedule:', error)
     return NextResponse.json({ error: 'فشل في حذف الجدول' }, { status: 500 })
   }
 }

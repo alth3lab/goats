@@ -87,58 +87,61 @@ export async function POST(request: NextRequest) {
 
     let createdSchedules = 0
     let processedPens = 0
-
     let deletedCount = 0
-    if (replaceExisting) {
-      const deleted = await prisma.feedingSchedule.deleteMany({})
-      deletedCount = deleted.count
-    }
 
-    for (const pen of pens) {
-      const headsCount = pen.goats.length
-      if (headsCount === 0) continue
-
-      const smartPerHead = getSmartPerHeadForGoats(pen.goats)
-      if (smartPerHead <= 0) continue
-
-      processedPens += 1
-
-      const usedFeedTypeIds = new Set<string>()
-      const hayFeedTypeId = pickFeedTypeIdByCategory(feedTypes, ['HAY'], usedFeedTypeIds)
-      const energyFeedTypeId = pickFeedTypeIdByCategory(feedTypes, ['CONCENTRATE', 'GRAINS'], usedFeedTypeIds)
-      const supplementFeedTypeId = pickFeedTypeIdByCategory(feedTypes, ['SUPPLEMENTS', 'MINERALS', 'OTHER'], usedFeedTypeIds)
-
-      const schedulesToCreate = [
-        hayFeedTypeId ? { feedTypeId: hayFeedTypeId, share: 0.6, frequency: 2 } : null,
-        energyFeedTypeId ? { feedTypeId: energyFeedTypeId, share: 0.3, frequency: 2 } : null,
-        supplementFeedTypeId ? { feedTypeId: supplementFeedTypeId, share: 0.1, frequency: 1 } : null
-      ].filter(Boolean) as Array<{ feedTypeId: string; share: number; frequency: number }>
-
-      if (!schedulesToCreate.length) continue
-
-      const now = new Date()
-      const endDate = new Date()
-      endDate.setDate(now.getDate() + 30)
-
-      for (const schedulePlan of schedulesToCreate) {
-        const quantity = Number((smartPerHead * schedulePlan.share).toFixed(3))
-
-        await prisma.feedingSchedule.create({
-          data: {
-            penId: pen.id,
-            feedTypeId: schedulePlan.feedTypeId,
-            quantity,
-            frequency: schedulePlan.frequency,
-            startDate: now,
-            endDate,
-            isActive: true,
-            notes: `جدول شهري ذكي تلقائي (${headsCount} رأس)`
-          }
-        })
-
-        createdSchedules += 1
+    // HI-08: Wrap everything in a transaction to prevent data loss
+    await prisma.$transaction(async (tx) => {
+      if (replaceExisting) {
+        const deleted = await tx.feedingSchedule.deleteMany({})
+        deletedCount = deleted.count
       }
-    }
+
+      for (const pen of pens) {
+        const headsCount = pen.goats.length
+        if (headsCount === 0) continue
+
+        const smartPerHead = getSmartPerHeadForGoats(pen.goats)
+        if (smartPerHead <= 0) continue
+
+        processedPens += 1
+
+        const usedFeedTypeIds = new Set<string>()
+        const hayFeedTypeId = pickFeedTypeIdByCategory(feedTypes, ['HAY'], usedFeedTypeIds)
+        const energyFeedTypeId = pickFeedTypeIdByCategory(feedTypes, ['CONCENTRATE', 'GRAINS'], usedFeedTypeIds)
+        const supplementFeedTypeId = pickFeedTypeIdByCategory(feedTypes, ['SUPPLEMENTS', 'MINERALS', 'OTHER'], usedFeedTypeIds)
+
+        const schedulesToCreate = [
+          hayFeedTypeId ? { feedTypeId: hayFeedTypeId, share: 0.6, frequency: 2 } : null,
+          energyFeedTypeId ? { feedTypeId: energyFeedTypeId, share: 0.3, frequency: 2 } : null,
+          supplementFeedTypeId ? { feedTypeId: supplementFeedTypeId, share: 0.1, frequency: 1 } : null
+        ].filter(Boolean) as Array<{ feedTypeId: string; share: number; frequency: number }>
+
+        if (!schedulesToCreate.length) continue
+
+        const now = new Date()
+        // LO-07: Use end of month instead of fixed +30 days
+        const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
+        for (const schedulePlan of schedulesToCreate) {
+          const quantity = Number((smartPerHead * schedulePlan.share).toFixed(3))
+
+          await tx.feedingSchedule.create({
+            data: {
+              penId: pen.id,
+              feedTypeId: schedulePlan.feedTypeId,
+              quantity,
+              frequency: schedulePlan.frequency,
+              startDate: now,
+              endDate,
+              isActive: true,
+              notes: `جدول شهري ذكي تلقائي (${headsCount} رأس)`
+            }
+          })
+
+          createdSchedules += 1
+        }
+      }
+    })
 
     await logActivity({
       userId: userId || undefined,
@@ -159,6 +162,7 @@ export async function POST(request: NextRequest) {
   
     })
 } catch (error) {
+    console.error('Error creating monthly schedules:', error)
     return NextResponse.json({ error: 'فشل في إنشاء الجداول الشهرية الذكية' }, { status: 500 })
   }
 }

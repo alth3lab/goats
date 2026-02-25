@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
     const penId = searchParams.get('penId')
     const isActive = searchParams.get('isActive')
 
-    const where: any = {}
+    const where: Record<string, unknown> = {}
     if (penId) where.penId = penId
-    if (isActive !== null) where.isActive = isActive === 'true'
+    // LO-05: Fix isActive filter — searchParams.get returns string or null
+    if (searchParams.has('isActive')) where.isActive = isActive === 'true'
 
     const schedules = await prisma.feedingSchedule.findMany({
       where,
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
   
     })
 } catch (error) {
+    console.error('Error fetching schedules:', error)
     return NextResponse.json({ error: 'فشل في جلب جداول التغذية' }, { status: 500 })
   }
 }
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
   
     })
 } catch (error) {
+    console.error('Error creating schedule:', error)
     return NextResponse.json({ error: 'فشل في إضافة الجدول' }, { status: 500 })
   }
 }
@@ -137,6 +140,7 @@ export async function DELETE(request: NextRequest) {
   
     })
 } catch (error) {
+    console.error('Error deleting all schedules:', error)
     return NextResponse.json({ error: 'فشل في حذف جميع الجداول' }, { status: 500 })
   }
 }
