@@ -902,23 +902,6 @@ enum EventType {
   OTHER
 }
 
-// ==================== App Settings (kept for migration) ====================
-
-model AppSetting {
-  id                       String   @id @default("default")
-  farmName                 String?
-  phone                    String?
-  address                  String?
-  currency                 String   @default("AED")
-  notifications            Boolean  @default(true)
-  alertPenCapacityPercent  Int      @default(90)
-  alertDeathCount          Int      @default(3)
-  alertDeathWindowDays     Int      @default(30)
-  alertBreedingOverdueDays Int      @default(150)
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
-}
-
 // ==================== Push Subscriptions ====================
 
 model PushSubscription {
