@@ -12,7 +12,7 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
 }
 
 type AuthResult =
-  | { ok: true; user: any; permissions: string[]; tenantId: string | null; farmId: string | null }
+  | { ok: true; user: any; permissions: string[]; tenantId: string | undefined; farmId: string | undefined }
   | { ok: false; reason: 'unauthenticated' | 'deactivated' | 'no_permission' }
 
 export async function getUserWithPermissions(request: NextRequest): Promise<AuthResult> {
@@ -38,7 +38,7 @@ export async function getUserWithPermissions(request: NextRequest): Promise<Auth
   }
 
   const permissions = user.permissions.map((entry) => entry.permission.name)
-  return { ok: true, user, permissions, tenantId: ctx.tenantId, farmId: ctx.farmId }
+  return { ok: true, user, permissions, tenantId: ctx.tenantId || undefined, farmId: ctx.farmId || undefined }
 }
 
 export async function requireAuth(request: NextRequest) {
