@@ -147,7 +147,7 @@ function getAlertUrl(type: string): string {
 /**
  * Fetch alerts internally (same logic as /api/alerts but direct DB query)
  */
-async function fetchAlertsInternal(tenantId: string, farmId: string): Promise<AlertPayload[]> {
+async function fetchAlertsInternal(tenantId: string | undefined, farmId: string | undefined): Promise<AlertPayload[]> {
   const today = new Date()
   const nextMonth = new Date()
   nextMonth.setDate(today.getDate() + 30)
