@@ -38,6 +38,7 @@ interface Goat {
   weight?: number
   notes?: string | null
   status: string
+  tagColor?: string | null
   motherTagId?: string | null
   age?: {
     formatted: string
@@ -140,6 +141,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
     breedId: '',
     weight: '',
     status: 'ACTIVE',
+    tagColor: '#f9a825',
     motherTagId: '',
     fatherTagId: '',
     penId: '',
@@ -184,6 +186,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
         breedId: goat.breed.id,
         weight: goat.weight?.toString() || '',
         status: goat.status,
+        tagColor: goat.tagColor || '#f9a825',
         motherTagId: goat.motherTagId || '',
         fatherTagId: goat.fatherTagId || '',
         penId: (goat.pen as any)?.id || (goat as any).penId || '',
@@ -201,6 +204,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
         breedId: '',
         weight: '',
         status: 'ACTIVE',
+        tagColor: '#f9a825',
         motherTagId: '',
         fatherTagId: '',
         penId: '',
@@ -255,6 +259,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
       breedId: form.breedId,
       weight: form.weight ? Number(form.weight) : null,
       status: form.status,
+      tagColor: form.tagColor || '#f9a825',
       penId: form.penId || null,
       notes: form.notes?.trim() || null
     }
@@ -322,7 +327,7 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
                     gap: 1
                   }}
                 >
-                  <Typography><strong>رقم التاج:</strong> {goat.tagId}</Typography>
+                  <Typography><strong>رقم التاج:</strong> <Chip label={goat.tagId} size="small" sx={{ bgcolor: goat.tagColor || '#f9a825', color: '#fff', fontWeight: 'bold' }} /></Typography>
                   <Typography><strong>الاسم:</strong> {goat.name || '-'}</Typography>
                   <Typography><strong>النوع:</strong> {goat.breed.type.nameAr}</Typography>
                   <Typography><strong>السلالة:</strong> {goat.breed.nameAr}</Typography>
@@ -439,6 +444,40 @@ export default function GoatFormDialog({ open, onClose, goat, onSave, readOnly =
             required
             disabled={readOnly}
           />
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>لون التاق</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {[
+                { color: '#1976d2', label: 'أزرق' },
+                { color: '#d32f2f', label: 'أحمر' },
+                { color: '#2e7d32', label: 'أخضر' },
+                { color: '#ed6c02', label: 'برتقالي' },
+                { color: '#f9a825', label: 'أصفر' },
+                { color: '#7b1fa2', label: 'بنفسجي' },
+                { color: '#00838f', label: 'فيروزي' },
+                { color: '#EC4899', label: 'وردي' },
+                { color: '#757575', label: 'رمادي' },
+                { color: '#3e2723', label: 'بني' },
+              ].map((c) => (
+                <Box
+                  key={c.color}
+                  onClick={() => !readOnly && setForm({ ...form, tagColor: c.color })}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    bgcolor: c.color,
+                    cursor: readOnly ? 'default' : 'pointer',
+                    border: form.tagColor === c.color ? '3px solid #000' : '2px solid transparent',
+                    boxShadow: form.tagColor === c.color ? '0 0 0 2px #fff, 0 0 0 4px ' + c.color : 'none',
+                    transition: 'all 0.2s',
+                    '&:hover': readOnly ? {} : { transform: 'scale(1.15)' },
+                  }}
+                  title={c.label}
+                />
+              ))}
+            </Stack>
+          </Box>
           <TextField
             label="الاسم"
             value={form.name}

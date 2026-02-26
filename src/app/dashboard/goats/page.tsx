@@ -85,6 +85,7 @@ interface Goat {
   birthDate: string
   weight?: number
   status: 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE'
+  tagColor?: string | null
   motherTagId?: string | null
   fatherTagId?: string | null
   ownerId?: string | null
@@ -195,6 +196,7 @@ export default function GoatsPage() {
     breedId: '',
     weight: '',
     status: 'ACTIVE',
+    tagColor: '#f9a825',
     motherTagId: '',
     fatherTagId: '',
     penId: '',
@@ -387,6 +389,7 @@ export default function GoatsPage() {
       breedId: '', 
       weight: '', 
       status: 'ACTIVE', 
+      tagColor: '#f9a825',
       motherTagId: '', 
       fatherTagId: '',
       penId: '',
@@ -412,6 +415,7 @@ export default function GoatsPage() {
       breedId: '', 
       weight: '', 
       status: 'ACTIVE',
+      tagColor: '#f9a825',
       motherTagId: '',
       fatherTagId: '',
       penId: '',
@@ -445,6 +449,7 @@ export default function GoatsPage() {
       breedId: mother.breed.id,
       weight: '',
       status: 'ACTIVE',
+      tagColor: '#f9a825',
       motherTagId: mother.tagId,
       fatherTagId: '',
       penId: (mother as any).penId || '',
@@ -473,6 +478,7 @@ export default function GoatsPage() {
       breedId: goat.breed.id,
       weight: goat.weight?.toString() || '',
       status: goat.status,
+      tagColor: (goat as any).tagColor || '#f9a825',
       motherTagId: goat.motherTagId || '',
       fatherTagId: goat.fatherTagId || '',
       penId: (goat as any).penId || '',
@@ -520,6 +526,7 @@ export default function GoatsPage() {
       breedId: form.breedId,
       weight: form.weight ? Number(form.weight) : null,
       status: form.status,
+      tagColor: form.tagColor || '#f9a825',
       penId: form.penId || null,
       ownerId: form.ownerId || null
     }
@@ -552,7 +559,7 @@ export default function GoatsPage() {
       }
     }
 
-    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', motherTagId: '', fatherTagId: '', penId: '', ownerId: '' })
+    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', tagColor: '#f9a825', motherTagId: '', fatherTagId: '', penId: '', ownerId: '' })
     setOpen(false)
     setEditMode(false)
     setSelectedGoat(null)
@@ -1219,7 +1226,7 @@ export default function GoatsPage() {
                           <Chip 
                             label={goat.tagId} 
                             color="primary" 
-                            sx={{ fontSize: '1.1rem', fontWeight: 'bold', px: 2 }}
+                            sx={{ fontSize: '1.1rem', fontWeight: 'bold', px: 2, ...(goat.tagColor ? { bgcolor: goat.tagColor, color: '#fff' } : {}) }}
                           />
                         </Stack>
                         <Chip 
@@ -1354,7 +1361,7 @@ export default function GoatsPage() {
                           label={goat.tagId} 
                           color="primary" 
                           size="medium"
-                          sx={{ fontSize: '1rem', fontWeight: 'bold' }}
+                          sx={{ fontSize: '1rem', fontWeight: 'bold', ...(goat.tagColor ? { bgcolor: goat.tagColor, color: '#fff' } : {}) }}
                         />
                         {goat.gender === 'MALE' ? (
                           <MaleIcon sx={{ color: maleIconColor, fontSize: 32 }} />
@@ -1500,7 +1507,7 @@ export default function GoatsPage() {
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
                       {goat.thumbnail && <Avatar src={goat.thumbnail} sx={{ width: 32, height: 32 }} />}
-                      <Chip label={goat.tagId} color="primary" size="small" />
+                      <Chip label={goat.tagId} color="primary" size="small" sx={goat.tagColor ? { bgcolor: goat.tagColor, color: '#fff' } : {}} />
                     </Stack>
                   </TableCell>
                   <TableCell>{goat.breed.nameAr}</TableCell>
@@ -1650,6 +1657,40 @@ export default function GoatsPage() {
               onChange={(e) => setForm({ ...form, tagId: e.target.value })}
               required
             />
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>لون التاق</Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {[
+                  { color: '#1976d2', label: 'أزرق' },
+                  { color: '#d32f2f', label: 'أحمر' },
+                  { color: '#2e7d32', label: 'أخضر' },
+                  { color: '#ed6c02', label: 'برتقالي' },
+                  { color: '#f9a825', label: 'أصفر' },
+                  { color: '#7b1fa2', label: 'بنفسجي' },
+                  { color: '#00838f', label: 'فيروزي' },
+                  { color: '#EC4899', label: 'وردي' },
+                  { color: '#757575', label: 'رمادي' },
+                  { color: '#3e2723', label: 'بني' },
+                ].map((c) => (
+                  <Box
+                    key={c.color}
+                    onClick={() => setForm({ ...form, tagColor: c.color })}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      bgcolor: c.color,
+                      cursor: 'pointer',
+                      border: form.tagColor === c.color ? '3px solid #000' : '2px solid transparent',
+                      boxShadow: form.tagColor === c.color ? '0 0 0 2px #fff, 0 0 0 4px ' + c.color : 'none',
+                      transition: 'all 0.2s',
+                      '&:hover': { transform: 'scale(1.15)' },
+                    }}
+                    title={c.label}
+                  />
+                ))}
+              </Stack>
+            </Box>
             <TextField
               label="الاسم"
               value={form.name}
@@ -1854,7 +1895,7 @@ export default function GoatsPage() {
                     gap: 1
                   }}
                 >
-                  <Typography><strong>رقم التاج:</strong> {selectedGoat.tagId}</Typography>
+                  <Typography><strong>رقم التاج:</strong> <Chip label={selectedGoat.tagId} size="small" sx={{ fontWeight: 'bold', ...(selectedGoat.tagColor ? { bgcolor: selectedGoat.tagColor, color: '#fff' } : { color: 'primary' }) }} /></Typography>
                   <Typography><strong>الاسم:</strong> {selectedGoat.name || '-'}</Typography>
                   <Typography><strong>النوع:</strong> {selectedGoat.breed.type.nameAr}</Typography>
                   <Typography><strong>السلالة:</strong> {selectedGoat.breed.nameAr}</Typography>

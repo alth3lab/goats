@@ -315,6 +315,7 @@ model Goat {
   birthDate     DateTime
   weight        Float?
   color         String?
+  tagColor      String?    @default("#f9a825")
   status        GoatStatus @default(ACTIVE)
   motherId      String?
   fatherId      String?

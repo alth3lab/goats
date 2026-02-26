@@ -331,7 +331,7 @@ export default function GoatProfilePage() {
           </Box>
           <Box sx={{ flex: 1 }}>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-              <Typography variant="h4" fontWeight="bold">{goat.tagId}</Typography>
+              <Typography variant="h4" fontWeight="bold" sx={goat.tagColor ? { color: goat.tagColor } : {}}>{goat.tagId}</Typography>
               {goat.name && <Typography variant="h6" color="text.secondary">({goat.name})</Typography>}
               <Chip label={st.label} color={st.color} size="small" />
               <Chip label={isFemale ? 'أنثى' : 'ذكر'} color={isFemale ? 'secondary' : 'info'} variant="outlined" size="small" />

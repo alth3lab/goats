@@ -10,6 +10,7 @@ export const createGoatSchema = z.object({
   birthDate: z.string().or(z.date()),
   weight: z.number().nonnegative().optional().nullable(),
   color: z.string().optional().nullable(),
+  tagColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'لون غير صالح').optional().nullable(),
   status: z.enum(['ACTIVE', 'SOLD', 'DECEASED', 'QUARANTINE', 'EXTERNAL']).optional(),
   motherId: z.string().uuid().optional().nullable(),
   fatherId: z.string().uuid().optional().nullable(),
