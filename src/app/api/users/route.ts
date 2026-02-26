@@ -16,7 +16,14 @@ export async function GET(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       where: { role: { not: 'SUPER_ADMIN' } },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: {
+        userFarms: {
+          include: {
+            farm: { select: { id: true, name: true, nameAr: true } }
+          }
+        }
+      }
     })
     return NextResponse.json(users)
   
@@ -38,11 +45,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
     const userId = await getUserIdFromRequest(request)
+    const farmIds: string[] = body.farmIds || []
+    
+    // Set tenantId from current user's context
+    const tenantId = auth.tenantId || auth.user.tenantId || ''
+    
     // Hash password before storing
     const hashedPassword = await bcrypt.hash(validation.data.password, 12)
     const user = await prisma.user.create({
-      data: { ...validation.data, password: hashedPassword }
+      data: { ...validation.data, password: hashedPassword, tenantId }
     })
+
+    // Create farm assignments
+    if (farmIds.length > 0) {
+      await prisma.userFarm.createMany({
+        data: farmIds.map((farmId: string) => ({
+          userId: user.id,
+          farmId,
+          role: user.role as any
+        }))
+      })
+    }
+
     await logActivity({
       userId: userId || undefined,
       action: 'CREATE',

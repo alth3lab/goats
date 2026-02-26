@@ -77,28 +77,51 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request)
   if (auth.response) return auth.response
-  const { user, tenantId } = auth
+  const { user, tenantId: authTenantId } = auth
 
   if (!['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(user.role)) {
     return NextResponse.json({ error: 'غير مصرح بإنشاء مزرعة' }, { status: 403 })
   }
 
-  // Check tenant farm limit
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
-  if (!tenant) {
-    return NextResponse.json({ error: 'المستأجر غير موجود' }, { status: 404 })
-  }
-
-  const farmCount = await prisma.farm.count({ where: { tenantId } })
-  if (farmCount >= tenant.maxFarms) {
-    return NextResponse.json(
-      { error: `تم الوصول للحد الأقصى من المزارع (${tenant.maxFarms}). قم بترقية الخطة.` },
-      { status: 403 }
-    )
-  }
-
   const body = await request.json()
-  const { name, nameAr, phone, address, currency, farmType } = body
+  const { name, nameAr, phone, address, currency, farmType, tenantId: bodyTenantId } = body
+
+  // SUPER_ADMIN can specify tenantId, others use their own
+  let resolvedTenantId = authTenantId
+  if (user.role === 'SUPER_ADMIN' && bodyTenantId) {
+    resolvedTenantId = bodyTenantId
+  }
+
+  // If still no tenantId, try user's own tenantId
+  if (!resolvedTenantId) {
+    resolvedTenantId = user.tenantId
+  }
+
+  if (!resolvedTenantId) {
+    // For SUPER_ADMIN without tenant, get first available tenant or create one
+    const firstTenant = await prisma.tenant.findFirst({ where: { isActive: true } })
+    if (firstTenant) {
+      resolvedTenantId = firstTenant.id
+    } else {
+      return NextResponse.json({ error: 'لا يوجد مستأجر متاح. أنشئ مستأجراً أولاً.' }, { status: 400 })
+    }
+  }
+
+  // Check tenant farm limit (SUPER_ADMIN bypasses limits)
+  if (user.role !== 'SUPER_ADMIN') {
+    const tenant = await prisma.tenant.findUnique({ where: { id: resolvedTenantId } })
+    if (!tenant) {
+      return NextResponse.json({ error: 'المستأجر غير موجود' }, { status: 404 })
+    }
+
+    const farmCount = await prisma.farm.count({ where: { tenantId: resolvedTenantId } })
+    if (farmCount >= tenant.maxFarms) {
+      return NextResponse.json(
+        { error: `تم الوصول للحد الأقصى من المزارع (${tenant.maxFarms}). قم بترقية الخطة.` },
+        { status: 403 }
+      )
+    }
+  }
 
   if (!name) {
     return NextResponse.json({ error: 'اسم المزرعة مطلوب' }, { status: 400 })
@@ -109,7 +132,7 @@ export async function POST(request: NextRequest) {
 
   const farm = await prisma.farm.create({
     data: {
-      tenantId,
+      tenantId: resolvedTenantId,
       name,
       nameAr: nameAr || name,
       farmType: resolvedFarmType,
@@ -130,7 +153,7 @@ export async function POST(request: NextRequest) {
 
   await logActivity({
     userId: user.id,
-    tenantId,
+    tenantId: resolvedTenantId,
     farmId: farm.id,
     action: 'CREATE',
     entity: 'Farm',
