@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
           by: ['breedId'],
           where: { status: 'ACTIVE' },
           _count: true,
+          orderBy: { _count: { breedId: 'desc' } },
           take: 15,
         }),
         // Breeds catalog for name mapping
