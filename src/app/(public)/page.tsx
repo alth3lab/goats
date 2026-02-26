@@ -80,10 +80,7 @@ const testimonials = [
 ]
 
 const plans = [
-  { key: 'FREE', name: 'مجاني', price: 0, color: '#9e9e9e', icon: <StarIcon />, features: ['مزرعة واحدة', 'حتى 50 رأس', 'مستخدمان', 'تقارير أساسية'] },
-  { key: 'BASIC', name: 'أساسي', price: 49, color: '#4F7A57', icon: <StarIcon />, popular: true, features: ['3 مزارع', 'حتى 500 رأس', '5 مستخدمين', 'تقارير متقدمة', 'نسخ احتياطي'] },
-  { key: 'PRO', name: 'احترافي', price: 149, color: '#1976d2', icon: <RocketLaunchIcon />, features: ['10 مزارع', 'حتى 5000 رأس', '20 مستخدم', 'تقارير شاملة', 'دعم أولوية', 'API'] },
-  { key: 'ENTERPRISE', name: 'مؤسسي', price: -1, color: '#9c27b0', icon: <BusinessIcon />, features: ['مزارع غير محدودة', 'رؤوس غير محدودة', 'مستخدمين غير محدودين', 'دعم مخصص', 'تكامل كامل'] },
+  { key: 'FREE', name: 'مجاني بالكامل', price: 0, color: '#4F7A57', icon: <StarIcon />, popular: true, features: ['مزارع غير محدودة', 'رؤوس غير محدودة', 'مستخدمين غير محدودين', 'جميع الميزات مفتوحة', 'تقارير PDF وإكسل', 'تنبيهات ذكية فورية', 'إدارة التكاثر والصحة', 'دعم كامل للغة العربية'] },
 ]
 
 export default function LandingPage() {
@@ -243,11 +240,11 @@ export default function LandingPage() {
       {/* Pricing */}
       <Box id="pricing" sx={{ py: 10, bgcolor: 'grey.50', borderTop: '1px solid', borderColor: 'divider' }}>
         <Container maxWidth="lg">
-          <Typography variant="h4" fontWeight={800} textAlign="center" gutterBottom>خطط شفافة لكل الأحجام</Typography>
-          <Typography variant="body1" color="text.secondary" textAlign="center" mb={7}>ابدأ مجانا وطور الخطة مع نمو مزرعتك</Typography>
+          <Typography variant="h4" fontWeight={800} textAlign="center" gutterBottom>مجاني بالكامل — بدون قيود</Typography>
+          <Typography variant="body1" color="text.secondary" textAlign="center" mb={7}>جميع الميزات متاحة للجميع مجانا  لا اشتراكات ولا قيود ولا بطاقة ائتمان</Typography>
           <Grid container spacing={3} justifyContent="center">
             {plans.map((plan) => (
-              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={plan.key}>
+              <Grid size={{ xs: 12, sm: 8, md: 5 }} key={plan.key}>
                 <Card sx={{ borderRadius: 3, height: '100%', display: 'flex', flexDirection: 'column', border: plan.popular ? `2px solid ${plan.color}` : '1px solid', borderColor: plan.popular ? plan.color : 'divider', position: 'relative', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 12px 32px ${alpha(plan.color, 0.2)}` } }} elevation={plan.popular ? 4 : 0}>
                   {plan.popular && <Chip label=" الأكثر شيوعا" size="small" sx={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', bgcolor: plan.color, color: '#fff', fontWeight: 700, px: 1 }} />}
                   <CardContent sx={{ flexGrow: 1, textAlign: 'center', pt: plan.popular ? 4 : 2.5 }}>

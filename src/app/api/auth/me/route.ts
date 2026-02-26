@@ -28,18 +28,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }
 
-    // Check trial expiry for non-SUPER_ADMIN users
-    let trialExpired = false
-    if (user.role !== 'SUPER_ADMIN' && payload.tenantId) {
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: payload.tenantId },
-        select: { trialEndsAt: true, isActive: true }
-      })
-      if (tenant && tenant.trialEndsAt && tenant.trialEndsAt < new Date()) {
-        trialExpired = true
-      }
-    }
-
     const permissions = user.permissions.map((entry) => entry.permission.name)
 
     // Current farm from JWT
@@ -100,7 +88,6 @@ export async function GET(request: NextRequest) {
       } : null,
       farms: farmsData,
       permissions,
-      trialExpired
     })
   } catch (error) {
     return NextResponse.json({ error: 'فشل في جلب المستخدم' }, { status: 500 })

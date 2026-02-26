@@ -13,7 +13,7 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
 
 type AuthResult =
   | { ok: true; user: any; permissions: string[]; tenantId: string | null; farmId: string | null }
-  | { ok: false; reason: 'unauthenticated' | 'deactivated' | 'trial_expired' | 'no_permission' }
+  | { ok: false; reason: 'unauthenticated' | 'deactivated' | 'no_permission' }
 
 export async function getUserWithPermissions(request: NextRequest): Promise<AuthResult> {
   const ctx = await getTenantContext(request)
@@ -26,17 +26,14 @@ export async function getUserWithPermissions(request: NextRequest): Promise<Auth
 
   if (!user) return { ok: false, reason: 'unauthenticated' }
 
-  // Check tenant is active and trial not expired (skip for SUPER_ADMIN)
+  // Check tenant is active (skip for SUPER_ADMIN)
   if (user.role !== 'SUPER_ADMIN' && ctx.tenantId) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: ctx.tenantId },
-      select: { isActive: true, trialEndsAt: true, plan: true }
+      select: { isActive: true }
     })
     if (tenant && !tenant.isActive) {
       return { ok: false, reason: 'deactivated' }
-    }
-    if (tenant && tenant.trialEndsAt && tenant.trialEndsAt < new Date()) {
-      return { ok: false, reason: 'trial_expired' }
     }
   }
 
@@ -47,14 +44,11 @@ export async function getUserWithPermissions(request: NextRequest): Promise<Auth
 export async function requireAuth(request: NextRequest) {
   const result = await getUserWithPermissions(request)
   if (!result.ok) {
-    const status = result.reason === 'trial_expired' ? 402 : 401
     const message =
-      result.reason === 'trial_expired'
-        ? 'انتهت فترة التجربة. يرجى ترقية الاشتراك.'
-        : result.reason === 'deactivated'
-          ? 'الحساب موقوف. يرجى التواصل مع الدعم.'
-          : 'غير مصرح'
-    return { response: NextResponse.json({ error: message, reason: result.reason }, { status }) }
+      result.reason === 'deactivated'
+        ? 'الحساب موقوف. يرجى التواصل مع الدعم.'
+        : 'غير مصرح'
+    return { response: NextResponse.json({ error: message, reason: result.reason }, { status: 401 }) }
   }
   return { response: null, ...result }
 }
@@ -62,14 +56,11 @@ export async function requireAuth(request: NextRequest) {
 export async function requirePermission(request: NextRequest, permission: string) {
   const result = await getUserWithPermissions(request)
   if (!result.ok) {
-    const status = result.reason === 'trial_expired' ? 402 : 401
     const message =
-      result.reason === 'trial_expired'
-        ? 'انتهت فترة التجربة. يرجى ترقية الاشتراك.'
-        : result.reason === 'deactivated'
-          ? 'الحساب موقوف. يرجى التواصل مع الدعم.'
-          : 'غير مصرح'
-    return { response: NextResponse.json({ error: message, reason: result.reason }, { status }) }
+      result.reason === 'deactivated'
+        ? 'الحساب موقوف. يرجى التواصل مع الدعم.'
+        : 'غير مصرح'
+    return { response: NextResponse.json({ error: message, reason: result.reason }, { status: 401 }) }
   }
 
   // SUPER_ADMIN, OWNER, ADMIN bypass permission checks

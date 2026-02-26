@@ -46,16 +46,10 @@ const PLANS = {
   },
 }
 
-// Trial period in days for new registrations
-const TRIAL_DAYS = 14
-
-// Helper: check if subscription/trial is expired
-function checkSubscriptionStatus(tenant: { plan: string; trialEndsAt: Date | null; isActive: boolean }) {
+// Helper: check if subscription is active
+function checkSubscriptionStatus(tenant: { plan: string; isActive: boolean }) {
   if (!tenant.isActive) {
-    return { active: false, reason: 'الحساب معطل. تواصل مع الإدارة.' }
-  }
-  if (tenant.trialEndsAt && new Date() > tenant.trialEndsAt) {
-    return { active: true, trialExpired: true, reason: 'انتهت الفترة التجريبية. قم بالترقية للاستمرار بجميع الميزات.' }
+    return { active: false, trialExpired: false, reason: 'الحساب معطل. تواصل مع الإدارة.' }
   }
   return { active: true, trialExpired: false, reason: null }
 }
@@ -106,7 +100,7 @@ export async function GET(request: NextRequest) {
         maxFarms: tenant.maxFarms,
         maxGoats: tenant.maxGoats,
         maxUsers: tenant.maxUsers,
-        trialEndsAt: tenant.trialEndsAt,
+        trialEndsAt: null,
         isActive: tenant.isActive,
         createdAt: tenant.createdAt,
       },
@@ -126,9 +120,7 @@ export async function GET(request: NextRequest) {
       status: {
         ...subStatus,
         subscriptionExpired,
-        trialDaysLeft: tenant.trialEndsAt
-          ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-          : null,
+        trialDaysLeft: null,
       },
     })
   } catch (error) {
@@ -362,4 +354,4 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export { PLANS, TRIAL_DAYS, checkSubscriptionStatus }
+export { PLANS, checkSubscriptionStatus }
