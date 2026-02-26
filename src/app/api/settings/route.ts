@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         farmName: farm.name,
+        farmNameAr: farm.nameAr || '',
         phone: farm.phone || '',
         address: farm.address || '',
         currency: farm.currency,
@@ -40,12 +41,8 @@ export async function GET(request: NextRequest) {
 // PUT /api/settings - update current farm settings (OWNER/ADMIN only)
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'view_settings')
+    const auth = await requirePermission(request, 'manage_settings')
     if (auth.response) return auth.response
-
-    if (!['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'فقط المالك أو المدير يمكنه تعديل الإعدادات' }, { status: 403 })
-    }
 
     return runWithTenant(auth.tenantId, auth.farmId, async () => {
       const body = await request.json()
@@ -54,7 +51,7 @@ export async function PUT(request: NextRequest) {
         where: { id: auth.farmId },
         data: {
           name: body.farmName ?? undefined,
-          nameAr: body.farmName ?? undefined,
+          nameAr: body.farmNameAr ?? body.farmName ?? undefined,
           phone: body.phone ?? undefined,
           address: body.address ?? undefined,
           currency: body.currency ?? undefined,
@@ -68,6 +65,7 @@ export async function PUT(request: NextRequest) {
 
       return NextResponse.json({
         farmName: farm.name,
+        farmNameAr: farm.nameAr || '',
         phone: farm.phone || '',
         address: farm.address || '',
         currency: farm.currency,

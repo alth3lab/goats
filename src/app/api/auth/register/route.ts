@@ -94,9 +94,11 @@ export async function POST(request: NextRequest) {
     // Create tenant + farm + user in transaction
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Trial period: 14 days
+    // Trial period: read from system settings (default 14 days)
+    const trialDaySetting = await prisma.systemSetting.findUnique({ where: { key: 'trial_days' } })
+    const trialDays = Math.max(1, parseInt(trialDaySetting?.value || '14', 10) || 14)
     const trialEndsAt = new Date()
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14)
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays)
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create tenant with trial period

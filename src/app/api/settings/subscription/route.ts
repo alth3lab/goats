@@ -54,11 +54,8 @@ function checkSubscriptionStatus(tenant: { plan: string; trialEndsAt: Date | nul
   if (!tenant.isActive) {
     return { active: false, reason: 'الحساب معطل. تواصل مع الإدارة.' }
   }
-  if (tenant.plan === 'FREE' && tenant.trialEndsAt) {
-    const now = new Date()
-    if (now > tenant.trialEndsAt) {
-      return { active: true, trialExpired: true, reason: 'انتهت الفترة التجريبية. قم بالترقية للاستمرار بجميع الميزات.' }
-    }
+  if (tenant.trialEndsAt && new Date() > tenant.trialEndsAt) {
+    return { active: true, trialExpired: true, reason: 'انتهت الفترة التجريبية. قم بالترقية للاستمرار بجميع الميزات.' }
   }
   return { active: true, trialExpired: false, reason: null }
 }

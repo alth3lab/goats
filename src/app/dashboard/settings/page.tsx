@@ -47,6 +47,7 @@ export default function SettingsPage() {
   }, [authLoading, canEdit, router])
   const [settings, setSettings] = useState({
     farmName: '',
+    farmNameAr: '',
     phone: '',
     address: '',
     currency: 'درهم',
@@ -76,6 +77,7 @@ export default function SettingsPage() {
       .then((data) =>
         setSettings({
           farmName: data.farmName || '',
+          farmNameAr: data.farmNameAr || '',
           phone: data.phone || '',
           address: data.address || '',
           currency: data.currency || 'درهم',
@@ -171,8 +173,7 @@ export default function SettingsPage() {
       if (settingsResp.ok) {
         const data = await settingsResp.json()
         setSettings({
-          farmName: data.farmName || '',
-          phone: data.phone || '',
+          farmName: data.farmName || '',          farmNameAr: data.farmNameAr || '',          phone: data.phone || '',
           address: data.address || '',
           currency: data.currency || 'درهم',
           notifications: Boolean(data.notifications),
@@ -252,10 +253,20 @@ export default function SettingsPage() {
         >
           <Box>
             <TextField
-              label="اسم المزرعة"
+              label="اسم المزرعة (عربي)"
+              value={settings.farmNameAr}
+              onChange={(e) => setSettings({ ...settings, farmNameAr: e.target.value })}
+              fullWidth
+              placeholder="الاسم باللغة العربية"
+            />
+          </Box>
+          <Box>
+            <TextField
+              label="اسم المزرعة (إنجليزي)"
               value={settings.farmName}
               onChange={(e) => setSettings({ ...settings, farmName: e.target.value })}
               fullWidth
+              placeholder="Farm name in English"
             />
           </Box>
           <Box>
