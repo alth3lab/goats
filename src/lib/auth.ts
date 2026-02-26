@@ -11,60 +11,77 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
   return payload?.userId || null
 }
 
-export async function getUserWithPermissions(request: NextRequest) {
+type AuthResult =
+  | { ok: true; user: any; permissions: string[]; tenantId: string | null; farmId: string | null }
+  | { ok: false; reason: 'unauthenticated' | 'deactivated' | 'trial_expired' | 'no_permission' }
+
+export async function getUserWithPermissions(request: NextRequest): Promise<AuthResult> {
   const ctx = await getTenantContext(request)
-  if (!ctx) return null
+  if (!ctx) return { ok: false, reason: 'unauthenticated' }
 
   const user = await prisma.user.findUnique({
     where: { id: ctx.userId },
     include: { permissions: { include: { permission: true } } }
   })
 
-  if (!user) return null
+  if (!user) return { ok: false, reason: 'unauthenticated' }
 
-  // Check tenant is active (skip for SUPER_ADMIN)
+  // Check tenant is active and trial not expired (skip for SUPER_ADMIN)
   if (user.role !== 'SUPER_ADMIN' && ctx.tenantId) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: ctx.tenantId },
       select: { isActive: true, trialEndsAt: true, plan: true }
     })
     if (tenant && !tenant.isActive) {
-      return null // Tenant deactivated
+      return { ok: false, reason: 'deactivated' }
+    }
+    if (tenant && tenant.trialEndsAt && tenant.trialEndsAt < new Date()) {
+      return { ok: false, reason: 'trial_expired' }
     }
   }
 
   const permissions = user.permissions.map((entry) => entry.permission.name)
-  return { user, permissions, tenantId: ctx.tenantId, farmId: ctx.farmId }
+  return { ok: true, user, permissions, tenantId: ctx.tenantId, farmId: ctx.farmId }
 }
 
 export async function requireAuth(request: NextRequest) {
-  const data = await getUserWithPermissions(request)
-  if (!data) {
-    return {
-      response: NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-    }
+  const result = await getUserWithPermissions(request)
+  if (!result.ok) {
+    const status = result.reason === 'trial_expired' ? 402 : 401
+    const message =
+      result.reason === 'trial_expired'
+        ? 'انتهت فترة التجربة. يرجى ترقية الاشتراك.'
+        : result.reason === 'deactivated'
+          ? 'الحساب موقوف. يرجى التواصل مع الدعم.'
+          : 'غير مصرح'
+    return { response: NextResponse.json({ error: message, reason: result.reason }, { status }) }
   }
-  return { response: null, ...data }
+  return { response: null, ...result }
 }
 
 export async function requirePermission(request: NextRequest, permission: string) {
-  const data = await getUserWithPermissions(request)
-  if (!data) {
-    return {
-      response: NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-    }
+  const result = await getUserWithPermissions(request)
+  if (!result.ok) {
+    const status = result.reason === 'trial_expired' ? 402 : 401
+    const message =
+      result.reason === 'trial_expired'
+        ? 'انتهت فترة التجربة. يرجى ترقية الاشتراك.'
+        : result.reason === 'deactivated'
+          ? 'الحساب موقوف. يرجى التواصل مع الدعم.'
+          : 'غير مصرح'
+    return { response: NextResponse.json({ error: message, reason: result.reason }, { status }) }
   }
 
   // SUPER_ADMIN, OWNER, ADMIN bypass permission checks
-  if (['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(data.user.role)) {
-    return { response: null, ...data }
+  if (['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(result.user.role)) {
+    return { response: null, ...result }
   }
 
-  if (!data.permissions.includes(permission)) {
+  if (!result.permissions.includes(permission)) {
     return {
       response: NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
     }
   }
 
-  return { response: null, ...data }
+  return { response: null, ...result }
 }

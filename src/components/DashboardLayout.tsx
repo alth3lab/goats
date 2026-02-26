@@ -29,6 +29,8 @@ import {
   CircularProgress,
   Badge,
   Tooltip,
+  Alert,
+  Button,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -129,7 +131,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [alertCount, setAlertCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
-  const { user, can, loading: authLoading, farm, farms, switchFarm, switching } = useAuth()
+  const { user, can, loading: authLoading, farm, farms, switchFarm, switching, trialExpired } = useAuth()
   const [farmSearch, setFarmSearch] = useState('')
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
@@ -494,6 +496,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         }}
       >
         <Box sx={{ height: '64px' }} />
+        {trialExpired && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            action={
+              <Button
+                component={Link}
+                href="/dashboard/billing"
+                color="warning"
+                size="small"
+                variant="contained"
+                sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                ترقية الاشتراك
+              </Button>
+            }
+          >
+            انتهت فترة التجربة المجانية. الوصول للبيانات موقوف حتى ترقية اشتراكك.
+          </Alert>
+        )}
         <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>{children}</Box>
       </Box>
 

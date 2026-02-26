@@ -35,6 +35,7 @@ interface AuthState {
   farms: UserFarm[]
   permissions: string[]
   loading: boolean
+  trialExpired: boolean
 }
 
 export function useAuth() {
@@ -43,7 +44,8 @@ export function useAuth() {
     farm: null,
     farms: [],
     permissions: [],
-    loading: true
+    loading: true,
+    trialExpired: false
   })
 
   useEffect(() => {
@@ -63,12 +65,13 @@ export function useAuth() {
           farm: data.farm || null,
           farms: Array.isArray(data.farms) ? data.farms : [],
           permissions: Array.isArray(data.permissions) ? data.permissions : [],
-          loading: false
+          loading: false,
+          trialExpired: !!data.trialExpired
         })
       })
       .catch(() => {
         if (!active) return
-        setState({ user: null, farm: null, farms: [], permissions: [], loading: false })
+        setState({ user: null, farm: null, farms: [], permissions: [], loading: false, trialExpired: false })
       })
 
     return () => {
