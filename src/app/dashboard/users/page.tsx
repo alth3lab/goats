@@ -61,8 +61,10 @@ interface Permission {
 }
 
 const roleLabels: Record<string, string> = {
-  ADMIN: 'مدير النظام',
-  MANAGER: 'مدير المزرعة',
+  SUPER_ADMIN: 'مدير النظام',
+  OWNER: 'مالك المزرعة',
+  ADMIN: 'مسؤول',
+  MANAGER: 'مشرف',
   VETERINARIAN: 'بيطري',
   USER: 'مستخدم',
   VIEWER: 'عارض'
@@ -310,8 +312,8 @@ export default function UsersPage() {
             <FormControl>
               <InputLabel>الدور</InputLabel>
               <Select value={form.role} label="الدور" onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <MenuItem value="ADMIN">مدير النظام</MenuItem>
-                <MenuItem value="MANAGER">مدير المزرعة</MenuItem>
+                <MenuItem value="ADMIN">مسؤول</MenuItem>
+                <MenuItem value="MANAGER">مشرف</MenuItem>
                 <MenuItem value="VETERINARIAN">بيطري</MenuItem>
                 <MenuItem value="USER">مستخدم</MenuItem>
                 <MenuItem value="VIEWER">عارض</MenuItem>

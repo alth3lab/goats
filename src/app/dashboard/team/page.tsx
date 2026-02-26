@@ -118,10 +118,12 @@ export default function TeamPage() {
 
   const roleLabel: Record<string, string> = {
     SUPER_ADMIN: 'مدير النظام',
-    OWNER: 'المالك',
-    ADMIN: 'مدير',
+    OWNER: 'مالك المزرعة',
+    ADMIN: 'مسؤول',
+    MANAGER: 'مشرف',
+    VETERINARIAN: 'بيطري',
     USER: 'مستخدم',
-    VIEWER: 'مشاهد',
+    VIEWER: 'عارض',
   }
 
   const roleColor: Record<string, 'error' | 'warning' | 'primary' | 'default' | 'info'> = {

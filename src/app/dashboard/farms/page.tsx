@@ -130,10 +130,12 @@ export default function FarmsPage() {
 
   const roleLabel: Record<string, string> = {
     SUPER_ADMIN: 'مدير النظام',
-    OWNER: 'المالك',
-    ADMIN: 'مدير',
+    OWNER: 'مالك المزرعة',
+    ADMIN: 'مسؤول',
+    MANAGER: 'مشرف',
+    VETERINARIAN: 'بيطري',
     USER: 'مستخدم',
-    VIEWER: 'مشاهد',
+    VIEWER: 'عارض',
   }
 
   if (authLoading || !user) return <Box sx={{ p: 4 }}><LinearProgress /></Box>
