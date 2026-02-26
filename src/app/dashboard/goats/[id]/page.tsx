@@ -671,6 +671,7 @@ interface GoatProfile {
   birthDate: string
   weight?: number | null
   color?: string | null
+  tagColor?: string | null
   status: string
   motherTagId?: string | null
   fatherTagId?: string | null
