@@ -1,6 +1,10 @@
 declare module '@google/genai' {
   export interface GenerateContentPart {
-    text: string
+    text?: string
+    inlineData?: {
+      mimeType: string
+      data: string
+    }
   }
 
   export interface GenerateContentMessage {
