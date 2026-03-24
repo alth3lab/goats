@@ -2,9 +2,7 @@ import { getToken, getFarmId } from './storage';
 
 // ─── Configuration ───────────────────────────────────────
 // Change this to your deployed API URL
-const API_BASE = __DEV__
-  ? 'http://192.168.1.100:3000' // Local dev — update to your PC's IP
-  : 'https://your-production-url.com'; // Production URL
+const API_BASE = 'https://goat.suhail.cc';
 
 // ─── HTTP Client ─────────────────────────────────────────
 interface RequestOptions {

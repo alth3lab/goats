@@ -1,8 +1,4 @@
-import { I18nManager } from 'react-native';
-
-// Force RTL for Arabic
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// RTL is configured in app/_layout.tsx
 
 // ─── Color Palette (matching web theme) ──────────────────
 export const Colors = {
