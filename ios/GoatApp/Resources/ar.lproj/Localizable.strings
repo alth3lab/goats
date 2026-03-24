@@ -1,0 +1,65 @@
+/* Arabic localization */
+
+/* Auth */
+"login" = "تسجيل الدخول";
+"logout" = "تسجيل الخروج";
+"username" = "اسم المستخدم";
+"password" = "كلمة المرور";
+"forgot_password" = "نسيت كلمة المرور؟";
+
+/* Navigation */
+"home" = "الرئيسية";
+"goats" = "المواشي";
+"health" = "الصحة";
+"breeding" = "التزاوج";
+"more" = "المزيد";
+
+/* Dashboard */
+"total_goats" = "إجمالي المواشي";
+"active_goats" = "النشطة";
+"male" = "ذكر";
+"female" = "أنثى";
+"pregnant" = "حامل";
+
+/* Actions */
+"add" = "إضافة";
+"edit" = "تعديل";
+"delete" = "حذف";
+"save" = "حفظ";
+"cancel" = "إلغاء";
+"confirm" = "تأكيد";
+"loading" = "جاري التحميل...";
+"error" = "خطأ";
+"success" = "نجاح";
+"retry" = "إعادة المحاولة";
+
+/* Goat */
+"tag_id" = "رقم التعريف";
+"name" = "الاسم";
+"gender" = "الجنس";
+"birth_date" = "تاريخ الميلاد";
+"weight" = "الوزن";
+"color" = "اللون";
+"breed" = "السلالة";
+"pen" = "الحظيرة";
+"status" = "الحالة";
+
+/* Status */
+"active" = "نشط";
+"sold" = "مباع";
+"deceased" = "نافق";
+"quarantine" = "حجر صحي";
+
+/* Health */
+"vaccination" = "تطعيم";
+"deworming" = "تطفيل";
+"treatment" = "علاج";
+"checkup" = "فحص";
+"surgery" = "عملية";
+
+/* Sales */
+"buyer" = "المشتري";
+"sale_price" = "سعر البيع";
+"paid" = "مدفوع";
+"pending" = "معلق";
+"partial" = "جزئي";

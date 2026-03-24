@@ -921,3 +921,26 @@ model PushSubscription {
   @@index([tenantId])
   @@index([farmId])
 }
+
+// ==================== Mobile Devices (iOS/Android) ====================
+
+model MobileDevice {
+  id           String   @id @default(uuid())
+  userId       String
+  tenantId     String   @default("")
+  farmId       String   @default("")
+  deviceToken  String   @db.Text     // APNs token (iOS) or FCM token (Android)
+  platform     String   @default("ios") // "ios" | "android"
+  deviceName   String?  // e.g. "iPhone 15 Pro"
+  appVersion   String?  // e.g. "1.0.0"
+  osVersion    String?  // e.g. "18.0"
+  isActive     Boolean  @default(true)
+  lastUsedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, deviceToken(length: 500)])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([deviceToken(length: 500)])
+}
