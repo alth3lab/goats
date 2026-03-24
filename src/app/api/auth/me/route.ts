@@ -6,7 +6,14 @@ export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get(TOKEN_COOKIE)?.value
+    // Support both cookie (web) and Bearer token (mobile app)
+    let token = request.cookies.get(TOKEN_COOKIE)?.value
+    if (!token) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7)
+      }
+    }
     if (!token) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
     }

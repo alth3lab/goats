@@ -15,7 +15,14 @@ export interface TenantContext {
  * استخراج سياق المستأجر من الطلب
  */
 export async function getTenantContext(request: NextRequest): Promise<TenantContext | null> {
-  const token = request.cookies.get(TOKEN_COOKIE)?.value
+  // Support both cookie (web) and Bearer token (mobile app)
+  let token = request.cookies.get(TOKEN_COOKIE)?.value
+  if (!token) {
+    const authHeader = request.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7)
+    }
+  }
   if (!token) return null
 
   const payload = await verifyToken(token)

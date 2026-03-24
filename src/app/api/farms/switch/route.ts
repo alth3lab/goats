@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     farmId: targetFarm.id,
     farmName: targetFarm.name,
     farmNameAr: targetFarm.nameAr,
+    token, // For mobile app Bearer auth
   })
 
   res.cookies.set(TOKEN_COOKIE, token, {
