@@ -5,7 +5,14 @@ import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 import { getTenantContext, type TenantContext } from '@/lib/tenant'
 
 export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
-  const token = request.cookies.get(TOKEN_COOKIE)?.value
+  // Support both cookie (web) and Bearer token (mobile app)
+  let token = request.cookies.get(TOKEN_COOKIE)?.value
+  if (!token) {
+    const authHeader = request.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7)
+    }
+  }
   if (!token) return null
   const payload = await verifyToken(token)
   return payload?.userId || null
