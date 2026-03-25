@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken, TOKEN_COOKIE } from '@/lib/jwt'
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Farm-Id',
+  'Access-Control-Max-Age': '86400',
+}
+
+function addCorsHeaders(response: NextResponse, origin: string): NextResponse {
+  response.headers.set('Access-Control-Allow-Origin', origin)
+  response.headers.set('Access-Control-Allow-Methods', CORS_HEADERS['Access-Control-Allow-Methods'])
+  response.headers.set('Access-Control-Allow-Headers', CORS_HEADERS['Access-Control-Allow-Headers'])
+  return response
+}
+
 function isSecureRequest(request: NextRequest): boolean {
   const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '')
   return proto === 'https'
@@ -15,6 +28,18 @@ const STATIC_EXTENSIONS = /\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const origin = request.headers.get('origin') ?? ''
+
+  // Handle CORS preflight OPTIONS request
+  if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin || '*',
+        ...CORS_HEADERS,
+      },
+    })
+  }
 
   // Handle socket.io requests
   if (pathname.startsWith('/socket.io')) {
@@ -53,12 +78,28 @@ export default async function proxy(request: NextRequest) {
 
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
-    return NextResponse.next()
+    const res = NextResponse.next()
+    if (origin && pathname.startsWith('/api/')) addCorsHeaders(res, origin)
+    return res
   }
 
-  // CSRF protection: verify Origin header on mutating API requests
+  // Check for Bearer token (mobile app) — skip CSRF and cookie checks
+  const authHeader = request.headers.get('authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    const bearerToken = authHeader.slice(7)
+    const payload = await verifyToken(bearerToken)
+    if (!payload) {
+      const res = NextResponse.json({ error: 'انتهت صلاحية الجلسة' }, { status: 401 })
+      if (origin) addCorsHeaders(res, origin)
+      return res
+    }
+    const res = NextResponse.next()
+    if (origin) addCorsHeaders(res, origin)
+    return res
+  }
+
+  // CSRF protection: verify Origin header on mutating API requests (web only)
   if (pathname.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
-    const origin = request.headers.get('origin')
     const host = request.headers.get('host')
     if (origin && host) {
       const originHost = new URL(origin).host
@@ -68,7 +109,7 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  // Check for session token
+  // Check for session cookie token (web app)
   const token = request.cookies.get(TOKEN_COOKIE)?.value
 
   if (!token) {
