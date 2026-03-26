@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
       tenantId: result.tenant.id,
       farmId: result.farm.id,
       farmName: result.farm.name,
+      token, // For mobile app Bearer auth
     }, { status: 201 })
 
     response.cookies.set(TOKEN_COOKIE, token, {
