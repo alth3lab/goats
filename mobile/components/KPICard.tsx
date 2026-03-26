@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
+import { western } from '@/lib/formatters';
 
 interface KPICardProps {
   title: string;
@@ -28,7 +29,7 @@ export default function KPICard({ title, value, icon, iconColor = Colors.primary
               color={trend > 0 ? Colors.success : Colors.error}
             />
             <Text style={[styles.trendText, { color: trend > 0 ? Colors.success : Colors.error }]}>
-              {Math.abs(trend).toFixed(0)}%
+              {western(Math.abs(trend).toFixed(0))}%
             </Text>
           </View>
         )}

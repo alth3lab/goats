@@ -1,4 +1,7 @@
 import { getToken, getFarmId } from './storage';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 // ─── Configuration ───────────────────────────────────────
 // Change this to your deployed API URL
@@ -40,15 +43,29 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['X-Farm-Id'] = farmId;
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر الاتصال بالخادم';
+    throw new ApiError(0, message);
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'خطأ غير معروف' }));
+    const contentType = response.headers.get('content-type') || '';
+    const error = contentType.includes('application/json')
+      ? await response.json().catch(() => ({ error: 'خطأ غير معروف' }))
+      : { error: await response.text().catch(() => 'خطأ غير معروف') };
     throw new ApiError(response.status, error.error || error.message || 'حدث خطأ');
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return {} as T;
   }
 
   return response.json();
@@ -70,6 +87,24 @@ export const authApi = {
       '/auth/login',
       { method: 'POST', body: { identifier, password } }
     ),
+
+  register: (data: { farmName: string; fullName: string; email: string; username: string; password: string; phone?: string; farmType?: string }) =>
+    request<{ token: string; id: string; fullName: string; role: string; tenantId: string; farmId: string; farmName: string }>(
+      '/auth/register',
+      { method: 'POST', body: data }
+    ),
+
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    }),
+
+  resetPassword: (email: string, token: string, password: string) =>
+    request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: { email, token, password },
+    }),
 
   me: () =>
     request<{
@@ -112,6 +147,28 @@ export const goatsApi = {
 
   delete: (id: string) =>
     request<void>(`/goats/${id}`, { method: 'DELETE' }),
+
+  uploadImage: async (id: string, photoUri: string) => {
+    // Resize to full image (800px) and thumbnail (150px)
+    const [full, thumb] = await Promise.all([
+      manipulateAsync(photoUri, [{ resize: { width: 800 } }], { format: SaveFormat.JPEG, compress: 0.8 }),
+      manipulateAsync(photoUri, [{ resize: { width: 150 } }], { format: SaveFormat.JPEG, compress: 0.7 }),
+    ]);
+
+    // Read as base64
+    const [fullB64, thumbB64] = await Promise.all([
+      FileSystem.readAsStringAsync(full.uri, { encoding: FileSystem.EncodingType.Base64 }),
+      FileSystem.readAsStringAsync(thumb.uri, { encoding: FileSystem.EncodingType.Base64 }),
+    ]);
+
+    const image = `data:image/jpeg;base64,${fullB64}`;
+    const thumbnail = `data:image/jpeg;base64,${thumbB64}`;
+
+    return request<{ success: boolean; thumbnail: string }>(
+      `/goats/${id}/image`,
+      { method: 'POST', body: { image, thumbnail } }
+    );
+  },
 };
 
 // ─── Health API ──────────────────────────────────────────
@@ -150,9 +207,83 @@ export const feedsApi = {
     request<Record<string, unknown>>('/feeds', { method: 'POST', body: data }),
 };
 
+// ─── Breeding API ────────────────────────────────────────
+export const breedingApi = {
+  list: () => request<Record<string, unknown>[]>('/breeding'),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/breeding', { method: 'POST', body: data }),
+};
+
+// ─── Expenses API ────────────────────────────────────────
+export const expensesApi = {
+  list: (params?: { page?: string; limit?: string; ownerId?: string }) =>
+    request<{ data?: Record<string, unknown>[]; total?: number } | Record<string, unknown>[]>('/expenses', { params }),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/expenses', { method: 'POST', body: data }),
+};
+
+// ─── Pens API ────────────────────────────────────────────
+export const pensApi = {
+  list: () => request<Record<string, unknown>[]>('/pens'),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/pens', { method: 'POST', body: data }),
+};
+
+// ─── Owners API ──────────────────────────────────────────
+export const ownersApi = {
+  list: () => request<Record<string, unknown>[]>('/owners'),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/owners', { method: 'POST', body: data }),
+};
+
+// ─── Calendar API ────────────────────────────────────────
+export const calendarApi = {
+  list: (params?: { start?: string; end?: string; eventType?: string }) =>
+    request<Record<string, unknown>[]>('/calendar', { params }),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/calendar', { method: 'POST', body: data }),
+};
+
+// ─── Inventory API ───────────────────────────────────────
+export const inventoryApi = {
+  list: (params?: { category?: string; lowStock?: string }) =>
+    request<Record<string, unknown>[]>('/inventory', { params }),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/inventory', { method: 'POST', body: data }),
+};
+
+// ─── Activities API ──────────────────────────────────────
+export const activitiesApi = {
+  list: (params?: { page?: string; limit?: string }) =>
+    request<{ data?: Record<string, unknown>[]; total?: number } | Record<string, unknown>[]>('/activities', { params }),
+};
+
+// ─── Settings API ────────────────────────────────────────
+export const settingsApi = {
+  get: () => request<Record<string, unknown>>('/settings'),
+
+  update: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/settings', { method: 'PUT', body: data }),
+};
+
 // ─── Alerts API ──────────────────────────────────────────
 export const alertsApi = {
   list: () => request<Record<string, unknown>[]>('/alerts'),
+};
+
+// ─── Push API ────────────────────────────────────────────
+export const pushApi = {
+  registerExpoToken: (token: string) =>
+    request<{ success: boolean }>('/push/expo-register', {
+      method: 'POST',
+      body: { token, platform: Platform.OS },
+    }),
 };
 
 // ─── Lookup APIs ─────────────────────────────────────────
@@ -162,3 +293,17 @@ export const lookupApi = {
   pens: () => request<Record<string, unknown>[]>('/pens'),
   owners: () => request<Record<string, unknown>[]>('/owners'),
 };
+
+// ─── Helpers ─────────────────────────────────────────────
+/**
+ * Resolve a goat tag ID (e.g. "G-001") to its UUID.
+ * Returns the UUID string or null if not found.
+ */
+export async function resolveGoatByTag(tagId: string): Promise<string | null> {
+  const trimmed = tagId.trim();
+  if (!trimmed) return null;
+  const result = await goatsApi.list({ limit: '500' });
+  const goats = (result.data || []) as Array<{ id: string; tagId: string }>;
+  const match = goats.find(g => g.tagId === trimmed);
+  return match?.id ?? null;
+}

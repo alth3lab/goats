@@ -1,9 +1,0 @@
-﻿Starting project at C:\Users\suhailskh\OneDrive - Al Ain Municipality\Documents\GitHub\goats\mobile
-Starting Metro Bundler
-warning: Bundler cache is empty, rebuilding (this may take a minute)
-Waiting on http://localhost:8081
-Logs for your project will appear below.
-Web Bundled 30771ms node_modules\expo-router\entry.js (820 modules)
- LOG  [web] Logs will appear in the browser console
-Web Bundled 172ms node_modules\expo-router\entry.js (1 module)
- LOG  [web] Logs will appear in the browser console

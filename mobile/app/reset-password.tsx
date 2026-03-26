@@ -9,26 +9,39 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/lib/auth';
+import { authApi, ApiError } from '@/lib/api';
 import { Button, Input } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography } from '@/lib/theme';
-import { ApiError } from '@/lib/api';
 
-export default function LoginScreen() {
-  const [identifier, setIdentifier] = useState('');
+export default function ResetPasswordScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string }>();
+
+  const [email, setEmail] = useState(params.email || '');
+  const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login } = useAuth();
-  const router = useRouter();
-
-  const handleLogin = async () => {
-    if (!identifier.trim() || !password.trim()) {
-      setError('يرجى إدخال اسم المستخدم وكلمة المرور');
+  const handleReset = async () => {
+    if (!email.trim()) {
+      setError('يرجى إدخال البريد الإلكتروني');
+      return;
+    }
+    if (!token.trim()) {
+      setError('يرجى إدخال رمز إعادة التعيين');
+      return;
+    }
+    if (password.length < 6) {
+      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين');
       return;
     }
 
@@ -36,13 +49,15 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      await login(identifier.trim(), password);
-      router.replace('/(tabs)');
+      await authApi.resetPassword(email.trim(), token.trim(), password);
+      Alert.alert(
+        'تم بنجاح',
+        'تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.',
+        [{ text: 'تسجيل الدخول', onPress: () => router.replace('/login') }]
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-      } else if (err && typeof err === 'object' && 'message' in err) {
-        setError(String((err as { message?: unknown }).message || 'حدث خطأ غير معروف'));
       } else {
         setError('حدث خطأ في الاتصال. تأكد من اتصالك بالإنترنت.');
       }
@@ -60,19 +75,17 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo / Header */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoCircle}>
-            <Ionicons name="paw" size={48} color={Colors.textOnPrimary} />
+            <Ionicons name="lock-open-outline" size={40} color={Colors.textOnPrimary} />
           </View>
-          <Text style={styles.appName}>وبر وصوف</Text>
-          <Text style={styles.subtitle}>نظام إدارة المواشي</Text>
+          <Text style={styles.title}>إعادة تعيين كلمة المرور</Text>
+          <Text style={styles.subtitle}>أدخل الرمز المرسل إلى بريدك وكلمة المرور الجديدة</Text>
         </View>
 
-        {/* Login Form */}
+        {/* Form */}
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>تسجيل الدخول</Text>
-
           {error ? (
             <View style={styles.errorBanner}>
               <Ionicons name="alert-circle" size={18} color={Colors.error} />
@@ -81,26 +94,32 @@ export default function LoginScreen() {
           ) : null}
 
           <Input
-            label="اسم المستخدم أو البريد"
-            placeholder="أدخل اسم المستخدم"
-            icon="person-outline"
-            value={identifier}
-            onChangeText={setIdentifier}
+            label="البريد الإلكتروني"
+            placeholder="أدخل بريدك الإلكتروني"
+            icon="mail-outline"
+            value={email}
+            onChangeText={setEmail}
             autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
+            keyboardType="email-address"
+          />
+
+          <Input
+            label="رمز إعادة التعيين"
+            placeholder="الصق الرمز من رابط البريد الإلكتروني"
+            icon="key-outline"
+            value={token}
+            onChangeText={setToken}
+            autoCapitalize="none"
           />
 
           <View>
             <Input
-              label="كلمة المرور"
-              placeholder="أدخل كلمة المرور"
+              label="كلمة المرور الجديدة"
+              placeholder="6 أحرف على الأقل"
               icon="lock-closed-outline"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
             />
             <TouchableOpacity
               style={styles.eyeButton}
@@ -114,35 +133,31 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={styles.forgotLink}
-            onPress={() => router.push('/forgot-password')}
-          >
-            <Text style={styles.forgotLinkText}>نسيت كلمة المرور؟</Text>
-          </TouchableOpacity>
+          <Input
+            label="تأكيد كلمة المرور"
+            placeholder="أعد إدخال كلمة المرور"
+            icon="shield-checkmark-outline"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry={!showPassword}
+          />
 
           <Button
-            title="دخول"
-            onPress={handleLogin}
+            title="تغيير كلمة المرور"
+            onPress={handleReset}
             loading={loading}
             fullWidth
             size="lg"
-            icon="log-in-outline"
+            icon="checkmark-circle-outline"
           />
 
           <TouchableOpacity
-            style={styles.registerLink}
-            onPress={() => router.replace('/register')}
+            style={styles.backLink}
+            onPress={() => router.replace('/login')}
           >
-            <Text style={styles.registerLinkText}>
-              ليس لديك حساب؟{' '}
-              <Text style={styles.registerLinkBold}>إنشاء حساب جديد</Text>
-            </Text>
+            <Text style={styles.backLinkText}>العودة لتسجيل الدخول</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Footer */}
-        <Text style={styles.footer}>وبر وصوف © ٢٠٢٦</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -160,42 +175,36 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.xxxl,
+    marginBottom: Spacing.xl,
   },
   logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
-  appName: {
-    ...Typography.h1,
+  title: {
+    ...Typography.h2,
     color: '#fff',
     marginBottom: 4,
   },
   subtitle: {
     ...Typography.body,
     color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
   },
   formCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
     padding: Spacing.xxl,
-    marginBottom: Spacing.xxl,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 8,
-  },
-  formTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: Spacing.xxl,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -220,30 +229,13 @@ const styles = StyleSheet.create({
     top: 38,
     padding: Spacing.sm,
   },
-  forgotLink: {
-    alignSelf: 'flex-end',
-    marginBottom: Spacing.md,
-  },
-  forgotLinkText: {
-    ...Typography.caption,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  footer: {
-    ...Typography.small,
-    color: 'rgba(255,255,255,0.5)',
-    textAlign: 'center',
-  },
-  registerLink: {
+  backLink: {
     marginTop: Spacing.lg,
     alignItems: 'center',
   },
-  registerLinkText: {
+  backLinkText: {
     ...Typography.body,
-    color: Colors.textSecondary,
-  },
-  registerLinkBold: {
     color: Colors.primary,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

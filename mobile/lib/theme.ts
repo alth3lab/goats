@@ -129,3 +129,44 @@ export const StatusColors: Record<string, string> = {
   DECEASED: Colors.statusDeceased,
   QUARANTINE: Colors.statusQuarantine,
 };
+
+// ─── Breeding Status Labels ──────────────────────────────
+export const PregnancyStatusLabels: Record<string, string> = {
+  MATED: 'تم التلقيح',
+  PREGNANT: 'حامل',
+  DELIVERED: 'ولدت',
+  FAILED: 'فشل',
+};
+
+export const PregnancyStatusColors: Record<string, string> = {
+  MATED: Colors.info,
+  PREGNANT: Colors.female,
+  DELIVERED: Colors.success,
+  FAILED: Colors.error,
+};
+
+// ─── Expense Category Labels ─────────────────────────────
+export const ExpenseCategoryLabels: Record<string, string> = {
+  FEED: 'أعلاف',
+  MEDICINE: 'أدوية',
+  VETERINARY: 'بيطري',
+  EQUIPMENT: 'معدات',
+  LABOR: 'عمالة',
+  UTILITIES: 'خدمات',
+  MAINTENANCE: 'صيانة',
+  OTHER: 'أخرى',
+};
+
+// ─── Event Type Labels ───────────────────────────────────
+export const EventTypeLabels: Record<string, string> = {
+  BIRTH: 'ولادة',
+  VACCINATION: 'تطعيم',
+  DEWORMING: 'تجريع',
+  CHECKUP: 'فحص',
+  BREEDING: 'تلقيح',
+  WEANING: 'فطام',
+  SALE: 'بيع',
+  PURCHASE: 'شراء',
+  MAINTENANCE: 'صيانة',
+  OTHER: 'أخرى',
+};

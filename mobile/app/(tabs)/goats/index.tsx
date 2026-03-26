@@ -12,9 +12,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { goatsApi } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import GoatCard from '@/components/GoatCard';
 import { EmptyState, Button } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows, StatusLabels } from '@/lib/theme';
+import { western } from '@/lib/formatters';
+import { useToast } from '@/lib/toast';
 import type { Goat } from '@/types';
 
 const STATUS_FILTERS = [
@@ -27,6 +30,8 @@ const STATUS_FILTERS = [
 
 export default function GoatsListScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
+  const { can } = useAuth();
   const [goats, setGoats] = useState<Goat[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -53,8 +58,9 @@ export default function GoatsListScreen() {
         setGoats(data);
       }
       setTotal(result.total || 0);
-    } catch {
-      // Silent fail
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل تحميل القطيع';
+      showToast('error', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -117,13 +123,15 @@ export default function GoatsListScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/(tabs)/goats/add')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        {can('__owner_admin__') && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push('/(tabs)/goats/add')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Status Filter Tabs */}
@@ -144,7 +152,7 @@ export default function GoatsListScreen() {
       {/* Count */}
       <View style={styles.countRow}>
         <Text style={styles.countText}>
-          {total} حيوان
+          {western(total)} حيوان
         </Text>
       </View>
 

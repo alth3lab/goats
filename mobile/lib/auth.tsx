@@ -10,6 +10,7 @@ interface AuthContextValue {
   permissions: string[];
   loading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
+  register: (data: { farmName: string; fullName: string; email: string; username: string; password: string; phone?: string; farmType?: string }) => Promise<void>;
   logout: () => Promise<void>;
   switchFarm: (farmId: string) => Promise<void>;
   can: (permission?: string) => boolean;
@@ -58,6 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refresh();
   };
 
+  const register = async (regData: { farmName: string; fullName: string; email: string; username: string; password: string; phone?: string; farmType?: string }) => {
+    const data = await authApi.register(regData);
+    await setToken(data.token);
+    if (data.farmId) await setFarmId(data.farmId);
+    await refresh();
+  };
+
   const logout = async () => {
     await removeToken();
     setUser(null);
@@ -86,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, farm, farms, permissions, loading, login, logout, switchFarm, can, refresh }}>
+    <AuthContext.Provider value={{ user, farm, farms, permissions, loading, login, register, logout, switchFarm, can, refresh }}>
       {children}
     </AuthContext.Provider>
   );

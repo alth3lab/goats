@@ -921,3 +921,19 @@ model PushSubscription {
   @@index([tenantId])
   @@index([farmId])
 }
+
+// ==================== Expo Push Tokens (Mobile) ====================
+
+model ExpoPushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String   @default("")
+  farmId    String   @default("")
+  token     String   @db.VarChar(255)
+  platform  String?  @db.VarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([farmId])
+}

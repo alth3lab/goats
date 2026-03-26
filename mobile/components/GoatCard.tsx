@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, Typography, Shadows, StatusColors, StatusLabels, GenderLabels } from '@/lib/theme';
+import { western } from '@/lib/formatters';
 import type { Goat } from '@/types';
 
 interface GoatCardProps {
@@ -21,6 +22,16 @@ export default function GoatCard({ goat, onPress, style }: GoatCardProps) {
       onPress={onPress}
       activeOpacity={0.7}
     >
+      <View style={styles.cardRow}>
+        {/* Thumbnail */}
+        {(goat.imageUrl || goat.thumbnail) ? (
+          <Image source={{ uri: goat.imageUrl || goat.thumbnail }} style={styles.thumbnail} />
+        ) : (
+          <View style={styles.thumbnailPlaceholder}>
+            <Ionicons name="paw" size={22} color={Colors.textLight} />
+          </View>
+        )}
+        <View style={styles.cardContent}>
       {/* Tag & Status Row */}
       <View style={styles.topRow}>
         <View style={styles.tagWrap}>
@@ -69,7 +80,7 @@ export default function GoatCard({ goat, onPress, style }: GoatCardProps) {
         {goat.weight && (
           <View style={styles.infoChip}>
             <Ionicons name="fitness-outline" size={12} color={Colors.textSecondary} />
-            <Text style={styles.chipText}>{goat.weight} كغ</Text>
+            <Text style={styles.chipText}>{western(goat.weight)} كغ</Text>
           </View>
         )}
         {goat.pregnancyStatus && (
@@ -78,6 +89,8 @@ export default function GoatCard({ goat, onPress, style }: GoatCardProps) {
             <Text style={[styles.chipText, { color: Colors.female }]}>حامل</Text>
           </View>
         )}
+      </View>
+      </View>
       </View>
     </TouchableOpacity>
   );
@@ -90,6 +103,26 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     ...Shadows.sm,
     marginBottom: Spacing.md,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  thumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.md,
+  },
+  thumbnailPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardContent: {
+    flex: 1,
   },
   topRow: {
     flexDirection: 'row',

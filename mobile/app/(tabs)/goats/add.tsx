@@ -7,12 +7,15 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { goatsApi, lookupApi } from '@/lib/api';
 import { Button, Input } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
+import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
 import type { Breed, Pen, Owner } from '@/types';
 import { TouchableOpacity } from 'react-native';
 
@@ -31,6 +34,7 @@ export default function AddGoatScreen() {
   const [ownerId, setOwnerId] = useState('');
   const [motherTagId, setMotherTagId] = useState('');
   const [fatherTagId, setFatherTagId] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   // Lookup data
   const [breeds, setBreeds] = useState<Breed[]>([]);
@@ -49,14 +53,46 @@ export default function AddGoatScreen() {
     });
   }, []);
 
+  const pickImage = async (source: 'camera' | 'gallery') => {
+    const opts: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    };
+
+    let result: ImagePicker.ImagePickerResult;
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('تنبيه', 'يجب السماح بالوصول إلى الكاميرا');
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync(opts);
+    } else {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('تنبيه', 'يجب السماح بالوصول إلى المعرض');
+        return;
+      }
+      result = await ImagePicker.launchImageLibraryAsync(opts);
+    }
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!tagId.trim()) {
-      Alert.alert('خطأ', 'رقم الحيوان مطلوب');
+    if (!validateRequired(tagId, 'رقم الحيوان')) return;
+    if (!breedId) {
+      Alert.alert('خطأ', 'يجب اختيار السلالة');
       return;
     }
-    if (!birthDate.trim()) {
-      Alert.alert('خطأ', 'تاريخ الميلاد مطلوب');
-      return;
+    if (!validateDate(birthDate, 'تاريخ الميلاد', { required: true })) return;
+    if (weight) {
+      const w = validateNumber(weight, 'الوزن', { min: 0.1, max: 2000 });
+      if (w === null) return;
     }
 
     setLoading(true);
@@ -65,18 +101,29 @@ export default function AddGoatScreen() {
         tagId: tagId.trim(),
         gender,
         birthDate,
+        breedId,
         status: 'ACTIVE',
       };
 
       if (name.trim()) data.name = name.trim();
       if (weight) data.weight = parseFloat(weight);
-      if (breedId) data.breedId = breedId;
       if (penId) data.penId = penId;
       if (ownerId) data.ownerId = ownerId;
       if (motherTagId.trim()) data.motherTagId = motherTagId.trim();
       if (fatherTagId.trim()) data.fatherTagId = fatherTagId.trim();
 
-      await goatsApi.create(data);
+      const created = await goatsApi.create(data) as { id?: string };
+
+      // Upload photo separately after goat is created
+      if (photoUri && created?.id) {
+        try {
+          await goatsApi.uploadImage(created.id, photoUri);
+        } catch {
+          // Goat created but image failed — notify user
+          Alert.alert('تنبيه', 'تم إضافة الحيوان لكن فشل رفع الصورة');
+        }
+      }
+
       Alert.alert('نجاح', 'تم إضافة الحيوان بنجاح', [
         { text: 'حسناً', onPress: () => router.back() },
       ]);
@@ -98,6 +145,35 @@ export default function AddGoatScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Photo */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>صورة الحيوان</Text>
+          <View style={styles.photoRow}>
+            {photoUri ? (
+              <TouchableOpacity onPress={() => setPhotoUri(null)} style={styles.photoPreview}>
+                <Image source={{ uri: photoUri }} style={styles.photoImage} />
+                <View style={styles.photoRemove}>
+                  <Ionicons name="close-circle" size={24} color={Colors.error} />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Ionicons name="image-outline" size={40} color={Colors.textLight} />
+              </View>
+            )}
+            <View style={styles.photoButtons}>
+              <TouchableOpacity style={styles.photoBtn} onPress={() => pickImage('camera')}>
+                <Ionicons name="camera" size={22} color={Colors.primary} />
+                <Text style={styles.photoBtnText}>الكاميرا</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.photoBtn} onPress={() => pickImage('gallery')}>
+                <Ionicons name="images" size={22} color={Colors.primary} />
+                <Text style={styles.photoBtnText}>المعرض</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* Basic Info */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>المعلومات الأساسية</Text>
@@ -161,7 +237,7 @@ export default function AddGoatScreen() {
           <Text style={styles.cardTitle}>السلالة والموقع</Text>
 
           {/* Breed Picker */}
-          <Text style={styles.fieldLabel}>السلالة</Text>
+          <Text style={styles.fieldLabel}>السلالة *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
             <View style={styles.chipRow}>
               {breeds.map(b => (
@@ -330,5 +406,55 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+  },
+  photoPreview: {
+    position: 'relative',
+  },
+  photoImage: {
+    width: 100,
+    height: 100,
+    borderRadius: Radius.lg,
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+  },
+  photoPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.surfaceVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderStyle: 'dashed',
+  },
+  photoButtons: {
+    flex: 1,
+    gap: Spacing.sm,
+  },
+  photoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '08',
+  },
+  photoBtnText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
   },
 });

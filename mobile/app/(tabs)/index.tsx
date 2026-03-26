@@ -8,15 +8,20 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth';
 import { statsApi, alertsApi } from '@/lib/api';
 import KPICard from '@/components/KPICard';
 import { AlertBanner, LoadingScreen, SectionHeader } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
+import { formatCurrency, western } from '@/lib/formatters';
+import { useToast } from '@/lib/toast';
 import type { DashboardStats } from '@/types';
 
 export default function DashboardScreen() {
   const { user, farm } = useAuth();
+  const router = useRouter();
+  const { showToast } = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [alerts, setAlerts] = useState<Array<{ type: string; message: string; severity: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +35,9 @@ export default function DashboardScreen() {
       ]);
       setStats(statsData as unknown as DashboardStats);
       setAlerts(alertsData as Array<{ type: string; message: string; severity: string }>);
-    } catch {
-      // Silently fail — user sees empty state
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل تحميل البيانات';
+      showToast('error', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,13 +93,13 @@ export default function DashboardScreen() {
         <View style={styles.kpiRow}>
           <KPICard
             title="إجمالي القطيع"
-            value={stats?.activeGoats ?? 0}
+            value={western(stats?.activeGoats ?? 0)}
             icon="paw"
             iconColor={Colors.primary}
           />
           <KPICard
             title="ذكور"
-            value={stats?.maleGoats ?? 0}
+            value={western(stats?.maleGoats ?? 0)}
             icon="male"
             iconColor={Colors.male}
           />
@@ -101,13 +107,13 @@ export default function DashboardScreen() {
         <View style={styles.kpiRow}>
           <KPICard
             title="إناث"
-            value={stats?.femaleGoats ?? 0}
+            value={western(stats?.femaleGoats ?? 0)}
             icon="female"
             iconColor={Colors.female}
           />
           <KPICard
             title="حوامل"
-            value={stats?.pregnantGoats ?? 0}
+            value={western(stats?.pregnantGoats ?? 0)}
             icon="heart"
             iconColor={Colors.female}
           />
@@ -142,7 +148,7 @@ export default function DashboardScreen() {
           />
           <KPICard
             title="تربية نشطة"
-            value={stats?.activeBreedings ?? 0}
+            value={western(stats?.activeBreedings ?? 0)}
             icon="git-merge"
             iconColor={Colors.info}
           />
@@ -155,15 +161,15 @@ export default function DashboardScreen() {
           <SectionHeader title="نظرة شهرية" />
           <View style={styles.monthlyCard}>
             <View style={styles.monthlyRow}>
-              <MonthlyItem label="مواليد" value={stats.monthly.birthsCount} icon="heart-circle" color={Colors.success} />
-              <MonthlyItem label="نفوق" value={stats.monthly.deathsCount} icon="close-circle" color={Colors.error} />
-              <MonthlyItem label="نمو القطيع" value={`${stats.monthly.herdGrowth}%`} icon="trending-up" color={Colors.info} />
+              <MonthlyItem label="مواليد" value={western(stats.monthly.birthsCount)} icon="heart-circle" color={Colors.success} />
+              <MonthlyItem label="نفوق" value={western(stats.monthly.deathsCount)} icon="close-circle" color={Colors.error} />
+              <MonthlyItem label="نمو القطيع" value={`${western(stats.monthly.herdGrowth)}%`} icon="trending-up" color={Colors.info} />
             </View>
             {stats.monthly.mortalityRate > 0 && (
               <View style={styles.mortalityRow}>
                 <Ionicons name="warning" size={16} color={Colors.warning} />
                 <Text style={styles.mortalityText}>
-                  معدل النفوق: {stats.monthly.mortalityRate.toFixed(1)}%
+                  معدل النفوق: {western(stats.monthly.mortalityRate.toFixed(1))}%
                 </Text>
               </View>
             )}
@@ -175,10 +181,10 @@ export default function DashboardScreen() {
       <View style={styles.section}>
         <SectionHeader title="إجراءات سريعة" />
         <View style={styles.actionsGrid}>
-          <QuickAction icon="add-circle" label="إضافة حيوان" color={Colors.primary} />
-          <QuickAction icon="medkit" label="سجل صحي" color={Colors.success} />
-          <QuickAction icon="cash" label="تسجيل بيع" color={Colors.info} />
-          <QuickAction icon="nutrition" label="تغذية" color={Colors.warning} />
+          <QuickAction icon="add-circle" label="إضافة حيوان" color={Colors.primary} onPress={() => router.push('/goats/add')} />
+          <QuickAction icon="medkit" label="سجل صحي" color={Colors.success} onPress={() => router.push('/(tabs)/health')} />
+          <QuickAction icon="cash" label="تسجيل بيع" color={Colors.info} onPress={() => router.push('/(tabs)/sales')} />
+          <QuickAction icon="nutrition" label="تغذية" color={Colors.warning} onPress={() => router.push('/feeds')} />
         </View>
       </View>
 
@@ -200,9 +206,9 @@ function MonthlyItem({ label, value, icon, color }: { label: string; value: stri
   );
 }
 
-function QuickAction({ icon, label, color }: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }) {
+function QuickAction({ icon, label, color, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string; onPress?: () => void }) {
   return (
-    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7} onPress={onPress}>
       <View style={[styles.quickActionIcon, { backgroundColor: color + '12' }]}>
         <Ionicons name={icon} size={26} color={color} />
       </View>
@@ -211,11 +217,7 @@ function QuickAction({ icon, label, color }: { icon: keyof typeof Ionicons.glyph
   );
 }
 
-function formatCurrency(value: number): string {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-  return value.toFixed(0);
-}
+// formatCurrency imported from @/lib/formatters
 
 // ─── Styles ──────────────────────────────────────────────
 const styles = StyleSheet.create({

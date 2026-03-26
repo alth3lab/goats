@@ -50,27 +50,27 @@ export default function MoreScreen() {
     {
       title: 'إدارة المزرعة',
       items: [
-        { icon: 'nutrition', label: 'الأعلاف', subtitle: 'إدارة المخزون والتغذية', color: Colors.warning, onPress: () => {} },
-        { icon: 'git-merge', label: 'التربية', subtitle: 'متابعة التكاثر والحمل', color: Colors.female, onPress: () => {} },
-        { icon: 'home', label: 'الحظائر', subtitle: 'إدارة الحظائر والسعة', color: Colors.info, onPress: () => {} },
-        { icon: 'people', label: 'الملاك', subtitle: 'إدارة ملاك الحيوانات', color: Colors.secondary, onPress: () => {} },
-        { icon: 'cube', label: 'المخزون', subtitle: 'الأدوية والمستلزمات', color: Colors.primary, onPress: () => {} },
-        { icon: 'wallet', label: 'المصروفات', subtitle: 'تتبع المصاريف', color: Colors.error, onPress: () => {} },
+        { icon: 'nutrition', label: 'الأعلاف', subtitle: 'إدارة المخزون والتغذية', color: Colors.warning, onPress: () => router.push('/feeds') },
+        { icon: 'git-merge', label: 'التربية', subtitle: 'متابعة التكاثر والحمل', color: Colors.female, onPress: () => router.push('/breeding') },
+        { icon: 'home', label: 'الحظائر', subtitle: 'إدارة الحظائر والسعة', color: Colors.info, onPress: () => router.push('/pens') },
+        { icon: 'people', label: 'الملاك', subtitle: 'إدارة ملاك الحيوانات', color: Colors.secondary, onPress: () => router.push('/owners') },
+        { icon: 'cube', label: 'المخزون', subtitle: 'الأدوية والمستلزمات', color: Colors.primary, onPress: () => router.push('/inventory') },
+        { icon: 'wallet', label: 'المصروفات', subtitle: 'تتبع المصاريف', color: Colors.error, onPress: () => router.push('/expenses') },
       ],
     },
     {
       title: 'أدوات',
       items: [
-        { icon: 'bar-chart', label: 'التقارير', subtitle: 'تقارير وإحصائيات', color: Colors.info, onPress: () => {} },
-        { icon: 'calendar', label: 'التقويم', subtitle: 'المواعيد والتذكيرات', color: Colors.success, onPress: () => {} },
-        { icon: 'chatbubble-ellipses', label: 'مساعد AI', subtitle: 'استشارات ذكية', color: '#9C27B0', onPress: () => {} },
+        { icon: 'bar-chart', label: 'التقارير', subtitle: 'تقارير وإحصائيات', color: Colors.info, onPress: () => router.push('/reports') },
+        { icon: 'calendar', label: 'التقويم', subtitle: 'المواعيد والتذكيرات', color: Colors.success, onPress: () => router.push('/calendar') },
+        { icon: 'time', label: 'سجل النشاط', subtitle: 'متابعة العمليات', color: '#9C27B0', onPress: () => router.push('/activities') },
       ],
     },
     {
       title: 'الحساب',
       items: [
         { icon: 'business', label: 'تبديل المزرعة', subtitle: farm?.nameAr || farm?.name || '—', color: Colors.primary, onPress: handleSwitchFarm },
-        { icon: 'settings', label: 'الإعدادات', subtitle: 'إعدادات التطبيق', color: Colors.textSecondary, onPress: () => {} },
+        { icon: 'settings', label: 'الإعدادات', subtitle: 'إعدادات التطبيق', color: Colors.textSecondary, onPress: () => router.push('/settings') },
         { icon: 'log-out', label: 'تسجيل الخروج', subtitle: '', color: Colors.error, onPress: handleLogout },
       ],
     },

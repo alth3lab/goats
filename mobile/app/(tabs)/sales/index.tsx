@@ -11,9 +11,14 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { salesApi } from '@/lib/api';
+import { salesApi, resolveGoatByTag } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows, PaymentStatusLabels } from '@/lib/theme';
+import { formatDate, formatNumber } from '@/lib/formatters';
+import { useToast } from '@/lib/toast';
+import { SearchBar } from '@/components/SearchBar';
+import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
 import type { Sale } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,6 +32,9 @@ export default function SalesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addVisible, setAddVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const { showToast } = useToast();
+  const { can } = useAuth();
 
   // Add form
   const [formGoatTag, setFormGoatTag] = useState('');
@@ -42,8 +50,9 @@ export default function SalesScreen() {
     try {
       const data = await salesApi.list();
       setSales(data as unknown as Sale[]);
-    } catch {
-      // Silent
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل تحميل المبيعات';
+      showToast('error', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -59,14 +68,27 @@ export default function SalesScreen() {
   const totalPending = totalRevenue - totalCollected;
 
   const handleAdd = async () => {
-    if (!formGoatTag.trim() || !formBuyer.trim() || !formPrice) {
-      Alert.alert('خطأ', 'رقم الحيوان واسم المشتري والسعر مطلوبة');
-      return;
+    if (!validateRequired(formGoatTag, 'رقم الحيوان')) return;
+    if (!validateRequired(formBuyer, 'اسم المشتري')) return;
+    const price = validateNumber(formPrice, 'السعر', { required: true, min: 0.01 });
+    if (price === null) return;
+    if (!validateDate(formDate, 'التاريخ', { required: true })) return;
+    if (formPaid) {
+      const paid = validateNumber(formPaid, 'المبلغ المدفوع', { min: 0, max: price as number });
+      if (paid === null) return;
     }
     setSubmitting(true);
     try {
+      // Resolve tag ID to goat UUID
+      const goatId = await resolveGoatByTag(formGoatTag);
+      if (!goatId) {
+        Alert.alert('خطأ', 'لم يتم العثور على حيوان بهذا الرقم');
+        setSubmitting(false);
+        return;
+      }
+
       const body: Record<string, unknown> = {
-        goatTagId: formGoatTag.trim(),
+        goatId,
         buyerName: formBuyer.trim(),
         salePrice: parseFloat(formPrice),
         date: formDate,
@@ -121,7 +143,7 @@ export default function SalesScreen() {
           <View style={styles.saleDetail}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.saleDetailText}>
-              {new Date(item.date).toLocaleDateString('ar-SA')}
+              {formatDate(item.date)}
             </Text>
           </View>
         </View>
@@ -129,13 +151,13 @@ export default function SalesScreen() {
         <View style={styles.salePriceRow}>
           <View>
             <Text style={styles.priceLabel}>سعر البيع</Text>
-            <Text style={styles.priceValue}>{item.salePrice?.toLocaleString()}</Text>
+            <Text style={styles.priceValue}>{formatNumber(item.salePrice)}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View>
             <Text style={styles.priceLabel}>المدفوع</Text>
             <Text style={[styles.priceValue, { color: Colors.success }]}>
-              {(item.totalPaid || 0).toLocaleString()}
+              {formatNumber(item.totalPaid || 0)}
             </Text>
           </View>
           {item.remaining > 0 && (
@@ -144,7 +166,7 @@ export default function SalesScreen() {
               <View>
                 <Text style={styles.priceLabel}>المتبقي</Text>
                 <Text style={[styles.priceValue, { color: Colors.error }]}>
-                  {item.remaining.toLocaleString()}
+                  {formatNumber(item.remaining)}
                 </Text>
               </View>
             </>
@@ -161,28 +183,30 @@ export default function SalesScreen() {
       {/* Summary */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{totalRevenue.toLocaleString()}</Text>
+          <Text style={styles.summaryValue}>{formatNumber(totalRevenue)}</Text>
           <Text style={styles.summaryLabel}>إجمالي المبيعات</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryValue, { color: Colors.success }]}>
-            {totalCollected.toLocaleString()}
+            {formatNumber(totalCollected)}
           </Text>
           <Text style={styles.summaryLabel}>المحصّل</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryValue, { color: Colors.error }]}>
-            {totalPending.toLocaleString()}
+            {formatNumber(totalPending)}
           </Text>
           <Text style={styles.summaryLabel}>المعلّق</Text>
         </View>
       </View>
 
+      <SearchBar value={search} onChangeText={setSearch} placeholder="بحث بالمشتري أو الرقم..." />
+
       {/* List */}
       <FlatList
-        data={sales}
+        data={search.trim() ? sales.filter(s => s.buyerName?.toLowerCase().includes(search.toLowerCase()) || s.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || s.buyerPhone?.includes(search)) : sales}
         renderItem={renderSale}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -201,13 +225,15 @@ export default function SalesScreen() {
       />
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setAddVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      {can('__owner_admin__') && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setAddVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       {/* Add Modal */}
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
@@ -338,7 +364,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 24,
-    left: 24,
+    start: 24,
     width: 56,
     height: 56,
     borderRadius: 28,

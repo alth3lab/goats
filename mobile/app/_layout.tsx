@@ -1,11 +1,15 @@
+import '@/lib/polyfills';
 import React from 'react';
 import { View, Text, StyleSheet, I18nManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/lib/auth';
+import { ToastProvider } from '@/lib/toast';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { usePushNotifications } from '@/lib/usePushNotifications';
 import { Colors } from '@/lib/theme';
 
-// Force RTL for Arabic — only if NOT already RTL (prevents infinite reload loop)
+// Force RTL for Arabic — takes effect after app restart
 if (!I18nManager.isRTL) {
   I18nManager.allowRTL(true);
   I18nManager.forceRTL(true);
@@ -15,16 +19,28 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <StatusBar style="light" backgroundColor={Colors.primaryDark} />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
-            animation: 'default',
-          }}
-        />
+        <ToastProvider>
+          <StatusBar style="light" backgroundColor={Colors.primaryDark} />
+          <OfflineBanner />
+          <AppContent />
+        </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>
+  );
+}
+
+function AppContent() {
+  // Register push notifications (runs once)
+  usePushNotifications();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.background },
+        animation: 'default',
+      }}
+    />
   );
 }
 

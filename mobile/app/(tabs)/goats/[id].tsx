@@ -16,6 +16,7 @@ import {
   Colors, Spacing, Radius, Typography, Shadows,
   StatusColors, StatusLabels, GenderLabels, HealthTypeLabels,
 } from '@/lib/theme';
+import { formatDate, western } from '@/lib/formatters';
 import type { Goat, HealthRecord } from '@/types';
 
 export default function GoatDetailScreen() {
@@ -101,7 +102,7 @@ export default function GoatDetailScreen() {
           <View style={styles.pregnancyBanner}>
             <Ionicons name="heart" size={16} color={Colors.female} />
             <Text style={styles.pregnancyText}>
-              حامل {goat.dueDate ? `— الموعد المتوقع: ${new Date(goat.dueDate).toLocaleDateString('ar-SA')}` : ''}
+              حامل {goat.dueDate ? `— الموعد المتوقع: ${formatDate(goat.dueDate)}` : ''}
             </Text>
           </View>
         )}
@@ -115,8 +116,8 @@ export default function GoatDetailScreen() {
           <InfoRow icon="layers" label="النوع" value={goat.breed?.type?.nameAr || '—'} />
           <InfoRow icon="home" label="الحظيرة" value={goat.pen?.nameAr || '—'} />
           <InfoRow icon="person" label="المالك" value={goat.owner?.name || '—'} />
-          <InfoRow icon="fitness" label="الوزن" value={goat.weight ? `${goat.weight} كغ` : '—'} />
-          <InfoRow icon="calendar" label="تاريخ الميلاد" value={goat.birthDate ? new Date(goat.birthDate).toLocaleDateString('ar-SA') : '—'} />
+          <InfoRow icon="fitness" label="الوزن" value={goat.weight ? `${western(goat.weight)} كغ` : '—'} />
+          <InfoRow icon="calendar" label="تاريخ الميلاد" value={goat.birthDate ? formatDate(goat.birthDate) : '—'} />
         </View>
       </View>
 
@@ -157,7 +158,7 @@ export default function GoatDetailScreen() {
               <View style={styles.healthContent}>
                 <Text style={styles.healthType}>{HealthTypeLabels[record.type] || record.type}</Text>
                 <Text style={styles.healthDate}>
-                  {new Date(record.date).toLocaleDateString('ar-SA')}
+                  {formatDate(record.date)}
                   {record.veterinarian ? ` — ${record.veterinarian}` : ''}
                 </Text>
                 {record.description && (

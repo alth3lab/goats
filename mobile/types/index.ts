@@ -31,6 +31,7 @@ export interface Goat {
   dueDate?: string;
   age?: GoatAge;
   thumbnail?: string;
+  imageUrl?: string;
 }
 
 // ─── Health Types ────────────────────────────────────────
@@ -198,6 +199,7 @@ export interface AnimalType {
 export interface Pen {
   id: string;
   nameAr: string;
+  type?: string;
   capacity?: number;
   currentCount?: number;
 }
@@ -206,4 +208,101 @@ export interface Owner {
   id: string;
   name: string;
   phone?: string;
+  idNumber?: string;
+  address?: string;
+  notes?: string;
+  isActive?: boolean;
+  activeGoats?: number;
+  totalExpenses?: number;
+  totalSales?: number;
+}
+
+// ─── Breeding Types ──────────────────────────────────────
+export type PregnancyStatus = 'MATED' | 'PREGNANT' | 'DELIVERED' | 'FAILED';
+
+export interface Breeding {
+  id: string;
+  motherId: string;
+  fatherId?: string;
+  matingDate: string;
+  pregnancyStatus: PregnancyStatus;
+  dueDate?: string;
+  birthDate?: string;
+  numberOfKids?: number;
+  notes?: string;
+  mother?: { tagId: string; name?: string };
+  father?: { tagId: string; name?: string };
+  births?: Array<{ id: string; kidId?: string; birthDate: string }>;
+}
+
+// ─── Expense Types ───────────────────────────────────────
+export type ExpenseCategory = 'FEED' | 'MEDICINE' | 'VETERINARY' | 'EQUIPMENT' | 'LABOR' | 'UTILITIES' | 'MAINTENANCE' | 'OTHER';
+
+export interface Expense {
+  id: string;
+  date: string;
+  category: ExpenseCategory;
+  description: string;
+  amount: number;
+  paymentMethod?: string;
+  notes?: string;
+  ownerId?: string;
+  owner?: { id: string; name: string };
+}
+
+// ─── Calendar Types ──────────────────────────────────────
+export type EventType = 'BIRTH' | 'VACCINATION' | 'DEWORMING' | 'CHECKUP' | 'BREEDING' | 'WEANING' | 'SALE' | 'PURCHASE' | 'MAINTENANCE' | 'OTHER';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  eventType: EventType;
+  date: string;
+  endDate?: string;
+  isCompleted: boolean;
+  goatId?: string;
+  breedingId?: string;
+  reminder?: boolean;
+  reminderDays?: number;
+}
+
+// ─── Inventory Types ─────────────────────────────────────
+export interface InventoryItem {
+  id: string;
+  name: string;
+  nameAr?: string;
+  category: string;
+  currentStock: number;
+  unit?: string;
+  minStock?: number;
+  unitPrice?: number;
+  supplier?: string;
+  notes?: string;
+  transactions?: Array<{ id: string; type: string; quantity: number; date: string; notes?: string }>;
+}
+
+// ─── Activity Types ──────────────────────────────────────
+export interface Activity {
+  id: string;
+  action: string;
+  entity: string;
+  entityId?: string;
+  description?: string;
+  createdAt: string;
+  user?: { fullName: string; username: string };
+}
+
+// ─── Settings Types ──────────────────────────────────────
+export interface FarmSettings {
+  farmName: string;
+  farmNameAr: string;
+  phone?: string;
+  address?: string;
+  currency: string;
+  notifications?: boolean;
+  alertPenCapacityPercent?: number;
+  alertDeathCount?: number;
+  alertDeathWindowDays?: number;
+  alertBreedingOverdueDays?: number;
 }

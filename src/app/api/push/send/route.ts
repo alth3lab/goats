@@ -44,7 +44,11 @@ export async function POST(request: NextRequest) {
         where: { farmId: authData.farmId }
       })
 
-      if (subscriptions.length === 0) {
+      const expoTokenCount = await prisma.expoPushToken.count({
+        where: { farmId: authData.farmId }
+      })
+
+      if (subscriptions.length === 0 && expoTokenCount === 0) {
         return NextResponse.json({ sent: 0, message: 'لا يوجد مشتركون في الإشعارات' })
       }
 
@@ -110,11 +114,73 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      // ── Send to mobile devices via Expo Push API ──
+      let expoSent = 0
+      let expoFailed = 0
+      const expiredTokenIds: string[] = []
+
+      const expoTokens = await prisma.expoPushToken.findMany({
+        where: { farmId: authData.farmId }
+      })
+
+      if (expoTokens.length > 0) {
+        const toSend = alertsToSend.slice(0, 3)
+        const messages = expoTokens.flatMap(t =>
+          toSend.map(alert => {
+            const icon = typeIcons[alert.type] || '🔔'
+            return {
+              to: t.token,
+              title: `${icon} ${alert.title}`,
+              body: alert.message,
+              data: { url: getAlertUrl(alert.type) },
+              sound: 'default' as const,
+              _tokenId: t.id,
+            }
+          })
+        )
+
+        // Send in batches of 100 (Expo limit)
+        for (let i = 0; i < messages.length; i += 100) {
+          const batch = messages.slice(i, i + 100)
+          try {
+            const res = await fetch('https://exp.host/--/api/v2/push/send', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify(batch.map(({ _tokenId, ...msg }) => msg)),
+            })
+            const result = await res.json()
+            const tickets = result.data || []
+            for (let j = 0; j < tickets.length; j++) {
+              if (tickets[j].status === 'ok') {
+                expoSent++
+              } else {
+                expoFailed++
+                if (tickets[j].details?.error === 'DeviceNotRegistered') {
+                  expiredTokenIds.push(batch[j]._tokenId)
+                }
+              }
+            }
+          } catch {
+            expoFailed += batch.length
+          }
+        }
+
+        // Cleanup expired Expo tokens
+        if (expiredTokenIds.length > 0) {
+          await prisma.expoPushToken.deleteMany({
+            where: { id: { in: expiredTokenIds } }
+          })
+        }
+      }
+
       return NextResponse.json({
-        sent,
-        failed,
-        cleaned: expiredEndpoints.length,
-        subscribers: subscriptions.length,
+        sent: sent + expoSent,
+        failed: failed + expoFailed,
+        cleaned: expiredEndpoints.length + expiredTokenIds.length,
+        subscribers: subscriptions.length + expoTokens.length,
         alertsProcessed: alertsToSend.length,
       })
     })

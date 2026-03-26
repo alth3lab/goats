@@ -76,7 +76,7 @@ export function Button({
         <ActivityIndicator size="small" color={textColor} />
       ) : (
         <View style={styles.buttonInner}>
-          {icon && <Ionicons name={icon} size={fontSize + 3} color={textColor} style={{ marginLeft: 6 }} />}
+          {icon && <Ionicons name={icon} size={fontSize + 3} color={textColor} style={{ marginStart: 6 }} />}
           <Text style={[styles.buttonText, { color: textColor, fontSize }]}>{title}</Text>
         </View>
       )}
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
   },
   inputIcon: {
-    marginLeft: Spacing.sm,
+    marginStart: Spacing.sm,
   },
   input: {
     flex: 1,

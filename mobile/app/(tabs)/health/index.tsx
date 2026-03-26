@@ -12,9 +12,14 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { healthApi, goatsApi } from '@/lib/api';
+import { healthApi, goatsApi, resolveGoatByTag } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input, SectionHeader } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows, HealthTypeLabels } from '@/lib/theme';
+import { formatDate, western } from '@/lib/formatters';
+import { useToast } from '@/lib/toast';
+import { SearchBar } from '@/components/SearchBar';
+import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
 import type { HealthRecord } from '@/types';
 
 const HEALTH_TYPES = ['VACCINATION', 'DEWORMING', 'TREATMENT', 'CHECKUP', 'SURGERY'] as const;
@@ -38,6 +43,9 @@ export default function HealthScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addVisible, setAddVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const { showToast } = useToast();
+  const { can } = useAuth();
 
   // Add form state
   const [formGoatTag, setFormGoatTag] = useState('');
@@ -52,8 +60,9 @@ export default function HealthScreen() {
     try {
       const data = await healthApi.list();
       setRecords(data as unknown as HealthRecord[]);
-    } catch {
-      // Silent fail
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل تحميل السجلات الصحية';
+      showToast('error', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,18 +74,28 @@ export default function HealthScreen() {
   }, [fetchRecords]);
 
   const handleAdd = async () => {
-    if (!formGoatTag.trim()) {
-      Alert.alert('خطأ', 'رقم الحيوان مطلوب');
-      return;
+    if (!validateRequired(formGoatTag, 'رقم الحيوان')) return;
+    if (!validateDate(formDate, 'التاريخ', { required: true })) return;
+    if (formCost) {
+      const c = validateNumber(formCost, 'التكلفة', { min: 0 });
+      if (c === null) return;
     }
     setSubmitting(true);
     try {
+      // Resolve tag ID to goat UUID
+      const goatId = await resolveGoatByTag(formGoatTag);
+      if (!goatId) {
+        Alert.alert('خطأ', 'لم يتم العثور على حيوان بهذا الرقم');
+        setSubmitting(false);
+        return;
+      }
+
       const body: Record<string, unknown> = {
-        goatTagId: formGoatTag.trim(),
+        goatId,
         type: formType,
         date: formDate,
+        description: formDescription.trim() || formType,
       };
-      if (formDescription.trim()) body.description = formDescription.trim();
       if (formVet.trim()) body.veterinarian = formVet.trim();
       if (formCost) body.cost = parseFloat(formCost);
 
@@ -116,7 +135,7 @@ export default function HealthScreen() {
             <Text style={styles.recordTag}>{item.goat?.tagId || '—'}</Text>
           </View>
           <Text style={styles.recordDate}>
-            {new Date(item.date).toLocaleDateString('ar-SA')}
+            {formatDate(item.date)}
             {item.veterinarian ? ` — د. ${item.veterinarian}` : ''}
           </Text>
           {item.description && (
@@ -143,16 +162,18 @@ export default function HealthScreen() {
           return (
             <View key={type} style={styles.summaryItem}>
               <Ionicons name={TYPE_ICONS[type]} size={18} color={TYPE_COLORS[type]} />
-              <Text style={styles.summaryCount}>{count}</Text>
+              <Text style={styles.summaryCount}>{western(count)}</Text>
               <Text style={styles.summaryLabel}>{HealthTypeLabels[type]}</Text>
             </View>
           );
         })}
       </View>
 
+      <SearchBar value={search} onChangeText={setSearch} placeholder="بحث بالرقم أو الوصف..." />
+
       {/* Records List */}
       <FlatList
-        data={records}
+        data={search.trim() ? records.filter(r => r.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || r.description?.toLowerCase().includes(search.toLowerCase()) || r.veterinarian?.toLowerCase().includes(search.toLowerCase())) : records}
         renderItem={renderRecord}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -171,13 +192,15 @@ export default function HealthScreen() {
       />
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setAddVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      {can('__owner_admin__') && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setAddVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       {/* Add Modal */}
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
@@ -350,7 +373,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 24,
-    left: 24,
+    start: 24,
     width: 56,
     height: 56,
     borderRadius: 28,
