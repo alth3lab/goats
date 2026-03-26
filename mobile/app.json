@@ -18,12 +18,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.wabrwsuf.app",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "jsEngine": "hermes",
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
         "CFBundleDevelopmentRegion": "ar",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
