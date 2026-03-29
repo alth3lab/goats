@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { goatsApi, healthApi } from '@/lib/api';
 import { LoadingScreen, Button, SectionHeader, ConfirmDialog } from '@/components/ui';
@@ -36,8 +36,9 @@ export default function GoatDetailScreen() {
       ]);
       setGoat(goatData as unknown as Goat);
       setHealthRecords(healthData as unknown as HealthRecord[]);
-    } catch {
-      Alert.alert('خطأ', 'لم يتم العثور على الحيوان');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'لم يتم العثور على الحيوان';
+      Alert.alert('خطأ', msg);
       router.back();
     } finally {
       setLoading(false);
@@ -45,16 +46,19 @@ export default function GoatDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   const handleDelete = async () => {
     try {
       await goatsApi.delete(id!);
       router.back();
-    } catch {
-      Alert.alert('خطأ', 'فشل حذف الحيوان');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل حذف الحيوان';
+      Alert.alert('خطأ', msg);
     }
     setDeleteVisible(false);
   };
@@ -179,7 +183,7 @@ export default function GoatDetailScreen() {
           title="تعديل"
           icon="create-outline"
           variant="outline"
-          onPress={() => {}}
+          onPress={() => router.push({ pathname: '/(tabs)/goats/edit', params: { id: goat.id } })}
           style={{ flex: 1 }}
         />
         <Button

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Modal,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { inventoryApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -68,12 +70,16 @@ export default function InventoryScreen() {
     }
   }, [category]);
 
-  useEffect(() => {
-    setLoading(true);
-    fetchItems();
-  }, [fetchItems]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchItems();
+    }, [fetchItems])
+  );
 
-  const lowStockCount = items.filter(i => i.minStock && i.currentStock <= i.minStock).length;
+  const lowStockCount = useMemo(() =>
+    items.filter(i => i.minStock && i.currentStock <= i.minStock).length
+  , [items]);
 
   const handleAdd = async () => {
     if (!validateRequired(formName, 'اسم الصنف')) return;
@@ -114,7 +120,7 @@ export default function InventoryScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: InventoryItem }) => {
+  const renderItem = useCallback(({ item }: { item: InventoryItem }) => {
     const isLow = item.minStock !== undefined && item.minStock !== null && item.currentStock <= item.minStock;
     return (
       <View style={styles.card}>
@@ -170,7 +176,11 @@ export default function InventoryScreen() {
         )}
       </View>
     );
-  };
+  }, []);
+
+  const filteredItems = useMemo(() =>
+    search.trim() ? items.filter(i => (i.nameAr || i.name)?.toLowerCase().includes(search.toLowerCase()) || i.supplier?.toLowerCase().includes(search.toLowerCase())) : items
+  , [search, items]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -203,10 +213,14 @@ export default function InventoryScreen() {
         <SearchBar value={search} onChangeText={setSearch} placeholder="بحث بالاسم أو المورد..." />
 
         <FlatList
-          data={search.trim() ? items.filter(i => (i.nameAr || i.name)?.toLowerCase().includes(search.toLowerCase()) || i.supplier?.toLowerCase().includes(search.toLowerCase())) : items}
+          data={filteredItems}
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchItems(); }} colors={[Colors.primary]} />}
           ListEmptyComponent={
             <EmptyState icon="cube" title="لا يوجد أصناف" message="أضف أول صنف في المخزون" action={{ title: 'إضافة صنف', onPress: () => setAddVisible(true) }} />
@@ -221,6 +235,7 @@ export default function InventoryScreen() {
         )}
 
         <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setAddVisible(false)}>
               <Text style={styles.modalCancel}>إلغاء</Text>
@@ -254,6 +269,7 @@ export default function InventoryScreen() {
             <Button title="إضافة الصنف" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
             <View style={{ height: 40 }} />
           </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </>

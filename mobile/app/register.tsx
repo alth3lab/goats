@@ -50,6 +50,10 @@ export default function RegisterScreen() {
       setError('يرجى إدخال البريد الإلكتروني');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('صيغة البريد الإلكتروني غير صحيحة');
+      return;
+    }
     if (!username.trim()) {
       setError('يرجى إدخال اسم المستخدم');
       return;

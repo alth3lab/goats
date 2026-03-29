@@ -1,4 +1,4 @@
-import { getToken, getFarmId } from './storage';
+import { getToken, getFarmId, removeToken } from './storage';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -7,18 +7,64 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 // Change this to your deployed API URL
 const API_BASE = 'https://goat.suhail.cc';
 
+// ─── Auth Event Bus (for 401 auto-logout) ────────────────
+type AuthListener = () => void;
+const authListeners = new Set<AuthListener>();
+
+/** Subscribe to forced-logout events (called when API returns 401). */
+export function onAuthExpired(listener: AuthListener): () => void {
+  authListeners.add(listener);
+  return () => { authListeners.delete(listener); };
+}
+
+function notifyAuthExpired() {
+  authListeners.forEach((fn) => fn());
+}
+
+// ─── JWT Helpers ─────────────────────────────────────────
+/** Decode the payload of a JWT without verifying signature. */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    // Base64-url → standard Base64
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/** Returns true if the token will expire within `marginSec` seconds. */
+function isTokenExpiringSoon(token: string, marginSec = 120): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return payload.exp - nowSec < marginSec;
+}
+
 // ─── HTTP Client ─────────────────────────────────────────
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: Record<string, unknown>;
   params?: Record<string, string>;
+  /** Skip the 401 auto-logout (used internally by auth endpoints). */
+  skipAuthCheck?: boolean;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, params } = options;
+  const { method = 'GET', body, params, skipAuthCheck } = options;
 
   const token = await getToken();
   const farmId = await getFarmId();
+
+  // Proactive expiry check — if token expires within 2 minutes, force logout
+  if (token && !skipAuthCheck && isTokenExpiringSoon(token)) {
+    await removeToken();
+    notifyAuthExpired();
+    throw new ApiError(401, 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+  }
 
   let url = `${API_BASE}/api${endpoint}`;
 
@@ -53,6 +99,13 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   } catch (error) {
     const message = error instanceof Error ? error.message : 'تعذر الاتصال بالخادم';
     throw new ApiError(0, message);
+  }
+
+  // 401 interceptor — auto-logout on expired/invalid token
+  if (response.status === 401 && !skipAuthCheck) {
+    await removeToken();
+    notifyAuthExpired();
+    throw new ApiError(401, 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
   }
 
   if (!response.ok) {
@@ -130,7 +183,7 @@ export const statsApi = {
 
 // ─── Goats API ───────────────────────────────────────────
 export const goatsApi = {
-  list: (params?: { status?: string; page?: string; limit?: string; ownerId?: string }) =>
+  list: (params?: { status?: string; page?: string; limit?: string; ownerId?: string; search?: string }) =>
     request<{ data: Record<string, unknown>[]; total: number; page: number; limit: number }>(
       '/goats',
       { params }
@@ -144,6 +197,15 @@ export const goatsApi = {
 
   update: (id: string, data: Record<string, unknown>) =>
     request<Record<string, unknown>>(`/goats/${id}`, { method: 'PUT', body: data }),
+
+  updateParentage: (id: string, motherTagId?: string | null, fatherTagId?: string | null) =>
+    request<Record<string, unknown>>(`/goats/${id}/parentage`, {
+      method: 'PATCH',
+      body: {
+        motherTagId: motherTagId || null,
+        fatherTagId: fatherTagId || null,
+      },
+    }),
 
   delete: (id: string) =>
     request<void>(`/goats/${id}`, { method: 'DELETE' }),
@@ -211,8 +273,20 @@ export const feedsApi = {
 export const breedingApi = {
   list: () => request<Record<string, unknown>[]>('/breeding'),
 
+  get: (id: string) =>
+    request<Record<string, unknown>>(`/breeding/${id}`),
+
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/breeding', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/breeding/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/breeding/${id}`, { method: 'DELETE' }),
+
+  recordBirths: (id: string, data: { birthDate: string; kids: Array<{ tagId?: string; gender: string; weight?: number; status: string; notes?: string | null }> }) =>
+    request<Record<string, unknown>>(`/breeding/${id}/births`, { method: 'POST', body: data }),
 };
 
 // ─── Expenses API ────────────────────────────────────────
@@ -297,12 +371,22 @@ export const lookupApi = {
 // ─── Helpers ─────────────────────────────────────────────
 /**
  * Resolve a goat tag ID (e.g. "G-001") to its UUID.
- * Returns the UUID string or null if not found.
+ * Uses server-side search when available, falls back to a small paginated fetch.
  */
 export async function resolveGoatByTag(tagId: string): Promise<string | null> {
   const trimmed = tagId.trim();
   if (!trimmed) return null;
-  const result = await goatsApi.list({ limit: '500' });
+  try {
+    // Try server-side search first (single network call)
+    const result = await goatsApi.list({ search: trimmed, limit: '10' });
+    const goats = (result.data || []) as Array<{ id: string; tagId: string }>;
+    const exact = goats.find(g => g.tagId === trimmed);
+    if (exact) return exact.id;
+  } catch {
+    // Fallback if search param not supported
+  }
+  // Fallback: paginated fetch (limit to 200 instead of 500)
+  const result = await goatsApi.list({ limit: '200' });
   const goats = (result.data || []) as Array<{ id: string; tagId: string }>;
   const match = goats.find(g => g.tagId === trimmed);
   return match?.id ?? null;

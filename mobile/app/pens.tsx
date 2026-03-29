@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Modal,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { pensApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -51,9 +53,11 @@ export default function PensScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchPens();
-  }, [fetchPens]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPens();
+    }, [fetchPens])
+  );
 
   const handleAdd = async () => {
     if (!validateRequired(formName, 'اسم الحظيرة')) return;
@@ -82,7 +86,7 @@ export default function PensScreen() {
     }
   };
 
-  const renderPen = ({ item }: { item: Pen }) => {
+  const renderPen = useCallback(({ item }: { item: Pen }) => {
     const current = item.currentCount || 0;
     const capacity = item.capacity || 0;
     const usage = capacity > 0 ? (current / capacity) * 100 : 0;
@@ -133,12 +137,18 @@ export default function PensScreen() {
         </View>
       </View>
     );
-  };
+  }, []);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
-  const totalAnimals = pens.reduce((sum, p) => sum + (p.currentCount || 0), 0);
-  const totalCapacity = pens.reduce((sum, p) => sum + (p.capacity || 0), 0);
+  const { totalAnimals, totalCapacity } = useMemo(() => ({
+    totalAnimals: pens.reduce((sum, p) => sum + (p.currentCount || 0), 0),
+    totalCapacity: pens.reduce((sum, p) => sum + (p.capacity || 0), 0),
+  }), [pens]);
+
+  const filteredPens = useMemo(() =>
+    search.trim() ? pens.filter(p => p.nameAr?.toLowerCase().includes(search.toLowerCase()) || p.type?.toLowerCase().includes(search.toLowerCase())) : pens
+  , [search, pens]);
 
   return (
     <>
@@ -165,10 +175,14 @@ export default function PensScreen() {
         <SearchBar value={search} onChangeText={setSearch} placeholder="بحث باسم الحظيرة..." />
 
         <FlatList
-          data={search.trim() ? pens.filter(p => p.nameAr?.toLowerCase().includes(search.toLowerCase()) || p.type?.toLowerCase().includes(search.toLowerCase())) : pens}
+          data={filteredPens}
           renderItem={renderPen}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPens(); }} colors={[Colors.primary]} />}
           ListEmptyComponent={
             <EmptyState icon="home" title="لا يوجد حظائر" message="أضف أول حظيرة" action={{ title: 'إضافة حظيرة', onPress: () => setAddVisible(true) }} />
@@ -183,6 +197,7 @@ export default function PensScreen() {
         )}
 
         <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setAddVisible(false)}>
               <Text style={styles.modalCancel}>إلغاء</Text>
@@ -199,6 +214,7 @@ export default function PensScreen() {
             <Button title="إضافة الحظيرة" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
             <View style={{ height: 40 }} />
           </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </>

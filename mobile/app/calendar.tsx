@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Modal,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { calendarApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -80,15 +82,19 @@ export default function CalendarScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchEvents();
+    }, [fetchEvents])
+  );
 
-  const filteredEvents = (showCompleted ? events : events.filter(e => !e.isCompleted))
-    .filter(e => !search.trim() || e.title?.toLowerCase().includes(search.toLowerCase()) || e.description?.toLowerCase().includes(search.toLowerCase()));
+  const filteredEvents = useMemo(() =>
+    (showCompleted ? events : events.filter(e => !e.isCompleted))
+      .filter(e => !search.trim() || e.title?.toLowerCase().includes(search.toLowerCase()) || e.description?.toLowerCase().includes(search.toLowerCase()))
+  , [showCompleted, events, search]);
 
-  const upcomingCount = events.filter(e => !e.isCompleted).length;
-  const completedCount = events.filter(e => e.isCompleted).length;
+  const upcomingCount = useMemo(() => events.filter(e => !e.isCompleted).length, [events]);
+  const completedCount = useMemo(() => events.filter(e => e.isCompleted).length, [events]);
 
   const handleAdd = async () => {
     if (!validateRequired(formTitle, 'عنوان الحدث')) return;
@@ -117,7 +123,7 @@ export default function CalendarScreen() {
     }
   };
 
-  const renderEvent = ({ item }: { item: CalendarEvent }) => {
+  const renderEvent = useCallback(({ item }: { item: CalendarEvent }) => {
     const evColor = EVENT_COLORS[item.eventType] || Colors.textSecondary;
     const evIcon = EVENT_ICONS[item.eventType] || 'ellipsis-horizontal-circle';
     const eventDate = new Date(item.date);
@@ -159,7 +165,7 @@ export default function CalendarScreen() {
         </View>
       </View>
     );
-  };
+  }, []);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -192,6 +198,10 @@ export default function CalendarScreen() {
           renderItem={renderEvent}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEvents(); }} colors={[Colors.primary]} />}
           ListEmptyComponent={
             <EmptyState icon="calendar" title="لا يوجد مواعيد" message="أضف أول حدث في التقويم" action={{ title: 'إضافة حدث', onPress: () => setAddVisible(true) }} />
@@ -206,6 +216,7 @@ export default function CalendarScreen() {
         )}
 
         <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setAddVisible(false)}>
               <Text style={styles.modalCancel}>إلغاء</Text>
@@ -236,6 +247,7 @@ export default function CalendarScreen() {
             <Button title="إضافة الحدث" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
             <View style={{ height: 40 }} />
           </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </>

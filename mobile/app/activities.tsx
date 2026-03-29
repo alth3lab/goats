@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { activitiesApi } from '@/lib/api';
 import { LoadingScreen, EmptyState } from '@/components/ui';
@@ -88,9 +88,11 @@ export default function ActivitiesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchActivities();
+    }, [fetchActivities])
+  );
 
   const loadMore = () => {
     if (loadingMore || !hasMore) return;

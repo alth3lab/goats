@@ -37,6 +37,7 @@ function AppContent() {
     <Stack
       screenOptions={{
         headerShown: false,
+        headerBackTitle: '',
         contentStyle: { backgroundColor: Colors.background },
         animation: 'default',
       }}

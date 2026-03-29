@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authApi, ApiError } from './api';
+import { authApi, ApiError, onAuthExpired } from './api';
 import { getToken, setToken, removeToken, setFarmId } from './storage';
 import type { AuthUser, FarmInfo, UserFarm } from '@/types';
 
@@ -51,6 +51,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Listen for 401 events from the API layer and force-logout
+  useEffect(() => {
+    const unsubscribe = onAuthExpired(() => {
+      setUser(null);
+      setFarm(null);
+      setFarms([]);
+      setPermissions([]);
+    });
+    return unsubscribe;
+  }, []);
 
   const login = async (identifier: string, password: string) => {
     const data = await authApi.login(identifier, password);

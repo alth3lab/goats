@@ -9,6 +9,7 @@ export default function SalesLayout() {
         headerTintColor: '#fff',
         headerTitleStyle: { ...Typography.h4, color: '#fff' },
         headerTitleAlign: 'center',
+        headerBackTitle: '',
       }}
     >
       <Stack.Screen name="index" options={{ title: 'المبيعات' }} />

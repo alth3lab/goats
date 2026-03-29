@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { healthApi, goatsApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -69,9 +72,11 @@ export default function HealthScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchRecords();
+    }, [fetchRecords])
+  );
 
   const handleAdd = async () => {
     if (!validateRequired(formGoatTag, 'رقم الحيوان')) return;
@@ -120,7 +125,7 @@ export default function HealthScreen() {
     setFormCost('');
   };
 
-  const renderRecord = ({ item }: { item: HealthRecord }) => {
+  const renderRecord = useCallback(({ item }: { item: HealthRecord }) => {
     const typeColor = TYPE_COLORS[item.type] || Colors.textSecondary;
     const typeIcon = TYPE_ICONS[item.type] || 'medkit';
 
@@ -149,7 +154,15 @@ export default function HealthScreen() {
         ) : null}
       </View>
     );
-  };
+  }, []);
+
+  const filteredRecords = useMemo(() =>
+    search.trim() ? records.filter(r => r.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || r.description?.toLowerCase().includes(search.toLowerCase()) || r.veterinarian?.toLowerCase().includes(search.toLowerCase())) : records
+  , [search, records]);
+
+  const typeCounts = useMemo(() =>
+    Object.fromEntries(HEALTH_TYPES.map(type => [type, records.filter(r => r.type === type).length]))
+  , [records]) as Record<string, number>;
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -158,7 +171,7 @@ export default function HealthScreen() {
       {/* Summary Cards */}
       <View style={styles.summaryRow}>
         {HEALTH_TYPES.map(type => {
-          const count = records.filter(r => r.type === type).length;
+          const count = typeCounts[type] || 0;
           return (
             <View key={type} style={styles.summaryItem}>
               <Ionicons name={TYPE_ICONS[type]} size={18} color={TYPE_COLORS[type]} />
@@ -173,10 +186,14 @@ export default function HealthScreen() {
 
       {/* Records List */}
       <FlatList
-        data={search.trim() ? records.filter(r => r.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || r.description?.toLowerCase().includes(search.toLowerCase()) || r.veterinarian?.toLowerCase().includes(search.toLowerCase())) : records}
+        data={filteredRecords}
         renderItem={renderRecord}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRecords(); }} colors={[Colors.primary]} />
         }
@@ -204,6 +221,7 @@ export default function HealthScreen() {
 
       {/* Add Modal */}
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setAddVisible(false)}>
             <Text style={styles.modalCancel}>إلغاء</Text>
@@ -277,6 +295,7 @@ export default function HealthScreen() {
           />
           <View style={{ height: 40 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

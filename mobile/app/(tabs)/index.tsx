@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/lib/auth';
 import { statsApi, alertsApi } from '@/lib/api';
 import KPICard from '@/components/KPICard';
@@ -44,9 +44,11 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -182,9 +184,9 @@ export default function DashboardScreen() {
         <SectionHeader title="إجراءات سريعة" />
         <View style={styles.actionsGrid}>
           <QuickAction icon="add-circle" label="إضافة حيوان" color={Colors.primary} onPress={() => router.push('/goats/add')} />
+          <QuickAction icon="heart" label="التربية" color={Colors.female} onPress={() => router.push('/(tabs)/breeding' as any)} />
           <QuickAction icon="medkit" label="سجل صحي" color={Colors.success} onPress={() => router.push('/(tabs)/health')} />
           <QuickAction icon="cash" label="تسجيل بيع" color={Colors.info} onPress={() => router.push('/(tabs)/sales')} />
-          <QuickAction icon="nutrition" label="تغذية" color={Colors.warning} onPress={() => router.push('/feeds')} />
         </View>
       </View>
 

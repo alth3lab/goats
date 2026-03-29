@@ -51,7 +51,6 @@ export default function MoreScreen() {
       title: 'إدارة المزرعة',
       items: [
         { icon: 'nutrition', label: 'الأعلاف', subtitle: 'إدارة المخزون والتغذية', color: Colors.warning, onPress: () => router.push('/feeds') },
-        { icon: 'git-merge', label: 'التربية', subtitle: 'متابعة التكاثر والحمل', color: Colors.female, onPress: () => router.push('/breeding') },
         { icon: 'home', label: 'الحظائر', subtitle: 'إدارة الحظائر والسعة', color: Colors.info, onPress: () => router.push('/pens') },
         { icon: 'people', label: 'الملاك', subtitle: 'إدارة ملاك الحيوانات', color: Colors.secondary, onPress: () => router.push('/owners') },
         { icon: 'cube', label: 'المخزون', subtitle: 'الأدوية والمستلزمات', color: Colors.primary, onPress: () => router.push('/inventory') },

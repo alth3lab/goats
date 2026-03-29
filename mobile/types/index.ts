@@ -219,6 +219,18 @@ export interface Owner {
 
 // ─── Breeding Types ──────────────────────────────────────
 export type PregnancyStatus = 'MATED' | 'PREGNANT' | 'DELIVERED' | 'FAILED';
+export type BirthStatus = 'ALIVE' | 'STILLBORN' | 'DIED';
+
+export interface BirthRecord {
+  id: string;
+  kidTagId: string;
+  kidGoatId?: string;
+  gender: GoatGender;
+  weight?: number;
+  status: BirthStatus;
+  notes?: string;
+  kidGoat?: { tagId: string; name?: string };
+}
 
 export interface Breeding {
   id: string;
@@ -230,9 +242,9 @@ export interface Breeding {
   birthDate?: string;
   numberOfKids?: number;
   notes?: string;
-  mother?: { tagId: string; name?: string };
-  father?: { tagId: string; name?: string };
-  births?: Array<{ id: string; kidId?: string; birthDate: string }>;
+  mother?: { tagId: string; name?: string; breed?: { nameAr: string } };
+  father?: { tagId: string; name?: string; breed?: { nameAr: string } };
+  births?: BirthRecord[];
 }
 
 // ─── Expense Types ───────────────────────────────────────

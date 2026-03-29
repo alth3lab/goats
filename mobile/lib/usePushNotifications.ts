@@ -23,8 +23,8 @@ export interface PushNotificationState {
 export function usePushNotifications() {
   const [token, setToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const registerForPushNotifications = useCallback(async (): Promise<string | null> => {
     // Must be a physical device
@@ -78,12 +78,12 @@ export function usePushNotifications() {
     });
 
     // Listen for incoming notifications
-    notificationListener.current = Notifications.addNotificationReceivedListener(n => {
+    notificationListener.current = Notifications.addNotificationReceivedListener((n: Notifications.Notification) => {
       setNotification(n);
     });
 
     // Listen for notification taps (user interaction)
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(_response => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((_response: Notifications.NotificationResponse) => {
       // Could navigate to specific screen based on notification data
     });
 

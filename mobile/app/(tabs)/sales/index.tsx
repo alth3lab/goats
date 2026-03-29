@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   Modal,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { salesApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -59,13 +62,17 @@ export default function SalesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSales();
-  }, [fetchSales]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchSales();
+    }, [fetchSales])
+  );
 
-  const totalRevenue = sales.reduce((sum, s) => sum + (s.salePrice || 0), 0);
-  const totalCollected = sales.reduce((sum, s) => sum + (s.totalPaid || 0), 0);
-  const totalPending = totalRevenue - totalCollected;
+  const { totalRevenue, totalCollected, totalPending } = useMemo(() => {
+    const rev = sales.reduce((sum, s) => sum + (s.salePrice || 0), 0);
+    const col = sales.reduce((sum, s) => sum + (s.totalPaid || 0), 0);
+    return { totalRevenue: rev, totalCollected: col, totalPending: rev - col };
+  }, [sales]);
 
   const handleAdd = async () => {
     if (!validateRequired(formGoatTag, 'رقم الحيوان')) return;
@@ -119,7 +126,7 @@ export default function SalesScreen() {
     setFormNotes('');
   };
 
-  const renderSale = ({ item }: { item: Sale }) => {
+  const renderSale = useCallback(({ item }: { item: Sale }) => {
     const statusColor = STATUS_COLORS[item.paymentStatus] || Colors.textSecondary;
     return (
       <View style={styles.saleCard}>
@@ -174,7 +181,11 @@ export default function SalesScreen() {
         </View>
       </View>
     );
-  };
+  }, []);
+
+  const filteredSales = useMemo(() =>
+    search.trim() ? sales.filter(s => s.buyerName?.toLowerCase().includes(search.toLowerCase()) || s.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || s.buyerPhone?.includes(search)) : sales
+  , [search, sales]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -206,10 +217,14 @@ export default function SalesScreen() {
 
       {/* List */}
       <FlatList
-        data={search.trim() ? sales.filter(s => s.buyerName?.toLowerCase().includes(search.toLowerCase()) || s.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || s.buyerPhone?.includes(search)) : sales}
+        data={filteredSales}
         renderItem={renderSale}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSales(); }} colors={[Colors.primary]} />
         }
@@ -237,6 +252,7 @@ export default function SalesScreen() {
 
       {/* Add Modal */}
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setAddVisible(false)}>
             <Text style={styles.modalCancel}>إلغاء</Text>
@@ -256,6 +272,7 @@ export default function SalesScreen() {
           <Button title="تسجيل البيع" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
           <View style={{ height: 40 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

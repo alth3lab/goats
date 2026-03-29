@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { expensesApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -89,9 +91,11 @@ export default function ExpensesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [fetchExpenses]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchExpenses();
+    }, [fetchExpenses])
+  );
 
   const loadMore = () => {
     if (loadingMore || !hasMore) return;
@@ -101,12 +105,15 @@ export default function ExpensesScreen() {
     fetchExpenses(nextPage, true);
   };
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const categoryTotals = CATEGORIES.map(cat => ({
-    category: cat,
-    total: expenses.filter(e => e.category === cat).reduce((sum, e) => sum + (e.amount || 0), 0),
-    count: expenses.filter(e => e.category === cat).length,
-  })).filter(c => c.count > 0);
+  const { totalExpenses, categoryTotals } = useMemo(() => {
+    const total = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const cats = CATEGORIES.map(cat => ({
+      category: cat,
+      total: expenses.filter(e => e.category === cat).reduce((sum, e) => sum + (e.amount || 0), 0),
+      count: expenses.filter(e => e.category === cat).length,
+    })).filter(c => c.count > 0);
+    return { totalExpenses: total, categoryTotals: cats };
+  }, [expenses]);
 
   const handleAdd = async () => {
     if (!validateRequired(formDesc, 'الوصف')) return;
@@ -145,7 +152,7 @@ export default function ExpensesScreen() {
     setFormNotes('');
   };
 
-  const renderExpense = ({ item }: { item: Expense }) => {
+  const renderExpense = useCallback(({ item }: { item: Expense }) => {
     const catColor = CATEGORY_COLORS[item.category] || Colors.textSecondary;
     const catIcon = CATEGORY_ICONS[item.category] || 'ellipsis-horizontal';
     return (
@@ -166,7 +173,11 @@ export default function ExpensesScreen() {
         </View>
       </View>
     );
-  };
+  }, []);
+
+  const filteredExpenses = useMemo(() =>
+    search.trim() ? expenses.filter(e => e.description?.toLowerCase().includes(search.toLowerCase()) || e.notes?.toLowerCase().includes(search.toLowerCase())) : expenses
+  , [search, expenses]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -196,10 +207,14 @@ export default function ExpensesScreen() {
         <SearchBar value={search} onChangeText={setSearch} placeholder="بحث بالوصف أو الملاحظات..." />
 
         <FlatList
-          data={search.trim() ? expenses.filter(e => e.description?.toLowerCase().includes(search.toLowerCase()) || e.notes?.toLowerCase().includes(search.toLowerCase())) : expenses}
+          data={filteredExpenses}
           renderItem={renderExpense}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setPage(0); fetchExpenses(0); }} colors={[Colors.primary]} />}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
@@ -217,6 +232,7 @@ export default function ExpensesScreen() {
         )}
 
         <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setAddVisible(false)}>
               <Text style={styles.modalCancel}>إلغاء</Text>
@@ -248,6 +264,7 @@ export default function ExpensesScreen() {
             <Button title="إضافة المصروف" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
             <View style={{ height: 40 }} />
           </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </>

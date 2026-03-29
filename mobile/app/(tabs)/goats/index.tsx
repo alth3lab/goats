@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { goatsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -68,11 +68,13 @@ export default function GoatsListScreen() {
     }
   }, [statusFilter]);
 
-  useEffect(() => {
-    setLoading(true);
-    setPage(0);
-    fetchGoats(0);
-  }, [statusFilter, fetchGoats]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      setPage(0);
+      fetchGoats(0);
+    }, [statusFilter, fetchGoats])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -88,20 +90,20 @@ export default function GoatsListScreen() {
     fetchGoats(nextPage, true);
   };
 
-  const filteredGoats = search.trim()
+  const filteredGoats = useMemo(() => search.trim()
     ? goats.filter(g =>
         g.tagId.toLowerCase().includes(search.toLowerCase()) ||
         g.name?.toLowerCase().includes(search.toLowerCase()) ||
         g.breed?.nameAr.includes(search)
       )
-    : goats;
+    : goats, [search, goats]);
 
-  const renderGoat = ({ item }: { item: Goat }) => (
+  const renderGoat = useCallback(({ item }: { item: Goat }) => (
     <GoatCard
       goat={item}
       onPress={() => router.push(`/(tabs)/goats/${item.id}`)}
     />
-  );
+  ), [router]);
 
   return (
     <View style={styles.container}>
@@ -167,6 +169,10 @@ export default function GoatsListScreen() {
           renderItem={renderGoat}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
           }

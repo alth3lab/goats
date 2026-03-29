@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Modal,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ownersApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -52,9 +54,11 @@ export default function OwnersScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchOwners();
-  }, [fetchOwners]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchOwners();
+    }, [fetchOwners])
+  );
 
   const handleAdd = async () => {
     if (!validateRequired(formName, 'اسم المالك')) return;
@@ -84,7 +88,7 @@ export default function OwnersScreen() {
     }
   };
 
-  const renderOwner = ({ item }: { item: Owner }) => (
+  const renderOwner = useCallback(({ item }: { item: Owner }) => (
     <View style={styles.card}>
       <View style={styles.cardTop}>
         <View style={styles.ownerInfo}>
@@ -130,7 +134,11 @@ export default function OwnersScreen() {
         </View>
       )}
     </View>
-  );
+  ), []);
+
+  const filteredOwners = useMemo(() =>
+    search.trim() ? owners.filter(o => o.name?.toLowerCase().includes(search.toLowerCase()) || o.phone?.includes(search) || o.idNumber?.includes(search)) : owners
+  , [search, owners]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -146,10 +154,14 @@ export default function OwnersScreen() {
         <SearchBar value={search} onChangeText={setSearch} placeholder="بحث بالاسم أو الهاتف..." />
 
         <FlatList
-          data={search.trim() ? owners.filter(o => o.name?.toLowerCase().includes(search.toLowerCase()) || o.phone?.includes(search) || o.idNumber?.includes(search)) : owners}
+          data={filteredOwners}
           renderItem={renderOwner}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchOwners(); }} colors={[Colors.primary]} />}
           ListEmptyComponent={
             <EmptyState icon="people" title="لا يوجد ملاك" message="أضف أول مالك" action={{ title: 'إضافة مالك', onPress: () => setAddVisible(true) }} />
@@ -164,6 +176,7 @@ export default function OwnersScreen() {
         )}
 
         <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setAddVisible(false)}>
               <Text style={styles.modalCancel}>إلغاء</Text>
@@ -181,6 +194,7 @@ export default function OwnersScreen() {
             <Button title="إضافة المالك" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
             <View style={{ height: 40 }} />
           </ScrollView>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </>

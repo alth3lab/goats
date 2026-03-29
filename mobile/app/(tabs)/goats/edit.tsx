@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,26 +7,36 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Image,
+  TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { goatsApi, lookupApi } from '@/lib/api';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, LoadingScreen } from '@/components/ui';
+import DatePickerField from '@/components/DatePickerField';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
-import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
-import type { Breed, Pen, Owner } from '@/types';
-import { TouchableOpacity } from 'react-native';
+import { validateNumber, validateRequired } from '@/lib/validation';
+import type { Breed, Pen, Owner, Goat, GoatStatus } from '@/types';
+import { ApiError } from '@/lib/api';
 
-export default function AddGoatScreen() {
+const STATUS_OPTIONS: Array<{ value: GoatStatus; label: string }> = [
+  { value: 'ACTIVE', label: 'نشط' },
+  { value: 'SOLD', label: 'مباع' },
+  { value: 'DECEASED', label: 'نافق' },
+  { value: 'QUARANTINE', label: 'حجر' },
+];
+
+export default function EditGoatScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
 
-  // Form state
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [tagId, setTagId] = useState('');
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE');
+  const [status, setStatus] = useState<GoatStatus>('ACTIVE');
   const [birthDate, setBirthDate] = useState('');
   const [weight, setWeight] = useState('');
   const [breedId, setBreedId] = useState('');
@@ -34,147 +44,133 @@ export default function AddGoatScreen() {
   const [ownerId, setOwnerId] = useState('');
   const [motherTagId, setMotherTagId] = useState('');
   const [fatherTagId, setFatherTagId] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
-  // Lookup data
   const [breeds, setBreeds] = useState<Breed[]>([]);
   const [pens, setPens] = useState<Pen[]>([]);
   const [owners, setOwners] = useState<Owner[]>([]);
 
-  useEffect(() => {
-    Promise.all([
-      lookupApi.breeds().catch(() => []),
-      lookupApi.pens().catch(() => []),
-      lookupApi.owners().catch(() => []),
-    ]).then(([b, p, o]) => {
-      setBreeds(b as unknown as Breed[]);
-      setPens(p as unknown as Pen[]);
-      setOwners(o as unknown as Owner[]);
-    });
-  }, []);
-
-  const pickImage = async (source: 'camera' | 'gallery') => {
-    const opts: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    };
-
-    let result: ImagePicker.ImagePickerResult;
-    if (source === 'camera') {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert('تنبيه', 'يجب السماح بالوصول إلى الكاميرا');
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync(opts);
-    } else {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert('تنبيه', 'يجب السماح بالوصول إلى المعرض');
-        return;
-      }
-      result = await ImagePicker.launchImageLibraryAsync(opts);
-    }
-
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-    }
+  const fillForm = (goat: Goat) => {
+    setTagId(goat.tagId || '');
+    setName(goat.name || '');
+    setGender(goat.gender || 'MALE');
+    setStatus(goat.status || 'ACTIVE');
+    setBirthDate(goat.birthDate ? String(goat.birthDate).slice(0, 10) : '');
+    setWeight(goat.weight ? String(goat.weight) : '');
+    setBreedId(goat.breed?.id || '');
+    setPenId(goat.penId || '');
+    setOwnerId(goat.ownerId || goat.owner?.id || '');
+    setMotherTagId(goat.motherTagId || '');
+    setFatherTagId(goat.fatherTagId || '');
   };
 
-  const handleSubmit = async () => {
+  const fetchData = useCallback(async () => {
+    if (!id) {
+      Alert.alert('خطأ', 'معرّف الحيوان غير صالح');
+      router.back();
+      return;
+    }
+
+    try {
+      const [goatData, b, p, o] = await Promise.all([
+        goatsApi.get(id),
+        lookupApi.breeds().catch(() => []),
+        lookupApi.pens().catch(() => []),
+        lookupApi.owners().catch(() => []),
+      ]);
+
+      setBreeds(b as Breed[]);
+      setPens(p as Pen[]);
+      setOwners(o as Owner[]);
+      fillForm(goatData as unknown as Goat);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'تعذر تحميل بيانات الحيوان';
+      Alert.alert('خطأ', msg);
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async () => {
+    if (!id) {
+      Alert.alert('خطأ', 'معرّف الحيوان غير صالح');
+      return;
+    }
     if (!validateRequired(tagId, 'رقم الحيوان')) return;
     if (!breedId) {
       Alert.alert('خطأ', 'يجب اختيار السلالة');
       return;
     }
-    if (!validateDate(birthDate, 'تاريخ الميلاد', { required: true })) return;
-    if (weight) {
-      const w = validateNumber(weight, 'الوزن', { min: 0.1, max: 2000 });
-      if (w === null) return;
+    if (!birthDate) {
+      Alert.alert('خطأ', 'تاريخ الميلاد مطلوب');
+      return;
     }
 
-    setLoading(true);
+    const parsedWeight = validateNumber(weight, 'الوزن', { min: 0.1, max: 2000 });
+    if (parsedWeight === null) return;
+
+    setSaving(true);
     try {
-      const data: Record<string, unknown> = {
+      const payload: Record<string, unknown> = {
         tagId: tagId.trim(),
         gender,
-        birthDate,
+        status,
+        birthDate: new Date(birthDate).toISOString(),
         breedId,
-        status: 'ACTIVE',
+        name: name.trim() || null,
+        weight: parsedWeight === -1 ? null : parsedWeight,
+        penId: penId || null,
+        ownerId: ownerId || null,
       };
 
-      if (name.trim()) data.name = name.trim();
-      if (weight) data.weight = parseFloat(weight);
-      if (penId) data.penId = penId;
-      if (ownerId) data.ownerId = ownerId;
-      if (motherTagId.trim()) data.motherTagId = motherTagId.trim();
-      if (fatherTagId.trim()) data.fatherTagId = fatherTagId.trim();
+      const updateResult = await goatsApi.update(id, payload) as Record<string, unknown>;
 
-      const created = await goatsApi.create(data) as { id?: string };
-
-      // Upload photo separately after goat is created
-      if (photoUri && created?.id) {
-        try {
-          await goatsApi.uploadImage(created.id, photoUri);
-        } catch (err) {
-          const detail = err instanceof Error ? err.message : '';
-          Alert.alert('تنبيه', `تم إضافة الحيوان لكن فشل رفع الصورة${detail ? '\n' + detail : ''}`);
-        }
+      try {
+        await goatsApi.updateParentage(id, motherTagId.trim() || null, fatherTagId.trim() || null);
+      } catch (parentageErr) {
+        const parentageMessage = parentageErr instanceof ApiError
+          ? parentageErr.message
+          : 'تم حفظ البيانات الأساسية لكن فشل تحديث النسب';
+        Alert.alert('تنبيه', parentageMessage);
       }
 
-      Alert.alert('نجاح', 'تم إضافة الحيوان بنجاح', [
+      // Verify the save
+      const persisted = await goatsApi.get(id) as Record<string, unknown>;
+      const persistedBreedObj = persisted?.breed as { id?: string } | undefined;
+      const persistedBreedId = persistedBreedObj?.id || (persisted?.breedId as string);
+
+      if (persistedBreedId && persistedBreedId !== breedId) {
+        Alert.alert(
+          'خطأ في السلالة',
+          `المرسل: ${breedId}\nالمحفوظ: ${persistedBreedId}\nلم تتطابق. حاول مرة أخرى.`,
+        );
+        return;
+      }
+
+      Alert.alert('تم الحفظ', 'تم حفظ التعديلات بنجاح', [
         { text: 'حسناً', onPress: () => router.back() },
       ]);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'فشل إضافة الحيوان';
-      Alert.alert('خطأ', message);
+      const message = err instanceof ApiError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : 'فشل تحديث بيانات الحيوان';
+      Alert.alert('خطأ', `${message}\n\n(breedId: ${breedId})`);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Photo */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>صورة الحيوان</Text>
-          <View style={styles.photoRow}>
-            {photoUri ? (
-              <TouchableOpacity onPress={() => setPhotoUri(null)} style={styles.photoPreview}>
-                <Image source={{ uri: photoUri }} style={styles.photoImage} />
-                <View style={styles.photoRemove}>
-                  <Ionicons name="close-circle" size={24} color={Colors.error} />
-                </View>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Ionicons name="image-outline" size={40} color={Colors.textLight} />
-              </View>
-            )}
-            <View style={styles.photoButtons}>
-              <TouchableOpacity style={styles.photoBtn} onPress={() => pickImage('camera')}>
-                <Ionicons name="camera" size={22} color={Colors.primary} />
-                <Text style={styles.photoBtnText}>الكاميرا</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.photoBtn} onPress={() => pickImage('gallery')}>
-                <Ionicons name="images" size={22} color={Colors.primary} />
-                <Text style={styles.photoBtnText}>المعرض</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+  if (loading) return <LoadingScreen message="جارٍ تحميل البيانات..." />;
 
-        {/* Basic Info */}
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>المعلومات الأساسية</Text>
 
@@ -194,7 +190,6 @@ export default function AddGoatScreen() {
             onChangeText={setName}
           />
 
-          {/* Gender Toggle */}
           <Text style={styles.fieldLabel}>الجنس *</Text>
           <View style={styles.genderRow}>
             <TouchableOpacity
@@ -213,13 +208,12 @@ export default function AddGoatScreen() {
             </TouchableOpacity>
           </View>
 
-          <Input
-            label="تاريخ الميلاد *"
-            placeholder="YYYY-MM-DD"
-            icon="calendar-outline"
+          <DatePickerField
+            label="تاريخ الميلاد"
             value={birthDate}
-            onChangeText={setBirthDate}
-            keyboardType="numbers-and-punctuation"
+            onChange={setBirthDate}
+            placeholder="اختر تاريخ الميلاد"
+            required
           />
 
           <Input
@@ -230,13 +224,24 @@ export default function AddGoatScreen() {
             onChangeText={setWeight}
             keyboardType="decimal-pad"
           />
+
+          <Text style={styles.fieldLabel}>الحالة</Text>
+          <View style={styles.statusRow}>
+            {STATUS_OPTIONS.map(s => (
+              <TouchableOpacity
+                key={s.value}
+                style={[styles.statusChip, status === s.value && styles.statusChipActive]}
+                onPress={() => setStatus(s.value)}
+              >
+                <Text style={[styles.statusChipText, status === s.value && styles.statusChipTextActive]}>{s.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* Breed & Location */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>السلالة والموقع</Text>
 
-          {/* Breed Picker */}
           <Text style={styles.fieldLabel}>السلالة *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
             <View style={styles.chipRow}>
@@ -244,17 +249,14 @@ export default function AddGoatScreen() {
                 <TouchableOpacity
                   key={b.id}
                   style={[styles.chip, breedId === b.id && styles.chipActive]}
-                  onPress={() => setBreedId(breedId === b.id ? '' : b.id)}
+                  onPress={() => setBreedId(b.id)}
                 >
-                  <Text style={[styles.chipText, breedId === b.id && styles.chipTextActive]}>
-                    {b.nameAr}
-                  </Text>
+                  <Text style={[styles.chipText, breedId === b.id && styles.chipTextActive]}>{b.nameAr}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
 
-          {/* Pen Picker */}
           <Text style={styles.fieldLabel}>الحظيرة</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
             <View style={styles.chipRow}>
@@ -264,15 +266,12 @@ export default function AddGoatScreen() {
                   style={[styles.chip, penId === p.id && styles.chipActive]}
                   onPress={() => setPenId(penId === p.id ? '' : p.id)}
                 >
-                  <Text style={[styles.chipText, penId === p.id && styles.chipTextActive]}>
-                    {p.nameAr}
-                  </Text>
+                  <Text style={[styles.chipText, penId === p.id && styles.chipTextActive]}>{p.nameAr}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
 
-          {/* Owner Picker */}
           <Text style={styles.fieldLabel}>المالك</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
             <View style={styles.chipRow}>
@@ -282,16 +281,13 @@ export default function AddGoatScreen() {
                   style={[styles.chip, ownerId === o.id && styles.chipActive]}
                   onPress={() => setOwnerId(ownerId === o.id ? '' : o.id)}
                 >
-                  <Text style={[styles.chipText, ownerId === o.id && styles.chipTextActive]}>
-                    {o.name}
-                  </Text>
+                  <Text style={[styles.chipText, ownerId === o.id && styles.chipTextActive]}>{o.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
         </View>
 
-        {/* Parentage */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>النسب</Text>
 
@@ -312,14 +308,13 @@ export default function AddGoatScreen() {
           />
         </View>
 
-        {/* Submit */}
         <Button
-          title="إضافة الحيوان"
-          onPress={handleSubmit}
-          loading={loading}
+          title="حفظ التعديلات"
+          onPress={handleSave}
+          loading={saving}
           fullWidth
           size="lg"
-          icon="checkmark-circle-outline"
+          icon="save-outline"
         />
 
         <View style={{ height: 40 }} />
@@ -379,6 +374,32 @@ const styles = StyleSheet.create({
     ...Typography.captionBold,
     color: Colors.textLight,
   },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  statusChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  statusChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  statusChipText: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+  },
+  statusChipTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   chipScroll: {
     marginBottom: Spacing.lg,
   },
@@ -406,55 +427,5 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#fff',
     fontWeight: '600',
-  },
-  photoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.lg,
-  },
-  photoPreview: {
-    position: 'relative',
-  },
-  photoImage: {
-    width: 100,
-    height: 100,
-    borderRadius: Radius.lg,
-  },
-  photoRemove: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-  },
-  photoPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.surfaceVariant,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    borderStyle: 'dashed',
-  },
-  photoButtons: {
-    flex: 1,
-    gap: Spacing.sm,
-  },
-  photoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + '08',
-  },
-  photoBtnText: {
-    ...Typography.captionBold,
-    color: Colors.primary,
   },
 });
