@@ -944,3 +944,21 @@ model MobileDevice {
   @@index([tenantId])
   @@index([deviceToken(length: 500)])
 }
+
+// ==================== Expo Push Tokens ====================
+
+model ExpoPushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String   @default("")
+  farmId    String   @default("")
+  token     String   @db.VarChar(255)
+  platform  String?  // "ios" | "android"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token], name: "userId_token")
+  @@index([userId])
+  @@index([tenantId])
+  @@index([farmId])
+}
