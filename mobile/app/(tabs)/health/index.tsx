@@ -19,7 +19,7 @@ import { healthApi, goatsApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input, SectionHeader } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows, HealthTypeLabels } from '@/lib/theme';
-import { formatDate, western } from '@/lib/formatters';
+import { formatDate, formatNumber, western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
 import { SearchBar } from '@/components/SearchBar';
 import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
@@ -149,7 +149,7 @@ export default function HealthScreen() {
         </View>
         {item.cost ? (
           <View style={styles.costBadge}>
-            <Text style={styles.costText}>{item.cost}</Text>
+            <Text style={styles.costText}>{formatNumber(item.cost)}</Text>
           </View>
         ) : null}
       </View>

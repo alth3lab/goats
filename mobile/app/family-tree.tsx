@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Platform, RefreshControl,
+  ActivityIndicator, Platform, RefreshControl, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -89,7 +89,7 @@ export default function FamilyTreeScreen() {
         setSiblings(sibs);
       }
     } catch {
-      // Error loading
+      Alert.alert('خطأ', 'تعذّر تحميل شجرة العائلة');
     } finally {
       setLoading(false);
       setRefreshing(false);

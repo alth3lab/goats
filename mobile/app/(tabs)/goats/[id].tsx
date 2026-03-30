@@ -16,7 +16,7 @@ import {
   Colors, Spacing, Radius, Typography, Shadows,
   StatusColors, StatusLabels, GenderLabels, HealthTypeLabels,
 } from '@/lib/theme';
-import { formatDate, western } from '@/lib/formatters';
+import { formatDate, formatNumber, western } from '@/lib/formatters';
 import type { Goat, HealthRecord } from '@/types';
 
 export default function GoatDetailScreen() {
@@ -179,7 +179,7 @@ export default function GoatDetailScreen() {
                 )}
               </View>
               {record.cost ? (
-                <Text style={styles.healthCost}>{record.cost}</Text>
+                <Text style={styles.healthCost}>{formatNumber(record.cost)}</Text>
               ) : null}
             </View>
           ))

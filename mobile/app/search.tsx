@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { searchApi } from '@/lib/api';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
 import { EmptyState } from '@/components/ui';
+import { useToast } from '@/lib/toast';
 
 const TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
   goat: { icon: 'paw', label: 'حيوان', color: Colors.primary },
@@ -28,6 +29,7 @@ interface SearchItem {
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,10 +49,11 @@ export default function SearchScreen() {
       setResults((data as unknown as SearchItem[]) || []);
     } catch {
       setResults([]);
+      showToast('error', 'تعذّر تنفيذ البحث، حاول مرة أخرى');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   const onChangeText = (text: string) => {
     setQuery(text);
