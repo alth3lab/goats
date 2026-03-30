@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { feedsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -51,6 +51,7 @@ export default function FeedsScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [search, setSearch] = useState('');
   const { can } = useAuth();
+  const router = useRouter();
 
   // Form
   const [formName, setFormName] = useState('');
@@ -192,6 +193,12 @@ export default function FeedsScreen() {
     <>
       <Stack.Screen options={{ title: 'إدارة الأعلاف', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
+        {/* Quick link to recipes */}
+        <TouchableOpacity style={styles.recipesLink} onPress={() => router.push('/feed-recipes')}>
+          <Ionicons name="beaker" size={18} color={Colors.primary} />
+          <Text style={styles.recipesLinkText}>خلطات الأعلاف وإعادة الطلب</Text>
+          <Ionicons name="chevron-back" size={16} color={Colors.primary} />
+        </TouchableOpacity>
         {/* Category Filter */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {CATEGORIES.map(c => (
@@ -275,6 +282,12 @@ export default function FeedsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  recipesLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.primary + '10', padding: Spacing.md, marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.primary + '30',
+  },
+  recipesLinkText: { ...Typography.caption, color: Colors.primary, fontWeight: '600', flex: 1, textAlign: 'right' },
   filterRow: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
   filterTab: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   filterTabActive: { backgroundColor: Colors.warning, borderColor: Colors.warning },

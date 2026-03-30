@@ -267,6 +267,19 @@ export const feedsApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/feeds', { method: 'POST', body: data }),
+
+  recipes: () => request<Record<string, unknown>[]>('/feeds/recipes'),
+
+  createRecipe: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/feeds/recipes', { method: 'POST', body: data }),
+
+  reorder: () => request<Record<string, unknown>[]>('/feeds/reorder'),
+
+  stock: (params?: { page?: string; limit?: string }) =>
+    request<Record<string, unknown>[]>('/feeds/stock', { params }),
+
+  addStock: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/feeds/stock', { method: 'POST', body: data }),
 };
 
 // ─── Breeding API ────────────────────────────────────────
@@ -328,8 +341,38 @@ export const inventoryApi = {
   list: (params?: { category?: string; lowStock?: string }) =>
     request<Record<string, unknown>[]>('/inventory', { params }),
 
+  get: (id: string) =>
+    request<Record<string, unknown>>(`/inventory/${id}`),
+
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/inventory', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/inventory/${id}`, { method: 'PUT', body: data }),
+};
+
+// ─── Farms API ───────────────────────────────────────────
+export const farmsApi = {
+  list: () => request<Record<string, unknown>[]>('/farms'),
+
+  get: (id: string) => request<Record<string, unknown>>(`/farms/${id}`),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/farms', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/farms/${id}`, { method: 'PUT', body: data }),
+
+  switchFarm: (farmId: string) =>
+    request<Record<string, unknown>>('/farms/switch', { method: 'POST', body: { farmId } }),
+};
+
+// ─── Subscription API ────────────────────────────────────
+export const subscriptionApi = {
+  get: () => request<Record<string, unknown>>('/settings/subscription'),
+
+  upgrade: (plan: string) =>
+    request<Record<string, unknown>>('/settings/subscription', { method: 'POST', body: { plan } }),
 };
 
 // ─── Activities API ──────────────────────────────────────
@@ -358,6 +401,54 @@ export const pushApi = {
       method: 'POST',
       body: { token, platform: Platform.OS },
     }),
+};
+
+// ─── AI API ──────────────────────────────────────────────
+export const aiApi = {
+  chat: (message: string, context?: Record<string, unknown>) =>
+    request<{ response: string }>('/ai/chat', {
+      method: 'POST',
+      body: { message, ...context },
+    }),
+
+  analyzeImage: (imageBase64: string) =>
+    request<{ analysis: string }>('/ai/analyze-image', {
+      method: 'POST',
+      body: { image: imageBase64 },
+    }),
+
+  breedingRecommend: (goatId: string) =>
+    request<{ recommendations: string }>('/ai/breeding-recommend', {
+      method: 'POST',
+      body: { goatId },
+    }),
+};
+
+// ─── Team API ────────────────────────────────────────────
+export const teamApi = {
+  list: () => request<Record<string, unknown>[]>('/team'),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/team', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/team/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/team/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Search API ──────────────────────────────────────────
+export const searchApi = {
+  search: (query: string) =>
+    request<Record<string, unknown>[]>('/search', { params: { q: query } }),
+};
+
+// ─── Vaccination Protocols API ───────────────────────────
+export const protocolsApi = {
+  list: () => request<Record<string, unknown>[]>('/health/protocols'),
+
+  getDue: () => request<Record<string, unknown>[]>('/health/due'),
 };
 
 // ─── Lookup APIs ─────────────────────────────────────────

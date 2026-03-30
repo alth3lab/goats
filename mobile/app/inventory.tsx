@@ -34,6 +34,26 @@ const CATEGORIES = [
   { key: 'OTHER', label: 'أخرى' },
 ];
 
+const TX_TYPE_LABELS: Record<string, string> = {
+  PURCHASE: 'شراء',
+  USAGE: 'استخدام',
+  ADJUSTMENT: 'تعديل',
+  EXPIRED: 'منتهي الصلاحية',
+  RETURN: 'إرجاع',
+  IN: 'إدخال',
+  OUT: 'إخراج',
+};
+
+const TX_TYPE_COLORS: Record<string, string> = {
+  PURCHASE: Colors.success,
+  RETURN: Colors.success,
+  IN: Colors.success,
+  USAGE: Colors.error,
+  EXPIRED: Colors.error,
+  OUT: Colors.error,
+  ADJUSTMENT: '#f59e0b',
+};
+
 export default function InventoryScreen() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +74,22 @@ export default function InventoryScreen() {
   const [formNotes, setFormNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { showToast } = useToast();
+  const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const viewDetail = async (item: InventoryItem) => {
+    setDetailVisible(true);
+    setDetailLoading(true);
+    try {
+      const full = await inventoryApi.get(item.id);
+      setDetailItem(full as unknown as InventoryItem);
+    } catch {
+      setDetailItem(item);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -123,6 +159,7 @@ export default function InventoryScreen() {
   const renderItem = useCallback(({ item }: { item: InventoryItem }) => {
     const isLow = item.minStock !== undefined && item.minStock !== null && item.currentStock <= item.minStock;
     return (
+      <TouchableOpacity onPress={() => viewDetail(item)} activeOpacity={0.7}>
       <View style={styles.card}>
         <View style={styles.cardTop}>
           <View style={styles.itemInfo}>
@@ -175,6 +212,7 @@ export default function InventoryScreen() {
           </View>
         )}
       </View>
+      </TouchableOpacity>
     );
   }, []);
 
@@ -271,6 +309,55 @@ export default function InventoryScreen() {
           </ScrollView>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* Transaction Detail Modal */}
+        <Modal visible={detailVisible} animationType="slide" presentationStyle="pageSheet">
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => { setDetailVisible(false); setDetailItem(null); }}>
+              <Text style={styles.modalCancel}>إغلاق</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>سجل الحركات</Text>
+            <View style={{ width: 50 }} />
+          </View>
+          {detailLoading ? (
+            <LoadingScreen message="جارٍ التحميل..." />
+          ) : detailItem ? (
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <View style={styles.detailHeader}>
+                <View style={[styles.itemIcon, { backgroundColor: Colors.primary + '15' }]}>
+                  <Ionicons name="cube" size={24} color={Colors.primary} />
+                </View>
+                <Text style={styles.detailName}>{detailItem.nameAr || detailItem.name}</Text>
+                <Text style={styles.detailCategory}>
+                  {CATEGORIES.find(c => c.key === detailItem.category)?.label} • المخزون: {western(detailItem.currentStock)}
+                </Text>
+              </View>
+              {detailItem.transactions && detailItem.transactions.length > 0 ? (
+                detailItem.transactions.map((tx, i) => {
+                  const color = TX_TYPE_COLORS[tx.type] || Colors.textSecondary;
+                  const isPositive = ['PURCHASE', 'RETURN', 'IN'].includes(tx.type);
+                  return (
+                    <View key={tx.id || i} style={styles.txRow}>
+                      <View style={[styles.txIcon, { backgroundColor: color + '15' }]}>
+                        <Ionicons name={isPositive ? 'arrow-down' : 'arrow-up'} size={16} color={color} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.txType}>{TX_TYPE_LABELS[tx.type] || tx.type}</Text>
+                        <Text style={styles.txDate}>{formatDate(tx.date)}</Text>
+                        {tx.notes ? <Text style={styles.txNotes}>{tx.notes}</Text> : null}
+                      </View>
+                      <Text style={[styles.txQty, { color }]}>
+                        {isPositive ? '+' : '-'}{western(tx.quantity)}
+                      </Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <EmptyState icon="receipt-outline" title="لا توجد حركات" message="لم يتم تسجيل أي حركة بعد" />
+              )}
+            </ScrollView>
+          ) : null}
+        </Modal>
       </View>
     </>
   );
@@ -312,4 +399,16 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg },
   typeChip: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.border },
   typeChipText: { ...Typography.small, color: Colors.textSecondary },
+  detailHeader: { alignItems: 'center', marginBottom: Spacing.lg, gap: Spacing.xs },
+  detailName: { ...Typography.h3, color: Colors.text, textAlign: 'center', marginTop: Spacing.sm },
+  detailCategory: { ...Typography.caption, color: Colors.textSecondary },
+  txRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.borderLight,
+  },
+  txIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  txType: { ...Typography.captionBold, color: Colors.text },
+  txDate: { ...Typography.small, color: Colors.textSecondary, marginTop: 2 },
+  txNotes: { ...Typography.small, color: Colors.textLight, marginTop: 2, fontStyle: 'italic' },
+  txQty: { ...Typography.h4, fontWeight: '700' },
 });

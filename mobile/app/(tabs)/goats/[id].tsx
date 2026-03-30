@@ -140,6 +140,15 @@ export default function GoatDetailScreen() {
             <Text style={styles.parentValue}>{goat.motherTagId || '—'}</Text>
           </View>
         </View>
+        <TouchableOpacity
+          style={styles.familyTreeBtn}
+          onPress={() => router.push(`/family-tree?id=${goat.id}`)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="git-branch" size={18} color={Colors.primary} />
+          <Text style={styles.familyTreeBtnText}>عرض شجرة العائلة</Text>
+          <Ionicons name="chevron-back" size={16} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Health Records */}
@@ -343,6 +352,21 @@ const styles = StyleSheet.create({
   parentsRow: {
     flexDirection: 'row',
     gap: Spacing.md,
+  },
+  familyTreeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary + '10',
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  familyTreeBtnText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+    flex: 1,
   },
   parentCard: {
     flex: 1,

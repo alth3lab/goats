@@ -91,6 +91,73 @@ export interface Feed {
   currentStock?: number;
 }
 
+export interface FeedRecipe {
+  id: string;
+  nameAr: string;
+  description?: string;
+  isActive: boolean;
+  items: FeedRecipeItem[];
+}
+
+export interface FeedRecipeItem {
+  id: string;
+  feedType: { id: string; nameAr: string; category: string };
+  percentage: number;
+}
+
+export interface ReorderSuggestion {
+  feedType: { id: string; nameAr: string; category: string };
+  currentStock: number;
+  reorderLevel: number;
+  avgDailyUsage: number;
+  daysUntilEmpty: number;
+  suggestedQuantity: number;
+  urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+// ─── Subscription Types ──────────────────────────────────
+export type PlanType = 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
+export type SubscriptionStatus = 'ACTIVE' | 'PENDING' | 'CANCELLED' | 'EXPIRED' | 'PAST_DUE';
+
+export interface SubscriptionInfo {
+  tenant: {
+    plan: PlanType;
+    maxFarms: number;
+    maxGoats: number;
+    maxUsers: number;
+  };
+  usage: {
+    farms: number;
+    goats: number;
+    users: number;
+  };
+  subscriptions: Subscription[];
+}
+
+export interface Subscription {
+  id: string;
+  plan: PlanType;
+  status: SubscriptionStatus;
+  startDate: string;
+  endDate?: string;
+  amount?: number;
+}
+
+// ─── Farm Management Types ───────────────────────────────
+export interface Farm {
+  id: string;
+  name: string;
+  nameAr?: string;
+  farmType: string;
+  currency?: string;
+  phone?: string;
+  address?: string;
+  role?: string;
+  goatsCount?: number;
+  pensCount?: number;
+  usersCount?: number;
+}
+
 // ─── Auth Types ──────────────────────────────────────────
 export interface AuthUser {
   id: string;
@@ -317,4 +384,63 @@ export interface FarmSettings {
   alertDeathCount?: number;
   alertDeathWindowDays?: number;
   alertBreedingOverdueDays?: number;
+}
+
+// ─── AI Types ────────────────────────────────────────────
+export interface AIChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+// ─── Team Types ──────────────────────────────────────────
+export interface TeamMember {
+  id: string;
+  fullName: string;
+  username: string;
+  email?: string;
+  phone?: string;
+  role: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+}
+
+// ─── Vaccination Protocol Types ──────────────────────────
+export interface VaccinationProtocol {
+  id: string;
+  name: string;
+  nameAr?: string;
+  description?: string;
+  ageMonths?: number;
+  gender?: GoatGender | 'ALL';
+  repeatIntervalDays?: number;
+  isActive: boolean;
+  vaccineName: string;
+  vaccineType?: string;
+}
+
+// ─── Family Tree Types ───────────────────────────────────
+export interface FamilyTreeNode {
+  id: string;
+  tagId: string;
+  name?: string;
+  gender: GoatGender;
+  status: GoatStatus;
+  breed?: string;
+  birthDate?: string;
+  mother?: FamilyTreeNode;
+  father?: FamilyTreeNode;
+  offspring?: FamilyTreeNode[];
+}
+
+// ─── Search Types ────────────────────────────────────────
+export interface SearchResult {
+  type: 'goat' | 'breeding' | 'health' | 'sale' | 'pen' | 'owner';
+  id: string;
+  title: string;
+  subtitle?: string;
+  icon: string;
+  meta?: Record<string, unknown>;
 }
