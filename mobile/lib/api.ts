@@ -405,17 +405,66 @@ export const pushApi = {
 
 // ─── AI API ──────────────────────────────────────────────
 export const aiApi = {
-  chat: (message: string, context?: Record<string, unknown>) =>
-    request<{ response: string }>('/ai/chat', {
-      method: 'POST',
-      body: { message, ...context },
-    }),
+  chat: async (messages: { role: string; content: string }[]): Promise<string> => {
+    const token = await getToken();
+    const farmId = await getFarmId();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (farmId) headers['X-Farm-Id'] = farmId;
 
-  analyzeImage: (imageBase64: string) =>
-    request<{ analysis: string }>('/ai/analyze-image', {
+    const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST',
-      body: { image: imageBase64 },
-    }),
+      headers,
+      body: JSON.stringify({ messages }),
+    });
+
+    if (res.status === 401) {
+      await removeToken();
+      notifyAuthExpired();
+      throw new ApiError(401, 'انتهت صلاحية الجلسة');
+    }
+
+    if (!res.ok) {
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const err = await res.json().catch(() => ({ error: 'خطأ' }));
+        throw new ApiError(res.status, err.error || 'حدث خطأ');
+      }
+      throw new ApiError(res.status, 'حدث خطأ في الاتصال');
+    }
+
+    return res.text();
+  },
+
+  analyzeImage: async (uri: string, type: string = 'breed'): Promise<{ analysis: string }> => {
+    const token = await getToken();
+    const farmId = await getFarmId();
+
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      name: 'photo.jpg',
+      type: 'image/jpeg',
+    } as unknown as Blob);
+    formData.append('type', type);
+
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (farmId) headers['X-Farm-Id'] = farmId;
+
+    const res = await fetch(`${API_BASE}/api/ai/analyze-image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'خطأ' }));
+      throw new ApiError(res.status, err.error || 'فشل تحليل الصورة');
+    }
+
+    return res.json();
+  },
 
   breedingRecommend: (goatId: string) =>
     request<{ recommendations: string }>('/ai/breeding-recommend', {

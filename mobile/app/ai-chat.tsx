@@ -6,7 +6,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { aiApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -23,7 +22,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function AIChatScreen() {
-  const { user, farm } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -41,28 +40,28 @@ export default function AIChatScreen() {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInput('');
     setLoading(true);
 
     try {
-      const result = await aiApi.chat(text.trim(), {
-        farmType: farm?.farmType,
-        farmName: farm?.nameAr || farm?.name,
-      });
+      const chatHistory = updatedMessages.map(m => ({ role: m.role, content: m.content }));
+      const responseText = await aiApi.chat(chatHistory);
 
       const aiMsg: AIChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: result.response || 'عذراً، لم أتمكن من الإجابة.',
+        content: responseText || 'عذراً، لم أتمكن من الإجابة.',
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, aiMsg]);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'حدث خطأ في الاتصال';
       const errorMsg: AIChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'عذراً، حدث خطأ في الاتصال. حاول مرة أخرى.',
+        content: `عذراً، ${msg}. حاول مرة أخرى.`,
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -70,7 +69,7 @@ export default function AIChatScreen() {
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [loading, farm]);
+  }, [loading, messages]);
 
   const handleImageAnalysis = useCallback(async () => {
     try {
@@ -90,10 +89,6 @@ export default function AIChatScreen() {
         compress: 0.7,
       });
 
-      const base64 = await FileSystem.readAsStringAsync(resized.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
       const userMsg: AIChatMessage = {
         id: Date.now().toString(),
         role: 'user',
@@ -102,7 +97,7 @@ export default function AIChatScreen() {
       };
       setMessages(prev => [...prev, userMsg]);
 
-      const analysis = await aiApi.analyzeImage(`data:image/jpeg;base64,${base64}`);
+      const analysis = await aiApi.analyzeImage(resized.uri);
 
       const aiMsg: AIChatMessage = {
         id: (Date.now() + 1).toString(),
