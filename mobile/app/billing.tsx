@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +39,22 @@ export default function BillingScreen() {
   const [info, setInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [upgrading, setUpgrading] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  const handleUpgrade = async (plan: string) => {
+    setUpgrading(plan);
+    try {
+      await subscriptionApi.upgrade(plan);
+      showToast('success', 'تم تغيير خطة الاشتراك بنجاح');
+      fetchData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'فشل تغيير الخطة';
+      showToast('error', msg);
+    } finally {
+      setUpgrading(null);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -69,7 +85,15 @@ export default function BillingScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'الاشتراك والفواتير' }} />
+      <Stack.Screen options={{
+        title: 'الاشتراك والفواتير',
+        headerShown: true,
+        headerStyle: { backgroundColor: Colors.primary },
+        headerTintColor: '#fff',
+        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        headerTitleAlign: 'center',
+        headerBackTitle: '',
+      }} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -163,6 +187,23 @@ export default function BillingScreen() {
                   <Text style={[styles.currentPlanText, { color: p.color }]}>خطتك الحالية</Text>
                 </View>
               )}
+              {!isCurrent && (
+                <TouchableOpacity
+                  style={[styles.upgradeBtn, { backgroundColor: p.color }]}
+                  onPress={key === 'ENTERPRISE'
+                    ? () => Alert.alert('الخطة المؤسسية', 'تواصل معنا على: support@goat.suhail.cc للحصول على تسعير خاص')
+                    : () => handleUpgrade(key)}
+                  disabled={upgrading !== null}
+                >
+                  {upgrading === key ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.upgradeBtnText}>
+                      {key === 'ENTERPRISE' ? 'تواصل معنا' : 'الانتقال لهذه الخطة'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           );
         })}
@@ -204,6 +245,20 @@ const styles = StyleSheet.create({
   historyMeta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.xs },
   historyDate: { ...Typography.caption, color: Colors.textSecondary },
   historyAmount: { ...Typography.caption, fontWeight: '700', color: Colors.text },
+  upgradeBtn: {
+    marginTop: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.sm,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minHeight: 36,
+  },
+  upgradeBtnText: {
+    ...Typography.captionBold,
+    color: '#fff',
+    fontWeight: '700' as const,
+  },
   planOption: {
     backgroundColor: Colors.surface, borderRadius: Radius.md, padding: Spacing.md,
     marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,

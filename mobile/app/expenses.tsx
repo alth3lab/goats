@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { expensesApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input } from '@/components/ui';
+import DatePickerField from '@/components/DatePickerField';
 import { Colors, Spacing, Radius, Typography, Shadows, ExpenseCategoryLabels } from '@/lib/theme';
 import { formatDate, formatNumber } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
@@ -257,7 +258,7 @@ export default function ExpensesScreen() {
 
             <Input label="الوصف *" placeholder="وصف المصروف" icon="document-text-outline" value={formDesc} onChangeText={setFormDesc} />
             <Input label="المبلغ *" placeholder="0" icon="cash-outline" value={formAmount} onChangeText={setFormAmount} keyboardType="decimal-pad" />
-            <Input label="التاريخ" placeholder="YYYY-MM-DD" icon="calendar-outline" value={formDate} onChangeText={setFormDate} />
+            <DatePickerField label="التاريخ" value={formDate} onChange={setFormDate} placeholder="اختر التاريخ" />
             <Input label="طريقة الدفع" placeholder="نقد / تحويل / شيك" icon="card-outline" value={formPayment} onChangeText={setFormPayment} />
             <Input label="ملاحظات" placeholder="ملاحظات إضافية" icon="create-outline" value={formNotes} onChangeText={setFormNotes} multiline />
 

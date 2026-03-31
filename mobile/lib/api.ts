@@ -2,10 +2,10 @@ import { getToken, getFarmId, removeToken } from './storage';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import Constants from 'expo-constants';
 
 // ─── Configuration ───────────────────────────────────────
-// Change this to your deployed API URL
-const API_BASE = 'https://goat.suhail.cc';
+const API_BASE = (Constants.expoConfig?.extra?.apiUrl as string) ?? 'https://goat.suhail.cc';
 
 // ─── Auth Event Bus (for 401 auto-logout) ────────────────
 type AuthListener = () => void;
@@ -280,6 +280,27 @@ export const feedsApi = {
 
   addStock: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/feeds/stock', { method: 'POST', body: data }),
+
+  schedules: (params?: { isActive?: string }) =>
+    request<Record<string, unknown>[]>('/feeds/schedule', { params }),
+
+  createSchedule: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/feeds/schedule', { method: 'POST', body: data }),
+
+  deleteSchedule: (id: string) =>
+    request<void>(`/feeds/schedule?id=${id}`, { method: 'DELETE' }),
+
+  consumeToday: (date: string) =>
+    request<Record<string, unknown>>('/feeds/consume', { method: 'POST', body: { date } }),
+
+  consumeAuto: () =>
+    request<Record<string, unknown>>('/feeds/consume', { method: 'POST', body: { auto: true } }),
+
+  consumptionHistory: (limit?: number) => {
+    const params: Record<string, string> = {};
+    if (limit) params.limit = String(limit);
+    return request<Record<string, unknown>[]>('/feeds/consume', { params });
+  },
 };
 
 // ─── Breeding API ────────────────────────────────────────
@@ -351,6 +372,33 @@ export const inventoryApi = {
     request<Record<string, unknown>>(`/inventory/${id}`, { method: 'PUT', body: data }),
 };
 
+// ─── Stock API (unified feeds + inventory) ───────────────
+export const stockApi = {
+  list: (params?: { type?: string; lowStock?: string; inactive?: string }) =>
+    request<Record<string, unknown>[]>('/stock', { params }),
+
+  get: (id: string) =>
+    request<Record<string, unknown>>(`/stock/${id}`),
+
+  create: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/stock', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/stock/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<{ success: boolean }>(`/stock/${id}`, { method: 'DELETE' }),
+
+  addMovement: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/stock/movements', { method: 'POST', body: data }),
+
+  reorder: (type?: string) => {
+    const params: Record<string, string> = {};
+    if (type) params.type = type;
+    return request<Record<string, unknown>[]>('/stock/reorder', { params });
+  },
+};
+
 // ─── Farms API ───────────────────────────────────────────
 export const farmsApi = {
   list: () => request<Record<string, unknown>[]>('/farms'),
@@ -403,14 +451,21 @@ export const pushApi = {
     }),
 };
 
+// ─── Shared Auth Header Helper ────────────────────────────
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getToken();
+  const farmId = await getFarmId();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (farmId) headers['X-Farm-Id'] = farmId;
+  return headers;
+}
+
 // ─── AI API ──────────────────────────────────────────────
 export const aiApi = {
   chat: async (messages: { role: string; content: string }[]): Promise<string> => {
-    const token = await getToken();
-    const farmId = await getFarmId();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (farmId) headers['X-Farm-Id'] = farmId;
+    const headers = await getAuthHeaders();
+    headers['Content-Type'] = 'application/json';
 
     const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST',
@@ -437,8 +492,7 @@ export const aiApi = {
   },
 
   analyzeImage: async (uri: string, type: string = 'breed'): Promise<{ analysis: string }> => {
-    const token = await getToken();
-    const farmId = await getFarmId();
+    const headers = await getAuthHeaders();
 
     const formData = new FormData();
     formData.append('image', {
@@ -447,10 +501,6 @@ export const aiApi = {
       type: 'image/jpeg',
     } as unknown as Blob);
     formData.append('type', type);
-
-    const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (farmId) headers['X-Farm-Id'] = farmId;
 
     const res = await fetch(`${API_BASE}/api/ai/analyze-image`, {
       method: 'POST',

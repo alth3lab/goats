@@ -59,7 +59,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="breeding"
         options={{
-          title: 'التربية',
+          title: 'التزاوج',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart" size={size} color={color} />
           ),

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { authApi, ApiError, onAuthExpired } from './api';
-import { getToken, setToken, removeToken, setFarmId } from './storage';
+import { getToken, setToken, removeToken, setFarmId, clearAll } from './storage';
 import type { AuthUser, FarmInfo, UserFarm } from '@/types';
 
 interface AuthContextValue {
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await removeToken();
+    await clearAll();
     setUser(null);
     setFarm(null);
     setFarms([]);

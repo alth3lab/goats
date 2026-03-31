@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { calendarApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input } from '@/components/ui';
+import DatePickerField from '@/components/DatePickerField';
 import { Colors, Spacing, Radius, Typography, Shadows, EventTypeLabels } from '@/lib/theme';
 import { formatDateShortMonth, western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
@@ -226,7 +227,7 @@ export default function CalendarScreen() {
           </View>
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <Input label="العنوان *" placeholder="عنوان الحدث" icon="calendar-outline" value={formTitle} onChangeText={setFormTitle} />
-            <Input label="التاريخ" placeholder="YYYY-MM-DD" icon="time-outline" value={formDate} onChangeText={setFormDate} />
+            <DatePickerField label="التاريخ" value={formDate} onChange={setFormDate} placeholder="اختر التاريخ" />
 
             <Text style={styles.fieldLabel}>نوع الحدث</Text>
             <View style={styles.typeRow}>

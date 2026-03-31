@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { healthApi, goatsApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input, SectionHeader } from '@/components/ui';
+import DatePickerField from '@/components/DatePickerField';
 import { Colors, Spacing, Radius, Typography, Shadows, HealthTypeLabels } from '@/lib/theme';
 import { formatDate, formatNumber, western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
@@ -254,12 +255,11 @@ export default function HealthScreen() {
             ))}
           </View>
 
-          <Input
+          <DatePickerField
             label="التاريخ"
-            placeholder="YYYY-MM-DD"
-            icon="calendar-outline"
             value={formDate}
-            onChangeText={setFormDate}
+            onChange={setFormDate}
+            placeholder="اختر التاريخ"
           />
           <Input
             label="الوصف"

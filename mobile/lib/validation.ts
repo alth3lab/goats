@@ -49,7 +49,7 @@ export function validateDate(value: string, label: string, opts?: { required?: b
 
   const match = /^\d{4}-\d{2}-\d{2}$/.test(value);
   if (!match) {
-    Alert.alert('خطأ', `${label} يجب أن يكون بصيغة YYYY-MM-DD`);
+    Alert.alert('خطأ', `${label} يجب أن يكون بصيغة DD/MM/YYYY`);
     return false;
   }
 

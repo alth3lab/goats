@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { goatsApi, lookupApi } from '@/lib/api';
 import { Button, Input } from '@/components/ui';
+import DatePickerField from '@/components/DatePickerField';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
 import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
 import type { Breed, Pen, Owner } from '@/types';
@@ -213,13 +214,12 @@ export default function AddGoatScreen() {
             </TouchableOpacity>
           </View>
 
-          <Input
-            label="تاريخ الميلاد *"
-            placeholder="YYYY-MM-DD"
-            icon="calendar-outline"
+          <DatePickerField
+            label="تاريخ الميلاد"
             value={birthDate}
-            onChangeText={setBirthDate}
-            keyboardType="numbers-and-punctuation"
+            onChange={setBirthDate}
+            placeholder="اختر تاريخ الميلاد"
+            required
           />
 
           <Input

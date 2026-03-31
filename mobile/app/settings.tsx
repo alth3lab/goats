@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { settingsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, Button, Input, SectionHeader } from '@/components/ui';
@@ -138,7 +139,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>إصدار التطبيق</Text>
-              <Text style={styles.infoValue}>1.0.0</Text>
+              <Text style={styles.infoValue}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
             </View>
           </View>
         </View>

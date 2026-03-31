@@ -189,7 +189,15 @@ export default function FeedRecipesScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'خلطات الأعلاف وإعادة الطلب' }} />
+      <Stack.Screen options={{
+        title: 'خلطات الأعلاف وإعادة الطلب',
+        headerShown: true,
+        headerStyle: { backgroundColor: Colors.primary },
+        headerTintColor: '#fff',
+        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        headerTitleAlign: 'center',
+        headerBackTitle: '',
+      }} />
 
       {/* Tabs */}
       <View style={styles.tabs}>

@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { salesApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input } from '@/components/ui';
+import DatePickerField from '@/components/DatePickerField';
 import { Colors, Spacing, Radius, Typography, Shadows, PaymentStatusLabels } from '@/lib/theme';
 import { formatDate, formatNumber } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
@@ -266,7 +267,7 @@ export default function SalesScreen() {
           <Input label="هاتف المشتري" placeholder="الرقم" icon="call-outline" value={formPhone} onChangeText={setFormPhone} keyboardType="phone-pad" />
           <Input label="سعر البيع *" placeholder="0" icon="pricetag-outline" value={formPrice} onChangeText={setFormPrice} keyboardType="decimal-pad" />
           <Input label="المبلغ المدفوع" placeholder="0" icon="cash-outline" value={formPaid} onChangeText={setFormPaid} keyboardType="decimal-pad" />
-          <Input label="التاريخ" placeholder="YYYY-MM-DD" icon="calendar-outline" value={formDate} onChangeText={setFormDate} />
+          <DatePickerField label="التاريخ" value={formDate} onChange={setFormDate} placeholder="اختر التاريخ" />
           <Input label="ملاحظات" placeholder="ملاحظات إضافية" icon="document-text-outline" value={formNotes} onChangeText={setFormNotes} multiline />
 
           <Button title="تسجيل البيع" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />

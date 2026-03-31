@@ -36,8 +36,16 @@ export default function ResetPasswordScreen() {
       setError('يرجى إدخال رمز إعادة التعيين');
       return;
     }
-    if (password.length < 6) {
-      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    if (password.length < 8) {
+      setError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('كلمة المرور يجب أن تحتوي على حرف كبير على الأقل');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('كلمة المرور يجب أن تحتوي على رقم على الأقل');
       return;
     }
     if (password !== confirmPassword) {

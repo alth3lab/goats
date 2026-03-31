@@ -4,22 +4,22 @@
  * produce Eastern-Arabic numerals (٠١٢٣٤٥٦٧٨٩) which we want to avoid.
  */
 
-const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
+const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
 });
 
-const dateShortMonthFormatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
+const dateShortMonthFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
   month: 'short',
 });
 
-const timeFormatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
+const timeFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
   hour: '2-digit',
   minute: '2-digit',
 });
 
-/** Format date → "25/03/2026" (Arabic month names, Latin digits) */
+/** Format date → "25/03/2026" (Gregorian DD/MM/YYYY, Latin digits) */
 export function formatDate(date: string | Date): string {
   return dateFormatter.format(new Date(date));
 }

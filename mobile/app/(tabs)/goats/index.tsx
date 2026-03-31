@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,13 @@ export default function GoatsListScreen() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [page, setPage] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input — wait 400ms before sending to API
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchGoats = useCallback(async (pageNum = 0, append = false) => {
     try {
@@ -48,6 +55,7 @@ export default function GoatsListScreen() {
         limit: '20',
       };
       if (statusFilter !== 'ALL') params.status = statusFilter;
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
       const result = await goatsApi.list(params);
       const data = (result.data || []) as unknown as Goat[];
@@ -66,14 +74,14 @@ export default function GoatsListScreen() {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, debouncedSearch]);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       setPage(0);
       fetchGoats(0);
-    }, [statusFilter, fetchGoats])
+    }, [fetchGoats])
   );
 
   const onRefresh = () => {
@@ -90,13 +98,7 @@ export default function GoatsListScreen() {
     fetchGoats(nextPage, true);
   };
 
-  const filteredGoats = useMemo(() => search.trim()
-    ? goats.filter(g =>
-        g.tagId.toLowerCase().includes(search.toLowerCase()) ||
-        g.name?.toLowerCase().includes(search.toLowerCase()) ||
-        g.breed?.nameAr.includes(search)
-      )
-    : goats, [search, goats]);
+  const filteredGoats = goats; // search handled server-side via debouncedSearch param
 
   const renderGoat = useCallback(({ item }: { item: Goat }) => (
     <GoatCard

@@ -68,7 +68,7 @@ export default function ReportsScreen() {
         .stat-lbl { font-size: 11px; color: #666; }
       </style></head><body>
         <h1>تقرير ${farmName}</h1>
-        <p class="info">سنة ${selectedYear} — تم التصدير ${new Date().toLocaleDateString('ar')}</p>
+        <p class="info">سنة ${selectedYear} — تم التصدير ${new Date().toLocaleDateString('en-GB')}</p>
 
         <h2>القطيع</h2>
         <div class="grid">

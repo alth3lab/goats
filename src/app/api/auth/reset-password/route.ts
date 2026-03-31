@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'جميع الحقول مطلوبة' }, { status: 400 })
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' }, { status: 400 })
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي على حرف كبير ورقم' }, { status: 400 })
     }
 
     // Hash the incoming token to compare

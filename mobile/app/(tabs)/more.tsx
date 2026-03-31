@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { useAuth } from '@/lib/auth';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
 
@@ -54,6 +55,7 @@ export default function MoreScreen() {
         { icon: 'beaker', label: 'خلطات الأعلاف', subtitle: 'الخلطات وإعادة الطلب', color: '#8b5cf6', onPress: () => router.push('/feed-recipes') },
         { icon: 'home', label: 'الحظائر', subtitle: 'إدارة الحظائر والسعة', color: Colors.info, onPress: () => router.push('/pens') },
         { icon: 'people', label: 'الملاك', subtitle: 'إدارة ملاك الحيوانات', color: Colors.secondary, onPress: () => router.push('/owners') },
+        { icon: 'layers', label: 'المواد والمخزون', subtitle: 'أعلاف وأدوية ومستلزمات — النظام الموحد', color: '#22c55e', onPress: () => router.push('/stock') },
         { icon: 'cube', label: 'المخزون', subtitle: 'الأدوية والمستلزمات مع سجل الحركات', color: Colors.primary, onPress: () => router.push('/inventory') },
         { icon: 'wallet', label: 'المصروفات', subtitle: 'تتبع المصاريف', color: Colors.error, onPress: () => router.push('/expenses') },
         { icon: 'people-circle', label: 'الفريق', subtitle: 'إدارة أعضاء الفريق', color: '#5C6BC0', onPress: () => router.push('/team') },
@@ -124,7 +126,7 @@ export default function MoreScreen() {
 
       {/* App Info */}
       <View style={styles.appInfo}>
-        <Text style={styles.appInfoText}>وبر وصوف — نسخة 1.0.0</Text>
+        <Text style={styles.appInfoText}>وبر وصوف — نسخة {Constants.expoConfig?.version ?? '1.0.0'}</Text>
       </View>
 
       <View style={{ height: 30 }} />

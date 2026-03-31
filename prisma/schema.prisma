@@ -67,6 +67,8 @@ model Farm {
   calendarEvents        CalendarEvent[]
   activityLogs          ActivityLog[]
   vaccinationProtocols  VaccinationProtocol[]
+  stockItems            StockItem[]
+  stockMovements        StockMovement[]
 
   @@index([tenantId])
 }
@@ -294,6 +296,7 @@ model Pen {
   goats            Goat[]
   feedingSchedules FeedingSchedule[]
   feedConsumptions DailyFeedConsumption[]
+  stockMovements   StockMovement[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -961,4 +964,78 @@ model ExpoPushToken {
   @@index([userId])
   @@index([tenantId])
   @@index([farmId])
+}
+
+// ==================== Unified Stock System ====================
+
+enum StockType {
+  FEED
+  MEDICINE
+  VACCINE
+  EQUIPMENT
+  SUPPLY
+}
+
+enum MovementType {
+  PURCHASE
+  FEED_USAGE
+  USAGE
+  ADJUSTMENT
+  EXPIRED
+  RETURN
+}
+
+model StockItem {
+  id           String         @id @default(uuid())
+  tenantId     String         @default("")
+  farmId       String         @default("")
+  farm         Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  nameAr       String
+  name         String         @default("")
+  type         StockType
+  feedCategory FeedCategory?
+  unit         String         @default("كجم")
+  currentStock Float          @default(0)
+  minStock     Float?
+  unitPrice    Float?
+  supplier     String?
+  proteinPct   Float?
+  energyKcal   Float?
+  reorderLevel Float?         @default(50)
+  notes        String?        @db.Text
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  movements    StockMovement[]
+
+  @@index([tenantId])
+  @@index([farmId])
+  @@index([type])
+  @@index([isActive])
+}
+
+model StockMovement {
+  id         String       @id @default(uuid())
+  tenantId   String       @default("")
+  farmId     String       @default("")
+  farm       Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       StockItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type       MovementType
+  qty        Float
+  unitCost   Float?
+  date       DateTime     @default(now())
+  expiryDate DateTime?
+  penId      String?
+  pen        Pen?         @relation(fields: [penId], references: [id], onDelete: SetNull)
+  reference  String?
+  notes      String?      @db.Text
+  createdBy  String?
+  createdAt  DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([farmId])
+  @@index([itemId])
+  @@index([type])
+  @@index([date])
 }

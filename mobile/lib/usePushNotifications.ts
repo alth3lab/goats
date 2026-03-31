@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { pushApi } from './api';
 import { getToken } from './storage';
 
@@ -83,8 +84,15 @@ export function usePushNotifications() {
     });
 
     // Listen for notification taps (user interaction)
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((_response: Notifications.NotificationResponse) => {
-      // Could navigate to specific screen based on notification data
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response: Notifications.NotificationResponse) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      // Navigate to specific screen if provided in notification payload
+      if (data?.screen && typeof data.screen === 'string') {
+        router.push(data.screen as never);
+      } else {
+        // Default: go to dashboard
+        router.push('/(tabs)' as never);
+      }
     });
 
     return () => {

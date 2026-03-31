@@ -34,7 +34,13 @@ export async function GET(request: NextRequest) {
       orderBy: { nameAr: 'asc' }
     })
 
-    return NextResponse.json(feedTypes)
+    // Compute currentStock aggregate for each feed type
+    const result = feedTypes.map(ft => ({
+      ...ft,
+      currentStock: ft.stock.reduce((sum, s) => sum + s.quantity, 0),
+    }))
+
+    return NextResponse.json(result)
   
     })
 } catch (error) {

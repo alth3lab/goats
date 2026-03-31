@@ -28,6 +28,11 @@ function formatDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function formatDisplayDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 export default function DatePickerField({
   label,
   value,
@@ -61,7 +66,7 @@ export default function DatePickerField({
       >
         <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
         <Text style={[styles.buttonText, !value && styles.placeholder]}>
-          {value || placeholder}
+          {value ? formatDisplayDate(value) : placeholder}
         </Text>
         <Ionicons name="chevron-down" size={18} color={Colors.textLight} />
       </TouchableOpacity>
@@ -74,6 +79,7 @@ export default function DatePickerField({
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           maximumDate={maximumDate}
           minimumDate={minimumDate}
+          locale="en-GB"
           onChange={handleNativeChange}
         />
       )}

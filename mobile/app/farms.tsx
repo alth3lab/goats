@@ -162,7 +162,15 @@ export default function FarmsScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'إدارة المزارع' }} />
+      <Stack.Screen options={{
+        title: 'إدارة المزارع',
+        headerShown: true,
+        headerStyle: { backgroundColor: Colors.primary },
+        headerTintColor: '#fff',
+        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        headerTitleAlign: 'center',
+        headerBackTitle: '',
+      }} />
 
       <View style={styles.summary}>
         <Ionicons name="business" size={20} color={Colors.primary} />
