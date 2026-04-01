@@ -8,9 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { goatsApi, lookupApi } from '@/lib/api';
 import { Button, Input, LoadingScreen } from '@/components/ui';
 import DatePickerField from '@/components/DatePickerField';
@@ -44,6 +46,8 @@ export default function EditGoatScreen() {
   const [ownerId, setOwnerId] = useState('');
   const [motherTagId, setMotherTagId] = useState('');
   const [fatherTagId, setFatherTagId] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
 
   const [breeds, setBreeds] = useState<Breed[]>([]);
   const [pens, setPens] = useState<Pen[]>([]);
@@ -61,6 +65,37 @@ export default function EditGoatScreen() {
     setOwnerId(goat.ownerId || goat.owner?.id || '');
     setMotherTagId(goat.motherTagId || '');
     setFatherTagId(goat.fatherTagId || '');
+    setExistingPhotoUrl(goat.imageUrl || null);
+  };
+
+  const pickImage = async (source: 'camera' | 'gallery') => {
+    const opts: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    };
+
+    let result: ImagePicker.ImagePickerResult;
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('تنبيه', 'يجب السماح بالوصول إلى الكاميرا');
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync(opts);
+    } else {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('تنبيه', 'يجب السماح بالوصول إلى المعرض');
+        return;
+      }
+      result = await ImagePicker.launchImageLibraryAsync(opts);
+    }
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
   };
 
   const fetchData = useCallback(async () => {
@@ -129,6 +164,17 @@ export default function EditGoatScreen() {
 
       const updateResult = await goatsApi.update(id, payload) as Record<string, unknown>;
 
+      // Upload new photo if selected
+      if (photoUri) {
+        try {
+          await goatsApi.uploadImage(id, photoUri);
+          setPhotoUri(null);
+        } catch (photoErr) {
+          const detail = photoErr instanceof Error ? photoErr.message : '';
+          Alert.alert('تنبيه', `تم حفظ البيانات لكن فشل رفع الصورة${detail ? '\n' + detail : ''}`);
+        }
+      }
+
       try {
         await goatsApi.updateParentage(id, motherTagId.trim() || null, fatherTagId.trim() || null);
       } catch (parentageErr) {
@@ -171,6 +217,46 @@ export default function EditGoatScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        {/* Photo */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>صورة الحيوان</Text>
+          <View style={styles.photoRow}>
+            {photoUri ? (
+              <TouchableOpacity onPress={() => setPhotoUri(null)} style={styles.photoPreview}>
+                <Image source={{ uri: photoUri }} style={styles.photoImage} />
+                <View style={styles.photoRemove}>
+                  <Ionicons name="close-circle" size={24} color={Colors.error} />
+                </View>
+              </TouchableOpacity>
+            ) : existingPhotoUrl ? (
+              <View style={styles.photoPreview}>
+                <Image source={{ uri: existingPhotoUrl }} style={styles.photoImage} />
+                <View style={styles.photoExistingBadge}>
+                  <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Ionicons name="image-outline" size={40} color={Colors.textLight} />
+              </View>
+            )}
+            <View style={styles.photoButtons}>
+              <TouchableOpacity style={styles.photoBtn} onPress={() => pickImage('camera')}>
+                <Ionicons name="camera" size={22} color={Colors.primary} />
+                <Text style={styles.photoBtnText}>الكاميرا</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.photoBtn} onPress={() => pickImage('gallery')}>
+                <Ionicons name="images" size={22} color={Colors.primary} />
+                <Text style={styles.photoBtnText}>المعرض</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          {photoUri && (
+            <Text style={styles.photoHint}>✓ صورة جديدة جاهزة للرفع عند الحفظ</Text>
+          )}
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>المعلومات الأساسية</Text>
 
@@ -427,5 +513,74 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  photoPreview: {
+    width: 90,
+    height: 90,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: {
+    width: 90,
+    height: 90,
+    borderRadius: Radius.md,
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+  },
+  photoExistingBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+  },
+  photoPlaceholder: {
+    width: 90,
+    height: 90,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+  },
+  photoButtons: {
+    flex: 1,
+    gap: Spacing.sm,
+  },
+  photoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.surface,
+  },
+  photoBtnText: {
+    ...Typography.small,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  photoHint: {
+    ...Typography.small,
+    color: Colors.success,
+    textAlign: 'right',
+    marginTop: Spacing.xs,
   },
 });

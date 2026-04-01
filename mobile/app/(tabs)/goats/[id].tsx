@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,38 +79,43 @@ export default function GoatDetailScreen() {
     >
       {/* Header Card */}
       <View style={styles.headerCard}>
-        <View style={styles.headerTop}>
-          <View style={styles.tagWrap}>
-            <View style={[styles.tagDot, { backgroundColor: goat.tagColor || Colors.primary }]} />
-            <Text style={styles.tagId}>{goat.tagId}</Text>
+        {goat.imageUrl && (
+          <Image source={{ uri: goat.imageUrl }} style={styles.goatImage} resizeMode="cover" />
+        )}
+        <View style={styles.headerContent}>
+          <View style={styles.headerTop}>
+            <View style={styles.tagWrap}>
+              <View style={[styles.tagDot, { backgroundColor: goat.tagColor || Colors.primary }]} />
+              <Text style={styles.tagId}>{goat.tagId}</Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {StatusLabels[goat.status]}
+              </Text>
+            </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {StatusLabels[goat.status]}
-            </Text>
-          </View>
-        </View>
 
-        {goat.name && <Text style={styles.goatName}>{goat.name}</Text>}
+          {goat.name && <Text style={styles.goatName}>{goat.name}</Text>}
 
-        <View style={styles.genderAge}>
-          <View style={[styles.genderBadge, { backgroundColor: genderColor + '15' }]}>
-            <Ionicons name={goat.gender === 'MALE' ? 'male' : 'female'} size={16} color={genderColor} />
-            <Text style={[styles.genderText, { color: genderColor }]}>{GenderLabels[goat.gender]}</Text>
+          <View style={styles.genderAge}>
+            <View style={[styles.genderBadge, { backgroundColor: genderColor + '15' }]}>
+              <Ionicons name={goat.gender === 'MALE' ? 'male' : 'female'} size={16} color={genderColor} />
+              <Text style={[styles.genderText, { color: genderColor }]}>{GenderLabels[goat.gender]}</Text>
+            </View>
+            {goat.age && (
+              <Text style={styles.ageText}>العمر: {goat.age.formatted}</Text>
+            )}
           </View>
-          {goat.age && (
-            <Text style={styles.ageText}>العمر: {goat.age.formatted}</Text>
+
+          {goat.pregnancyStatus && (
+            <View style={styles.pregnancyBanner}>
+              <Ionicons name="heart" size={16} color={Colors.female} />
+              <Text style={styles.pregnancyText}>
+                حامل {goat.dueDate ? `— الموعد المتوقع: ${formatDate(goat.dueDate)}` : ''}
+              </Text>
+            </View>
           )}
         </View>
-
-        {goat.pregnancyStatus && (
-          <View style={styles.pregnancyBanner}>
-            <Ionicons name="heart" size={16} color={Colors.female} />
-            <Text style={styles.pregnancyText}>
-              حامل {goat.dueDate ? `— الموعد المتوقع: ${formatDate(goat.dueDate)}` : ''}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Info Grid */}
@@ -244,9 +250,16 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
-    padding: Spacing.xl,
+    overflow: 'hidden',
     marginBottom: Spacing.xl,
     ...Shadows.md,
+  },
+  goatImage: {
+    width: '100%',
+    height: 200,
+  },
+  headerContent: {
+    padding: Spacing.xl,
   },
   headerTop: {
     flexDirection: 'row',
