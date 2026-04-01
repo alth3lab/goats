@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOKEN_KEY = 'auth_token';
 const FARM_KEY = 'current_farm_id';
+const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
+const BIOMETRIC_IDENTIFIER_KEY = 'biometric_identifier';
 
 function canUseSecureStore(): boolean {
   return (
@@ -67,4 +69,31 @@ export async function setFarmId(farmId: string): Promise<void> {
 export async function clearAll(): Promise<void> {
   await removeToken();
   await AsyncStorage.clear();
+}
+
+// ─── Biometric Settings ──────────────────────────────────
+export async function getBiometricEnabled(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
+    return val === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function setBiometricEnabled(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, enabled ? 'true' : 'false');
+}
+
+/** Save the identifier (email/username) used at last successful biometric enrollment */
+export async function getBiometricIdentifier(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(BIOMETRIC_IDENTIFIER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setBiometricIdentifier(identifier: string): Promise<void> {
+  await AsyncStorage.setItem(BIOMETRIC_IDENTIFIER_KEY, identifier);
 }
