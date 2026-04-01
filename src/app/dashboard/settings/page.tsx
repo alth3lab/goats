@@ -29,6 +29,7 @@ import {
   NotificationsActive as NotifActiveIcon,
   NotificationsOff as NotifOffIcon,
   Send as SendIcon,
+  DeleteForever as DeleteForeverIcon,
 } from '@mui/icons-material'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
@@ -65,6 +66,9 @@ export default function SettingsPage() {
   })
   const [backupLoading, setBackupLoading] = useState(false)
   const [restoreLoading, setRestoreLoading] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [restoreConfirm, setRestoreConfirm] = useState(false)
   const [restoreFile, setRestoreFile] = useState<File | null>(null)
   const [restoreStats, setRestoreStats] = useState<Record<string, number> | null>(null)
@@ -193,6 +197,22 @@ export default function SettingsPage() {
       setRestoreLoading(false)
       setRestoreFile(null)
       setRestoreStats(null)
+    }
+  }
+
+  const DELETE_PHRASE = 'احذف حسابي'
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== DELETE_PHRASE) return
+    setDeleteLoading(true)
+    try {
+      const resp = await fetch('/api/auth/account', { method: 'DELETE' })
+      if (!resp.ok) throw new Error()
+      // Redirect to login after successful deletion
+      window.location.href = '/login'
+    } catch {
+      setSnackbar({ open: true, message: 'فشل في حذف الحساب، يرجى المحاولة مرة أخرى', severity: 'error' })
+      setDeleteLoading(false)
     }
   }
 
@@ -505,6 +525,90 @@ export default function SettingsPage() {
         </Stack>
       </Paper>
       )}
+
+      {/* Section 5: Danger Zone — Account Deletion */}
+      <Paper
+        sx={{
+          p: 3,
+          mt: 3,
+          borderRadius: 3,
+          border: '1.5px solid',
+          borderColor: 'error.main',
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+          <DeleteForeverIcon color="error" />
+          <Typography variant="h6" fontWeight="bold" color="error">
+            منطقة الخطر
+          </Typography>
+        </Stack>
+        <Divider sx={{ mb: 2, borderColor: 'error.light' }} />
+        <Alert severity="error" sx={{ mb: 2 }}>
+          حذف الحساب إجراء <strong>لا يمكن التراجع عنه</strong>. سيتم حذف جميع بياناتك بشكل نهائي بما في
+          ذلك: الحيوانات، السجلات الصحية، التلقيحات، المبيعات، المصروفات، المخزون، الأعلاف، والإعدادات.
+        </Alert>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteForeverIcon />}
+          onClick={() => {
+            setDeleteConfirmText('')
+            setDeleteAccountOpen(true)
+          }}
+        >
+          حذف الحساب نهائياً
+        </Button>
+      </Paper>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog
+        open={deleteAccountOpen}
+        onClose={() => !deleteLoading && setDeleteAccountOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteForeverIcon color="error" />
+          <Typography fontWeight="bold" color="error">تأكيد حذف الحساب</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 3 }}>
+            هذا الإجراء <strong>لا يمكن التراجع عنه</strong>. سيتم حذف حسابك وجميع بيانات المزرعة
+            بشكل دائم ونهائي.
+          </DialogContentText>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            للتأكيد، أكتب: <strong dir="rtl">{DELETE_PHRASE}</strong>
+          </Typography>
+          <TextField
+            fullWidth
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder={DELETE_PHRASE}
+            error={deleteConfirmText.length > 0 && deleteConfirmText !== DELETE_PHRASE}
+            helperText={
+              deleteConfirmText.length > 0 && deleteConfirmText !== DELETE_PHRASE
+                ? 'النص غير مطابق'
+                : ' '
+            }
+            disabled={deleteLoading}
+            inputProps={{ dir: 'rtl' }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteAccountOpen(false)} disabled={deleteLoading}>
+            إلغاء
+          </Button>
+          <Button
+            onClick={handleDeleteAccount}
+            color="error"
+            variant="contained"
+            disabled={deleteConfirmText !== DELETE_PHRASE || deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={18} color="inherit" /> : <DeleteForeverIcon />}
+          >
+            {deleteLoading ? 'جاري الحذف...' : 'حذف الحساب نهائياً'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Restore Confirmation Dialog */}
       <Dialog open={restoreConfirm} onClose={() => setRestoreConfirm(false)} maxWidth="sm" fullWidth>

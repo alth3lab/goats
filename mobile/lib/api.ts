@@ -169,6 +169,9 @@ export const authApi = {
 
   switchFarm: (farmId: string) =>
     request<{ token: string }>('/farms/switch', { method: 'POST', body: { farmId } }),
+
+  deleteAccount: () =>
+    request<{ success: boolean; message: string }>('/auth/account', { method: 'DELETE' }),
 };
 
 // ─── Stats API ───────────────────────────────────────────

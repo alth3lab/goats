@@ -6,8 +6,9 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { settingsApi } from '@/lib/api';
@@ -153,6 +154,24 @@ export default function SettingsScreen() {
           icon="save-outline"
         />
 
+        {/* Danger Zone */}
+        <View style={styles.section}>
+          <SectionHeader title="منطقة الخطر" />
+          <View style={[styles.card, styles.dangerCard]}>
+            <Text style={styles.dangerText}>
+              حذف الحساب إجراء لا يمكن التراجع عنه. ستُحذف جميع بياناتك نهائياً.
+            </Text>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={() => router.push('/delete-account')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+              <Text style={styles.dangerButtonText}>حذف الحساب</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </>
@@ -167,4 +186,8 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   infoLabel: { ...Typography.caption, color: Colors.textSecondary },
   infoValue: { ...Typography.captionBold, color: Colors.text },
+  dangerCard: { borderWidth: 1, borderColor: Colors.error + '60' },
+  dangerText: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
+  dangerButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: Colors.error, borderRadius: Radius.md, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
+  dangerButtonText: { ...Typography.bodyBold, color: '#fff' },
 });
