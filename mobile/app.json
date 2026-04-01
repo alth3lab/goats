@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.wabrwsuf.app",
-      "buildNumber": "11",
+      "buildNumber": "12",
       "jsEngine": "hermes",
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "com.wabrwsuf.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2e7d32"

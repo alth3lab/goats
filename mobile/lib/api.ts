@@ -375,33 +375,6 @@ export const inventoryApi = {
     request<Record<string, unknown>>(`/inventory/${id}`, { method: 'PUT', body: data }),
 };
 
-// ─── Stock API (unified feeds + inventory) ───────────────
-export const stockApi = {
-  list: (params?: { type?: string; lowStock?: string; inactive?: string }) =>
-    request<Record<string, unknown>[]>('/stock', { params }),
-
-  get: (id: string) =>
-    request<Record<string, unknown>>(`/stock/${id}`),
-
-  create: (data: Record<string, unknown>) =>
-    request<Record<string, unknown>>('/stock', { method: 'POST', body: data }),
-
-  update: (id: string, data: Record<string, unknown>) =>
-    request<Record<string, unknown>>(`/stock/${id}`, { method: 'PUT', body: data }),
-
-  delete: (id: string) =>
-    request<{ success: boolean }>(`/stock/${id}`, { method: 'DELETE' }),
-
-  addMovement: (data: Record<string, unknown>) =>
-    request<Record<string, unknown>>('/stock/movements', { method: 'POST', body: data }),
-
-  reorder: (type?: string) => {
-    const params: Record<string, string> = {};
-    if (type) params.type = type;
-    return request<Record<string, unknown>[]>('/stock/reorder', { params });
-  },
-};
-
 // ─── Farms API ───────────────────────────────────────────
 export const farmsApi = {
   list: () => request<Record<string, unknown>[]>('/farms'),

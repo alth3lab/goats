@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert,
-  ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Linking,
 } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,26 +34,13 @@ const STATUS_COLORS: Record<string, string> = {
   PAST_DUE: Colors.error,
 };
 
+const WEBSITE_PLANS_URL = 'https://goat.suhail.cc/dashboard/billing';
+
 export default function BillingScreen() {
   const [info, setInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [upgrading, setUpgrading] = useState<string | null>(null);
   const { showToast } = useToast();
-
-  const handleUpgrade = async (plan: string) => {
-    setUpgrading(plan);
-    try {
-      await subscriptionApi.upgrade(plan);
-      showToast('success', 'تم تغيير خطة الاشتراك بنجاح');
-      fetchData();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'فشل تغيير الخطة';
-      showToast('error', msg);
-    } finally {
-      setUpgrading(null);
-    }
-  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -190,18 +176,10 @@ export default function BillingScreen() {
               {!isCurrent && (
                 <TouchableOpacity
                   style={[styles.upgradeBtn, { backgroundColor: p.color }]}
-                  onPress={key === 'ENTERPRISE'
-                    ? () => Alert.alert('الخطة المؤسسية', 'تواصل معنا على: support@goat.suhail.cc للحصول على تسعير خاص')
-                    : () => handleUpgrade(key)}
-                  disabled={upgrading !== null}
+                  onPress={() => Linking.openURL(WEBSITE_PLANS_URL)}
                 >
-                  {upgrading === key ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.upgradeBtnText}>
-                      {key === 'ENTERPRISE' ? 'تواصل معنا' : 'الانتقال لهذه الخطة'}
-                    </Text>
-                  )}
+                  <Ionicons name="open-outline" size={14} color="#fff" style={{ marginEnd: 4 }} />
+                  <Text style={styles.upgradeBtnText}>الترقية عبر الموقع</Text>
                 </TouchableOpacity>
               )}
             </View>
