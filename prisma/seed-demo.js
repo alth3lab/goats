@@ -47,16 +47,24 @@ async function main() {
 
     const goatTypeRow  = allTypes.find(t => t.name === 'GOAT')
     const sheepTypeRow = allTypes.find(t => t.name === 'SHEEP')
+    const camelTypeRow = allTypes.find(t => t.name === 'CAMEL')
 
     if (!goatTypeRow || !sheepTypeRow) {
       throw new Error('أنواع الحيوانات غير موجودة – شغّل seed-direct.js أولاً')
     }
+    if (!camelTypeRow) {
+      throw new Error('نوع الإبل غير موجود – شغّل seed.js (Prisma) أولاً: npx prisma db seed')
+    }
 
     const goatBreeds  = allBreeds.filter(b => b.typeId === goatTypeRow.id)
     const sheepBreeds = allBreeds.filter(b => b.typeId === sheepTypeRow.id)
+    const camelBreeds = allBreeds.filter(b => b.typeId === camelTypeRow.id)
 
     if (!goatBreeds.length || !sheepBreeds.length) {
       throw new Error('السلالات غير موجودة – شغّل seed-direct.js أولاً')
+    }
+    if (!camelBreeds.length) {
+      throw new Error('سلالات الإبل غير موجودة – شغّل seed.js (Prisma) أولاً')
     }
 
     // ── Clean up any prior demo data (idempotent re-runs) ─────────────────
@@ -235,6 +243,96 @@ async function main() {
     }
 
     console.log('✅ تم إنشاء مزرعة الوحدة  — 20 رأس ماعز، 5 مبيعات، 15 سجل صحي، 6 مصروفات\n')
+
+    // ── مزرعة إبل الوحدة (demo1) ────────────────────────────────────────────
+    console.log('🐪  إضافة مزرعة إبل الوحدة...')
+    const fc1Id = uuid()
+    await q(conn,
+      `INSERT INTO Farm (id, tenantId, name, nameAr, farmType, phone, address, currency, notifications, isActive, createdAt, updatedAt)
+       VALUES (?, ?, 'Al Wihda Camel Farm', 'مزرعة الوحدة للإبل', 'CAMEL', '+971501234503', 'العين، أبوظبي', 'AED', 1, 1, NOW(), NOW())`,
+      [fc1Id, tenant1])
+    const camelFarm1 = fc1Id
+
+    await q(conn,
+      `INSERT INTO UserFarm (id, userId, farmId, role) VALUES (UUID(), ?, ?, 'OWNER')`,
+      [u1Id, camelFarm1])
+
+    const cPen1aId = uuid(); const cPen1bId = uuid()
+    await q(conn,
+      `INSERT IGNORE INTO Pen (id, tenantId, farmId, name, nameAr, capacity, type, createdAt, updatedAt) VALUES
+       (?, ?, ?, 'Pen 1 - Females', 'حظيرة 1 - النوق',    15, 'FEMALE', NOW(), NOW()),
+       (?, ?, ?, 'Pen 2 - Males',   'حظيرة 2 - الفحول',  10, 'MALE',   NOW(), NOW())`,
+      [cPen1aId, tenant1, camelFarm1, cPen1bId, tenant1, camelFarm1])
+
+    // 15 camels
+    const camelData1 = [
+      ['C001', 'لعساء',  'FEMALE', 2190, 480, cPen1aId],
+      ['C002', 'شهباء',  'FEMALE', 1825, 520, cPen1aId],
+      ['C003', 'حمراء',  'FEMALE', 2555, 450, cPen1aId],
+      ['C004', 'صفراء',  'FEMALE', 1460, 430, cPen1aId],
+      ['C005', 'وضحاء',  'FEMALE', 2920, 500, cPen1aId],
+      ['C006', 'حنانة',  'FEMALE', 1095, 415, cPen1aId],
+      ['C007', 'رشيدة',  'FEMALE', 3285, 540, cPen1aId],
+      ['C008', 'كريمة',  'FEMALE', 2190, 470, cPen1aId],
+      ['C009', 'نجلاء',  'FEMALE', 1825, 425, cPen1aId],
+      ['C010', 'ضياء',   'FEMALE', 3650, 510, cPen1aId],
+      ['C011', 'مرزوق',  'MALE',   2920, 650, cPen1bId],
+      ['C012', 'عزيز',   'MALE',   2555, 625, cPen1bId],
+      ['C013', 'حمدان',  'MALE',   1825, 580, cPen1bId],
+      ['C014', 'قاسم',   'MALE',   3285, 700, cPen1bId],
+      ['C015', 'زايد',   'MALE',   2190, 645, cPen1bId],
+    ]
+
+    for (const [tagId, name, gender, birthDays, weight, penId] of camelData1) {
+      const cId = uuid()
+      const breedId = pick(camelBreeds).id
+      await q(conn,
+        `INSERT IGNORE INTO Goat (id, tenantId, farmId, tagId, name, breedId, gender, birthDate, weight, status, penId, ownerId, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), ?, 'ACTIVE', ?, ?, NOW(), NOW())`,
+        [cId, tenant1, camelFarm1, tagId, name, breedId, gender, birthDays, weight, penId, owner1])
+    }
+
+    const cf1Animals = await q(conn, `SELECT id, gender FROM Goat WHERE farmId=?`, [camelFarm1])
+    const cf1Females = cf1Animals.filter(g => g.gender === 'FEMALE')
+    const cf1Males   = cf1Animals.filter(g => g.gender === 'MALE')
+
+    // 8 health records
+    for (let i = 0; i < 8; i++) {
+      const g = pick(cf1Animals)
+      const hType = pick(['VACCINATION', 'CHECKUP', 'TREATMENT'])
+      const desc = hType === 'VACCINATION' ? 'تطعيم ضد الجرب والطاعون - جرعة وقائية سنوية'
+                 : hType === 'TREATMENT'   ? 'علاج طفيليات خارجية ومعالجة جروح'
+                 : 'فحص دوري شامل وقياس الوزن'
+      const cost = hType === 'VACCINATION' ? 80 : hType === 'TREATMENT' ? 150 : 60
+      await q(conn,
+        `INSERT INTO HealthRecord (id, tenantId, farmId, goatId, type, date, description, veterinarian, cost, createdAt, updatedAt)
+         VALUES (UUID(), ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), ?, 'د. سالم الذوادي', ?, NOW(), NOW())`,
+        [tenant1, camelFarm1, g.id, hType, rand(1, 120), desc, cost])
+    }
+
+    // 4 expenses
+    const cExp1 = [
+      ['FEED',        'علف نخالة وشعير للإبل',   800,  20],
+      ['VETERINARY',  'برنامج التطعيمات الدورية', 400,  15],
+      ['MAINTENANCE', 'صيانة سياج المرعى',         600,  10],
+      ['LABOR',       'راتب الراعي',              1500,   1],
+    ]
+    for (const [cat, desc, amount, daysBack] of cExp1) {
+      await q(conn,
+        `INSERT INTO Expense (id, tenantId, farmId, category, description, amount, date, paymentMethod, createdAt, updatedAt)
+         VALUES (UUID(), ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), 'CASH', NOW(), NOW())`,
+        [tenant1, camelFarm1, cat, desc, amount, daysBack])
+    }
+
+    // 1 breeding record
+    if (cf1Females.length && cf1Males.length) {
+      await q(conn,
+        `INSERT INTO Breeding (id, tenantId, farmId, motherId, fatherId, matingDate, pregnancyStatus, dueDate, createdAt, updatedAt)
+         VALUES (UUID(), ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL 180 DAY), 'PREGNANT', DATE_ADD(NOW(), INTERVAL 210 DAY), NOW(), NOW())`,
+        [tenant1, camelFarm1, cf1Females[0].id, cf1Males[0].id])
+    }
+
+    console.log('✅ تم إنشاء مزرعة إبل الوحدة — 15 رأس إبل، 8 سجلات صحية، 4 مصروفات\n')
 
     // ═══════════════════════════════════════════════════════════════════════
     // DEMO 2 – مزرعة النخيل (خراف)
@@ -429,13 +527,119 @@ async function main() {
 
     console.log('✅ تم إنشاء مزرعة النخيل   — 30 رأس خراف، 8 مبيعات، 20 سجل صحي، 8 مصروفات\n')
 
+    // ── مزرعة إبل النخيل (demo2) ────────────────────────────────────────────
+    console.log('🐪  إضافة مزرعة إبل النخيل...')
+    const fc2Id = uuid()
+    await q(conn,
+      `INSERT INTO Farm (id, tenantId, name, nameAr, farmType, phone, address, currency, notifications, isActive, createdAt, updatedAt)
+       VALUES (?, ?, 'Al Nakhal Camel Farm', 'مزرعة النخيل للإبل', 'CAMEL', '+971501234504', 'أبوظبي', 'AED', 1, 1, NOW(), NOW())`,
+      [fc2Id, tenant2])
+    const camelFarm2 = fc2Id
+
+    await q(conn,
+      `INSERT INTO UserFarm (id, userId, farmId, role) VALUES (UUID(), ?, ?, 'OWNER')`,
+      [u2Id, camelFarm2])
+
+    const cPen2aId = uuid(); const cPen2bId = uuid(); const cPen2cId = uuid()
+    await q(conn,
+      `INSERT IGNORE INTO Pen (id, tenantId, farmId, name, nameAr, capacity, type, createdAt, updatedAt) VALUES
+       (?, ?, ?, 'Pen 1 - Females', 'حظيرة 1 - النوق',    20, 'FEMALE', NOW(), NOW()),
+       (?, ?, ?, 'Pen 2 - Males',   'حظيرة 2 - الفحول',  10, 'MALE',   NOW(), NOW()),
+       (?, ?, ?, 'Pen 3 - Young',   'حظيرة 3 - الفتية',   8, 'KIDS',   NOW(), NOW())`,
+      [cPen2aId, tenant2, camelFarm2, cPen2bId, tenant2, camelFarm2, cPen2cId, tenant2, camelFarm2])
+
+    // 20 camels
+    const camelData2 = [
+      ['C001', 'أنيسة',    'FEMALE', 2555, 490, cPen2aId],
+      ['C002', 'بهجة',     'FEMALE', 1825, 510, cPen2aId],
+      ['C003', 'ثريا',     'FEMALE', 3285, 460, cPen2aId],
+      ['C004', 'جوهرة',    'FEMALE', 2190, 435, cPen2aId],
+      ['C005', 'حياة',     'FEMALE', 2920, 505, cPen2aId],
+      ['C006', 'خولة',     'FEMALE', 1460, 420, cPen2aId],
+      ['C007', 'دانة',     'FEMALE', 3650, 550, cPen2aId],
+      ['C008', 'ذهبية',    'FEMALE', 2555, 475, cPen2aId],
+      ['C009', 'ربيعة',    'FEMALE', 1095, 410, cPen2aId],
+      ['C010', 'سعاد',     'FEMALE', 2190, 495, cPen2aId],
+      ['C011', 'سلمى',     'FEMALE', 1825, 440, cPen2aId],
+      ['C012', 'شاديه',    'FEMALE', 3285, 525, cPen2aId],
+      ['C013', 'بطل',      'MALE',   2920, 680, cPen2bId],
+      ['C014', 'جمال',     'MALE',   2555, 660, cPen2bId],
+      ['C015', 'حامد',     'MALE',   1825, 610, cPen2bId],
+      ['C016', 'خالد',     'MALE',   3285, 720, cPen2bId],
+      ['C017', 'ذياب',     'MALE',   2190, 635, cPen2bId],
+      ['C018', 'نايف',     'MALE',    180, 120, cPen2cId],
+      ['C019', 'منى',      'FEMALE',  150,  95, cPen2cId],
+      ['C020', 'رنا',      'FEMALE',  120,  85, cPen2cId],
+    ]
+
+    for (const [tagId, name, gender, birthDays, weight, penId] of camelData2) {
+      const cId = uuid()
+      const breedId = pick(camelBreeds).id
+      await q(conn,
+        `INSERT IGNORE INTO Goat (id, tenantId, farmId, tagId, name, breedId, gender, birthDate, weight, status, penId, ownerId, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), ?, 'ACTIVE', ?, ?, NOW(), NOW())`,
+        [cId, tenant2, camelFarm2, tagId, name, breedId, gender, birthDays, weight, penId, owner2])
+    }
+
+    const cf2Animals = await q(conn, `SELECT id, gender FROM Goat WHERE farmId=?`, [camelFarm2])
+    const cf2Females = cf2Animals.filter(g => g.gender === 'FEMALE')
+    const cf2Males   = cf2Animals.filter(g => g.gender === 'MALE')
+
+    // 12 health records
+    for (let i = 0; i < 12; i++) {
+      const g = pick(cf2Animals)
+      const hType = pick(['VACCINATION', 'VACCINATION', 'CHECKUP', 'TREATMENT'])
+      const desc = hType === 'VACCINATION' ? 'تطعيم بروسيلا وجدري الإبل - جرعة وقائية'
+                 : hType === 'TREATMENT'   ? 'علاج الجرب ومضادات الطفيليات'
+                 : 'فحص الحمل وقياس الأوزان الدوري'
+      const cost = hType === 'VACCINATION' ? 100 : hType === 'TREATMENT' ? 200 : 75
+      await q(conn,
+        `INSERT INTO HealthRecord (id, tenantId, farmId, goatId, type, date, description, veterinarian, cost, nextDueDate, createdAt, updatedAt)
+         VALUES (UUID(), ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), ?, 'د. خالد المهيري', ?, DATE_ADD(NOW(), INTERVAL 365 DAY), NOW(), NOW())`,
+        [tenant2, camelFarm2, g.id, hType, rand(1, 150), desc, cost])
+    }
+
+    // 6 expenses
+    const cExp2 = [
+      ['FEED',        'علف مركز وتبن للإبل',       1200,  30],
+      ['VETERINARY',  'برنامج الصحة الوقائي',        600,  25],
+      ['FEED',        'حبوب ذرة وكسبة',             800,  18],
+      ['MAINTENANCE', 'إصلاح أسيجة وأبواب المرعى',  900,  12],
+      ['UTILITIES',   'فاتورة مياه الشرب',           300,   6],
+      ['LABOR',       'رواتب الرعاة (شخصان)',       3000,   1],
+    ]
+    for (const [cat, desc, amount, daysBack] of cExp2) {
+      await q(conn,
+        `INSERT INTO Expense (id, tenantId, farmId, category, description, amount, date, paymentMethod, createdAt, updatedAt)
+         VALUES (UUID(), ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), 'CASH', NOW(), NOW())`,
+        [tenant2, camelFarm2, cat, desc, amount, daysBack])
+    }
+
+    // 2 breeding records
+    if (cf2Females.length >= 2 && cf2Males.length >= 1) {
+      const pairsC2 = [
+        [cf2Females[0].id, cf2Males[0].id,                    210, 'PREGNANT', 180],
+        [cf2Females[1].id, (cf2Males[1] || cf2Males[0]).id,   120, 'PREGNANT', 270],
+      ]
+      for (const [mId, fId, matingDays, status, due] of pairsC2) {
+        await q(conn,
+          `INSERT INTO Breeding (id, tenantId, farmId, motherId, fatherId, matingDate, pregnancyStatus, dueDate, createdAt, updatedAt)
+           VALUES (UUID(), ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), ?, DATE_ADD(NOW(), INTERVAL ? DAY), NOW(), NOW())`,
+          [tenant2, camelFarm2, mId, fId, matingDays, status, due])
+      }
+    }
+
+    console.log('✅ تم إنشاء مزرعة إبل النخيل  — 20 رأس إبل، 12 سجلاً صحياً، 6 مصروفات\n')
+
     // ─── Summary ────────────────────────────────────────────────────────────
     console.log('═══════════════════════════════════════════════════════')
     console.log('🎉  الحسابات التجريبية جاهزة!\n')
     console.log('  📧  demo1@goatfarm.app  |  🔑  Demo@1234')
-    console.log('      مزرعة الوحدة للماعز — 20 رأس ماعز\n')
+    console.log('      مزرعة الوحدة للماعز  — 20 رأس ماعز')
+    console.log('      مزرعة الوحدة للإبل   — 15 رأس إبل\n')
     console.log('  📧  demo2@goatfarm.app  |  🔑  Demo@1234')
     console.log('      مزرعة النخيل للأغنام — 30 رأس خروف')
+    console.log('      مزرعة النخيل للإبل   — 20 رأس إبل')
     console.log('═══════════════════════════════════════════════════════')
 
   } finally {
