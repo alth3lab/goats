@@ -246,6 +246,12 @@ export const healthApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/health', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/health/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/health/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Sales API ───────────────────────────────────────────
@@ -258,6 +264,12 @@ export const salesApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/sales', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/sales/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/sales/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Feeds API ───────────────────────────────────────────
@@ -333,6 +345,12 @@ export const expensesApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/expenses', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/expenses/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/expenses/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Pens API ────────────────────────────────────────────
@@ -341,6 +359,12 @@ export const pensApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/pens', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/pens/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/pens/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Owners API ──────────────────────────────────────────
@@ -349,6 +373,12 @@ export const ownersApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/owners', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/owners/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/owners/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Calendar API ────────────────────────────────────────
@@ -358,6 +388,12 @@ export const calendarApi = {
 
   create: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/calendar', { method: 'POST', body: data }),
+
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(`/calendar/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/calendar/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Inventory API ───────────────────────────────────────
@@ -373,6 +409,9 @@ export const inventoryApi = {
 
   update: (id: string, data: Record<string, unknown>) =>
     request<Record<string, unknown>>(`/inventory/${id}`, { method: 'PUT', body: data }),
+
+  delete: (id: string) =>
+    request<void>(`/inventory/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Farms API ───────────────────────────────────────────

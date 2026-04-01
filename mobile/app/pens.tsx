@@ -86,6 +86,31 @@ export default function PensScreen() {
     }
   };
 
+  const handleDelete = (id: string, nameAr: string) => {
+    if (!can('__owner_admin__')) return;
+    Alert.alert(
+      'حذف الحظيرة',
+      `هل أنت متأكد من حذف حظيرة "${nameAr}"؟ لا يمكن التراجع عن هذا الإجراء.`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await pensApi.delete(id);
+              setPens(prev => prev.filter(p => p.id !== id));
+              showToast('success', 'تم حذف الحظيرة');
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'فشل حذف الحظيرة';
+              Alert.alert('خطأ', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderPen = useCallback(({ item }: { item: Pen }) => {
     const current = item.currentCount || 0;
     const capacity = item.capacity || 0;
@@ -94,7 +119,12 @@ export default function PensScreen() {
     const isNearCapacity = capacity > 0 && usage >= 80;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onLongPress={() => handleDelete(item.id, item.nameAr)}
+        activeOpacity={0.9}
+        delayLongPress={500}
+      >
         <View style={styles.cardTop}>
           <View style={styles.cardNameRow}>
             <View style={[styles.penIcon, { backgroundColor: isOverCapacity ? Colors.error + '15' : Colors.info + '15' }]}>
@@ -135,9 +165,9 @@ export default function PensScreen() {
             </View>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, []);
+  }, [handleDelete]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 

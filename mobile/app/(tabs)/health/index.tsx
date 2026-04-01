@@ -126,12 +126,42 @@ export default function HealthScreen() {
     setFormCost('');
   };
 
+  const handleDelete = (id: string) => {
+    if (!can('__owner_admin__')) return;
+    Alert.alert(
+      'حذف السجل الصحي',
+      'هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await healthApi.delete(id);
+              setRecords(prev => prev.filter(r => r.id !== id));
+              showToast('success', 'تم حذف السجل الصحي');
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'فشل حذف السجل';
+              Alert.alert('خطأ', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderRecord = useCallback(({ item }: { item: HealthRecord }) => {
     const typeColor = TYPE_COLORS[item.type] || Colors.textSecondary;
     const typeIcon = TYPE_ICONS[item.type] || 'medkit';
 
     return (
-      <View style={styles.recordCard}>
+      <TouchableOpacity
+        style={styles.recordCard}
+        onLongPress={() => handleDelete(item.id)}
+        activeOpacity={0.9}
+        delayLongPress={500}
+      >
         <View style={[styles.recordIcon, { backgroundColor: typeColor + '15' }]}>
           <Ionicons name={typeIcon} size={20} color={typeColor} />
         </View>
@@ -153,9 +183,9 @@ export default function HealthScreen() {
             <Text style={styles.costText}>{formatNumber(item.cost)}</Text>
           </View>
         ) : null}
-      </View>
+      </TouchableOpacity>
     );
-  }, []);
+  }, [handleDelete]);
 
   const filteredRecords = useMemo(() =>
     search.trim() ? records.filter(r => r.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || r.description?.toLowerCase().includes(search.toLowerCase()) || r.veterinarian?.toLowerCase().includes(search.toLowerCase())) : records

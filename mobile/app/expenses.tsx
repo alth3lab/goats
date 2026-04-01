@@ -153,11 +153,41 @@ export default function ExpensesScreen() {
     setFormNotes('');
   };
 
+  const handleDelete = (id: string) => {
+    if (!can('__owner_admin__')) return;
+    Alert.alert(
+      'حذف المصروف',
+      'هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await expensesApi.delete(id);
+              setExpenses(prev => prev.filter(e => e.id !== id));
+              showToast('success', 'تم حذف المصروف');
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'فشل حذف المصروف';
+              Alert.alert('خطأ', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderExpense = useCallback(({ item }: { item: Expense }) => {
     const catColor = CATEGORY_COLORS[item.category] || Colors.textSecondary;
     const catIcon = CATEGORY_ICONS[item.category] || 'ellipsis-horizontal';
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onLongPress={() => handleDelete(item.id)}
+        activeOpacity={0.9}
+        delayLongPress={500}
+      >
         <View style={[styles.cardIcon, { backgroundColor: catColor + '15' }]}>
           <Ionicons name={catIcon} size={20} color={catColor} />
         </View>
@@ -172,9 +202,9 @@ export default function ExpensesScreen() {
           </View>
           {item.owner && <Text style={styles.cardOwner}>{item.owner.name}</Text>}
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, []);
+  }, [handleDelete]);
 
   const filteredExpenses = useMemo(() =>
     search.trim() ? expenses.filter(e => e.description?.toLowerCase().includes(search.toLowerCase()) || e.notes?.toLowerCase().includes(search.toLowerCase())) : expenses

@@ -127,10 +127,40 @@ export default function SalesScreen() {
     setFormNotes('');
   };
 
+  const handleDelete = (id: string) => {
+    if (!can('__owner_admin__')) return;
+    Alert.alert(
+      'حذف عملية البيع',
+      'هل أنت متأكد من حذف هذ؇ العملية؟ لا يمكن التراجع عن هذا الإجراء.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await salesApi.delete(id);
+              setSales(prev => prev.filter(s => s.id !== id));
+              showToast('success', 'تم حذف عملية البيع');
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'فشل حذف عملية البيع';
+              Alert.alert('خطأ', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderSale = useCallback(({ item }: { item: Sale }) => {
     const statusColor = STATUS_COLORS[item.paymentStatus] || Colors.textSecondary;
     return (
-      <View style={styles.saleCard}>
+      <TouchableOpacity
+        style={styles.saleCard}
+        onLongPress={() => handleDelete(item.id)}
+        activeOpacity={0.9}
+        delayLongPress={500}
+      >
         <View style={styles.saleTop}>
           <View style={styles.saleTagRow}>
             <Ionicons name="paw" size={16} color={Colors.primary} />
@@ -180,9 +210,9 @@ export default function SalesScreen() {
             </>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, []);
+  }, [handleDelete]);
 
   const filteredSales = useMemo(() =>
     search.trim() ? sales.filter(s => s.buyerName?.toLowerCase().includes(search.toLowerCase()) || s.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || s.buyerPhone?.includes(search)) : sales

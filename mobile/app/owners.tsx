@@ -88,8 +88,38 @@ export default function OwnersScreen() {
     }
   };
 
+  const handleDelete = (id: string, name: string) => {
+    if (!can('__owner_admin__')) return;
+    Alert.alert(
+      'حذف المالك',
+      `هل أنت متأكد من حذف المالك "${name}"؟ لا يمكن حذف مالك لديه حيوانات نشطة.`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ownersApi.delete(id);
+              setOwners(prev => prev.filter(o => o.id !== id));
+              showToast('success', 'تم حذف المالك');
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'فشل حذف المالك';
+              Alert.alert('خطأ', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderOwner = useCallback(({ item }: { item: Owner }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onLongPress={() => handleDelete(item.id, item.name)}
+      activeOpacity={0.9}
+      delayLongPress={500}
+    >
       <View style={styles.cardTop}>
         <View style={styles.ownerInfo}>
           <View style={styles.avatar}>
@@ -133,8 +163,8 @@ export default function OwnersScreen() {
           <Text style={styles.addressText} numberOfLines={1}>{item.address}</Text>
         </View>
       )}
-    </View>
-  ), []);
+    </TouchableOpacity>
+  ), [handleDelete]);
 
   const filteredOwners = useMemo(() =>
     search.trim() ? owners.filter(o => o.name?.toLowerCase().includes(search.toLowerCase()) || o.phone?.includes(search) || o.idNumber?.includes(search)) : owners

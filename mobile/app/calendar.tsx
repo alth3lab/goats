@@ -124,6 +124,31 @@ export default function CalendarScreen() {
     }
   };
 
+  const handleDelete = (id: string) => {
+    if (!can('__owner_admin__')) return;
+    Alert.alert(
+      'حذف الحدث',
+      'هل أنت متأكد من حذف هذا الحدث؟ لا يمكن التراجع عن هذا الإجراء.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await calendarApi.delete(id);
+              setEvents(prev => prev.filter(e => e.id !== id));
+              showToast('success', 'تم حذف الحدث');
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'فشل حذف الحدث';
+              Alert.alert('خطأ', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderEvent = useCallback(({ item }: { item: CalendarEvent }) => {
     const evColor = EVENT_COLORS[item.eventType] || Colors.textSecondary;
     const evIcon = EVENT_ICONS[item.eventType] || 'ellipsis-horizontal-circle';
@@ -131,7 +156,12 @@ export default function CalendarScreen() {
     const isPast = eventDate < new Date() && !item.isCompleted;
 
     return (
-      <View style={[styles.card, item.isCompleted && styles.cardCompleted]}>
+      <TouchableOpacity
+        style={[styles.card, item.isCompleted && styles.cardCompleted]}
+        onLongPress={() => handleDelete(item.id)}
+        activeOpacity={0.9}
+        delayLongPress={500}
+      >
         <View style={styles.dateColumn}>
           <Text style={styles.dateDay}>{western(eventDate.getDate())}</Text>
           <Text style={styles.dateMonth}>{formatDateShortMonth(eventDate)}</Text>
@@ -164,9 +194,9 @@ export default function CalendarScreen() {
             <Text style={styles.eventDesc} numberOfLines={2}>{item.description}</Text>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, []);
+  }, [handleDelete]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
