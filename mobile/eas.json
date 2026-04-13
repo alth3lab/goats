@@ -17,7 +17,8 @@
     "production": {
       "node": "20.18.0",
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "autoIncrement": true
       },
       "android": {
         "buildType": "app-bundle"
