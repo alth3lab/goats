@@ -205,6 +205,7 @@ function requiredForDateFromCache(
     feedType: { nameAr: string }
     quantity: number
     penId: string | null
+    goatId: string | null
     startDate: Date
     endDate: Date | null
     pen: { _count: { goats: number } } | null
@@ -217,7 +218,8 @@ function requiredForDateFromCache(
     if (dayStart(s.startDate).getTime() > t) continue
     if (s.endDate && dayStart(s.endDate).getTime() < t) continue
 
-    const heads = s.pen?._count?.goats || 0
+    // Goat-level schedules consume for one head even without pen assignment.
+    const heads = s.goatId ? 1 : (s.pen?._count?.goats || 0)
     const required = s.quantity * heads
     if (required <= 0) continue
 
@@ -238,15 +240,44 @@ function requiredForDateFromCache(
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requirePermission(request, 'manage_feeds')
-    if (auth.response) return auth.response
-    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+    const cronSecret = process.env.FEEDS_CRON_SECRET
+    const authHeader = request.headers.get('authorization') || ''
+    const bearer = authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : null
+    const providedCronSecret = request.headers.get('x-cron-secret') || bearer
+    const cronTenantId = request.nextUrl.searchParams.get('tenantId')
+    const cronFarmId = request.nextUrl.searchParams.get('farmId') || ''
 
-    // SEC-01: No fallback — only authenticated user
-    const actorId = await getUserIdFromRequest(request)
-    if (!actorId) {
-      return NextResponse.json({ error: 'تعذر تحديد المستخدم المنفذ للعملية' }, { status: 401 })
+    const isSystemCron = Boolean(
+      cronSecret &&
+      providedCronSecret &&
+      providedCronSecret === cronSecret &&
+      cronTenantId
+    )
+
+    let tenantId: string
+    let farmId: string
+    let actorId: string | undefined
+
+    if (isSystemCron) {
+      tenantId = cronTenantId as string
+      farmId = cronFarmId
+      actorId = undefined
+    } else {
+      const auth = await requirePermission(request, 'manage_feeds')
+      if (auth.response) return auth.response
+      tenantId = auth.tenantId
+      farmId = auth.farmId
+
+      // SEC-01: No fallback — only authenticated user
+      actorId = await getUserIdFromRequest(request)
+      if (!actorId) {
+        return NextResponse.json({ error: 'تعذر تحديد المستخدم المنفذ للعملية' }, { status: 401 })
+      }
     }
+
+    return runWithTenant(tenantId, farmId, async () => {
 
     const body = await request.json().catch(() => ({}))
     const isAuto = Boolean(body?.auto)
