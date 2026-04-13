@@ -267,8 +267,8 @@ export async function POST(request: NextRequest) {
     } else {
       const auth = await requirePermission(request, 'manage_feeds')
       if (auth.response) return auth.response
-      tenantId = auth.tenantId
-      farmId = auth.farmId
+      tenantId = auth.tenantId!
+      farmId = auth.farmId!
 
       // SEC-01: No fallback — only authenticated user
       actorId = await getUserIdFromRequest(request)
