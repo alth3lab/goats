@@ -271,7 +271,7 @@ export default function BreedingDetailScreen() {
         onCancel={() => setDeleteVisible(false)}
       />
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 100 }} />
     </ScrollView>
   );
 }

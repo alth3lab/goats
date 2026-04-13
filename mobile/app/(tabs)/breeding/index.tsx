@@ -5,22 +5,31 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   ScrollView,
   Alert,
+  Pressable,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { breedingApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState } from '@/components/ui';
 import {
-  Colors, Spacing, Radius, Typography, Shadows,
+  Colors, Spacing, Radius, Typography, Shadows, Gradients,
   PregnancyStatusLabels, PregnancyStatusColors,
 } from '@/lib/theme';
 import { formatDate, western } from '@/lib/formatters';
 import { SearchBar } from '@/components/SearchBar';
 import type { Breeding } from '@/types';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const STATUS_FILTERS = [
   { key: 'ALL', label: 'الكل' },
@@ -29,6 +38,126 @@ const STATUS_FILTERS = [
   { key: 'DELIVERED', label: 'ولدت' },
   { key: 'FAILED', label: 'فشل' },
 ];
+
+// Separate component for breeding card to use hooks properly
+interface BreedingCardProps {
+  item: Breeding;
+  onPress: () => void;
+}
+
+function BreedingCard({ item, onPress }: BreedingCardProps) {
+  const scale = useSharedValue(1);
+  const statusColor = PregnancyStatusColors[item.pregnancyStatus] || Colors.textSecondary;
+  
+  const getDaysRemaining = (dueDate?: string) => {
+    if (!dueDate) return null;
+    const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+  
+  const daysLeft = getDaysRemaining(item.dueDate);
+  const isUrgent = item.pregnancyStatus === 'PREGNANT' && daysLeft !== null && daysLeft <= 7 && daysLeft >= 0;
+  const isOverdue = daysLeft !== null && daysLeft < 0;
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onPress();
+  };
+
+  return (
+    <AnimatedPressable
+      style={[styles.card, animatedStyle]}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      {isUrgent && (
+        <LinearGradient
+          colors={['rgba(212, 131, 154, 0.08)', 'rgba(212, 131, 154, 0.02)'] as unknown as readonly [string, string, ...string[]]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      )}
+      {isOverdue && (
+        <LinearGradient
+          colors={['rgba(224, 92, 92, 0.08)', 'rgba(224, 92, 92, 0.02)'] as unknown as readonly [string, string, ...string[]]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      )}
+
+      <View style={styles.cardTop}>
+        <View style={styles.parentPair}>
+          <View style={styles.parentChip}>
+            <Ionicons name="female" size={16} color={Colors.female} />
+            <Text style={styles.parentTag}>{item.mother?.tagId || '—'}</Text>
+          </View>
+          <Ionicons name="heart" size={14} color={Colors.female} />
+          <View style={styles.parentChip}>
+            <Ionicons name="male" size={16} color={Colors.male} />
+            <Text style={styles.parentTag}>{item.father?.tagId || '—'}</Text>
+          </View>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
+          <Text style={[styles.statusText, { color: statusColor }]}>
+            {PregnancyStatusLabels[item.pregnancyStatus]}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.cardDetails}>
+        <View style={styles.detailItem}>
+          <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.detailText}>التلقيح: {formatDate(item.matingDate)}</Text>
+        </View>
+        {item.dueDate && item.pregnancyStatus !== 'DELIVERED' && item.pregnancyStatus !== 'FAILED' && (
+          <View style={styles.detailItem}>
+            <Ionicons name="time-outline" size={14} color={isOverdue ? Colors.error : isUrgent ? Colors.warning : Colors.female} />
+            <Text style={[styles.detailText, { color: isOverdue ? Colors.error : isUrgent ? Colors.warning : Colors.female, ...Typography.captionBold }]}>
+              {isOverdue
+                ? `متأخرة ${western(Math.abs(daysLeft!))} يوم ⚠️`
+                : `موعد الولادة: ${formatDate(item.dueDate)}`
+              }
+              {daysLeft !== null && daysLeft >= 0 ? ` (${western(daysLeft)} يوم)` : ''}
+            </Text>
+          </View>
+        )}
+        {item.birthDate && (
+          <View style={styles.detailItem}>
+            <Ionicons name="heart-circle-outline" size={14} color={Colors.success} />
+            <Text style={[styles.detailText, { color: Colors.success }]}>
+              الولادة: {formatDate(item.birthDate)}
+              {item.numberOfKids ? ` — ${western(item.numberOfKids)} مواليد` : ''}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {item.notes && (
+        <Text style={styles.notes} numberOfLines={2}>{item.notes}</Text>
+      )}
+
+      <View style={styles.cardArrow}>
+        <Ionicons name="chevron-back" size={18} color={Colors.textLight} />
+      </View>
+    </AnimatedPressable>
+  );
+}
 
 export default function BreedingListScreen() {
   const router = useRouter();
@@ -75,79 +204,12 @@ export default function BreedingListScreen() {
     failed: records.filter(r => r.pregnancyStatus === 'FAILED').length,
   }), [records]);
 
-  const getDaysRemaining = (dueDate?: string) => {
-    if (!dueDate) return null;
-    const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
-
-  const renderRecord = useCallback(({ item }: { item: Breeding }) => {
-    const statusColor = PregnancyStatusColors[item.pregnancyStatus] || Colors.textSecondary;
-    const daysLeft = getDaysRemaining(item.dueDate);
-
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.7}
-        onPress={() => router.push({ pathname: '/(tabs)/breeding/[id]', params: { id: item.id } })}
-      >
-        <View style={styles.cardTop}>
-          <View style={styles.parentPair}>
-            <View style={styles.parentChip}>
-              <Ionicons name="female" size={16} color={Colors.female} />
-              <Text style={styles.parentTag}>{item.mother?.tagId || '—'}</Text>
-            </View>
-            <Ionicons name="heart" size={14} color={Colors.female} />
-            <View style={styles.parentChip}>
-              <Ionicons name="male" size={16} color={Colors.male} />
-              <Text style={styles.parentTag}>{item.father?.tagId || '—'}</Text>
-            </View>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {PregnancyStatusLabels[item.pregnancyStatus]}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.cardDetails}>
-          <View style={styles.detailItem}>
-            <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.detailText}>التلقيح: {formatDate(item.matingDate)}</Text>
-          </View>
-          {item.dueDate && item.pregnancyStatus !== 'DELIVERED' && item.pregnancyStatus !== 'FAILED' && (
-            <View style={styles.detailItem}>
-              <Ionicons name="time-outline" size={14} color={daysLeft !== null && daysLeft < 0 ? Colors.error : Colors.female} />
-              <Text style={[styles.detailText, { color: daysLeft !== null && daysLeft < 0 ? Colors.error : Colors.female }]}>
-                {daysLeft !== null && daysLeft < 0
-                  ? `متأخرة ${western(Math.abs(daysLeft))} يوم`
-                  : `موعد الولادة: ${formatDate(item.dueDate)}`
-                }
-                {daysLeft !== null && daysLeft >= 0 ? ` (${western(daysLeft)} يوم)` : ''}
-              </Text>
-            </View>
-          )}
-          {item.birthDate && (
-            <View style={styles.detailItem}>
-              <Ionicons name="heart-circle-outline" size={14} color={Colors.success} />
-              <Text style={[styles.detailText, { color: Colors.success }]}>
-                الولادة: {formatDate(item.birthDate)}
-                {item.numberOfKids ? ` — ${western(item.numberOfKids)} مواليد` : ''}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {item.notes && (
-          <Text style={styles.notes} numberOfLines={2}>{item.notes}</Text>
-        )}
-
-        <View style={styles.cardArrow}>
-          <Ionicons name="chevron-back" size={18} color={Colors.textLight} />
-        </View>
-      </TouchableOpacity>
-    );
-  }, [router]);
+  const renderRecord = useCallback(({ item }: { item: Breeding }) => (
+    <BreedingCard 
+      item={item} 
+      onPress={() => router.push({ pathname: '/(tabs)/breeding/[id]', params: { id: item.id } })} 
+    />
+  ), [router]);
 
   if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
 
@@ -178,11 +240,25 @@ export default function BreedingListScreen() {
 
       {/* Status Filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {STATUS_FILTERS.map(f => (
-          <TouchableOpacity key={f.key} style={[styles.filterTab, filter === f.key && styles.filterTabActive]} onPress={() => setFilter(f.key)}>
-            <Text style={[styles.filterTabText, filter === f.key && styles.filterTabTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {STATUS_FILTERS.map(f => {
+          const isActive = filter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              style={({ pressed }) => [
+                styles.filterTab,
+                isActive && styles.filterTabActive,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setFilter(f.key);
+              }}
+            >
+              <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>{f.label}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       <SearchBar value={search} onChangeText={setSearch} placeholder="بحث برقم الأم أو الأب..." />
@@ -206,13 +282,24 @@ export default function BreedingListScreen() {
       />
 
       {can('__owner_admin__') && (
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.fab}
-          onPress={() => router.push('/(tabs)/breeding/add')}
-          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            router.push('/(tabs)/breeding/add');
+          }}
+          onPressIn={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }}
         >
+          <LinearGradient
+            colors={Gradients.heroTeal as unknown as readonly [string, string, ...string[]]}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
           <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
     </View>
   );
@@ -222,7 +309,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   statsRow: { flexDirection: 'row', backgroundColor: Colors.surface, padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { ...Typography.h3, color: Colors.text },
+  statValue: { ...Typography.h3, color: Colors.text, ...Typography.tabularNums },
   statLabel: { ...Typography.small, color: Colors.textSecondary, marginTop: 2 },
   statDivider: { width: 1, backgroundColor: Colors.borderLight },
   filterRow: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
@@ -231,7 +318,7 @@ const styles = StyleSheet.create({
   filterTabText: { ...Typography.small, color: Colors.textSecondary },
   filterTabTextActive: { color: '#fff', fontWeight: '600' },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
-  card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, ...Shadows.sm },
+  card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, ...Shadows.card, overflow: 'hidden' },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
   parentPair: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   parentChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.background, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
@@ -243,5 +330,18 @@ const styles = StyleSheet.create({
   detailText: { ...Typography.caption, color: Colors.textSecondary },
   notes: { ...Typography.small, color: Colors.textLight, marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.borderLight },
   cardArrow: { position: 'absolute', left: Spacing.md, top: '50%' },
-  fab: { position: 'absolute', bottom: 24, start: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.female, justifyContent: 'center', alignItems: 'center', ...Shadows.lg },
+  fab: { 
+    position: 'absolute', 
+    bottom: 24, 
+    start: 24, 
+    width: 56, 
+    height: 56, 
+    borderRadius: 28, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    overflow: 'hidden',
+    ...Shadows.fab,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.3,
+  },
 });

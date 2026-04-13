@@ -71,9 +71,9 @@ export default function VaccinationProtocolsScreen() {
       <Stack.Screen options={{
         title: 'بروتوكولات التطعيم',
         headerShown: true,
-        headerStyle: { backgroundColor: Colors.primary },
-        headerTintColor: '#fff',
-        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        
+        headerTintColor: Colors.primary,
+        headerTitleStyle: { ...Typography.h4, color: Colors.text },
         headerTitleAlign: 'center',
       }} />
       <ScrollView
@@ -216,7 +216,7 @@ export default function VaccinationProtocolsScreen() {
           </View>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </>
   );

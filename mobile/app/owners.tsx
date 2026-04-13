@@ -174,7 +174,7 @@ export default function OwnersScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'إدارة الملاك', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'إدارة الملاك', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
         {/* Count */}
         <View style={styles.countRow}>
@@ -222,7 +222,7 @@ export default function OwnersScreen() {
             <Input label="ملاحظات" placeholder="ملاحظات إضافية" icon="document-text-outline" value={formNotes} onChangeText={setFormNotes} multiline />
 
             <Button title="إضافة المالك" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-            <View style={{ height: 40 }} />
+            <View style={{ height: 100 }} />
           </ScrollView>
           </KeyboardAvoidingView>
         </Modal>

@@ -5,7 +5,7 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
+  Pressable,
   Modal,
   ScrollView,
   Alert,
@@ -13,17 +13,26 @@ import {
   Platform,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { salesApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input } from '@/components/ui';
 import DatePickerField from '@/components/DatePickerField';
-import { Colors, Spacing, Radius, Typography, Shadows, PaymentStatusLabels } from '@/lib/theme';
+import { Colors, Spacing, Radius, Typography, Shadows, Gradients, PaymentStatusLabels } from '@/lib/theme';
 import { formatDate, formatNumber } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
 import { SearchBar } from '@/components/SearchBar';
 import { validateNumber, validateDate, validateRequired } from '@/lib/validation';
 import type { Sale } from '@/types';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const STATUS_COLORS: Record<string, string> = {
   PAID: Colors.success,
@@ -154,11 +163,32 @@ export default function SalesScreen() {
 
   const renderSale = useCallback(({ item }: { item: Sale }) => {
     const statusColor = STATUS_COLORS[item.paymentStatus] || Colors.textSecondary;
+    const scale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
+
+    const handlePressIn = () => {
+      scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+      if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    };
+
+    const handleLongPress = () => {
+      if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      handleDelete(item.id);
+    };
+
     return (
-      <TouchableOpacity
-        style={styles.saleCard}
-        onLongPress={() => handleDelete(item.id)}
-        activeOpacity={0.9}
+      <AnimatedPressable
+        style={[styles.saleCard, animatedStyle]}
+        onLongPress={handleLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         delayLongPress={500}
       >
         <View style={styles.saleTop}>
@@ -210,7 +240,7 @@ export default function SalesScreen() {
             </>
           )}
         </View>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }, [handleDelete]);
 
@@ -272,22 +302,33 @@ export default function SalesScreen() {
 
       {/* FAB */}
       {can('__owner_admin__') && (
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.fab}
-          onPress={() => setAddVisible(true)}
-          activeOpacity={0.8}
+          onPress={() => {
+            if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            setAddVisible(true);
+          }}
+          onPressIn={() => {
+            if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }}
         >
+          <LinearGradient
+            colors={Gradients.green as unknown as readonly [string, string, ...string[]]}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
           <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
 
       {/* Add Modal */}
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={() => setAddVisible(false)}>
+          <Pressable onPress={() => setAddVisible(false)}>
             <Text style={styles.modalCancel}>إلغاء</Text>
-          </TouchableOpacity>
+          </Pressable>
           <Text style={styles.modalTitle}>تسجيل بيع</Text>
           <View style={{ width: 50 }} />
         </View>
@@ -301,7 +342,7 @@ export default function SalesScreen() {
           <Input label="ملاحظات" placeholder="ملاحظات إضافية" icon="document-text-outline" value={formNotes} onChangeText={setFormNotes} multiline />
 
           <Button title="تسجيل البيع" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-          <View style={{ height: 40 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -416,10 +457,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.success,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.lg,
+    overflow: 'hidden',
+    ...Shadows.fab,
+    shadowColor: Colors.success,
+    shadowOpacity: 0.3,
   },
   modalHeader: {
     flexDirection: 'row',

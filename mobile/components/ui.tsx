@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
@@ -11,9 +10,18 @@ import {
   TextInputProps,
   Modal,
   Pressable,
+  Platform,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // ─── Button ──────────────────────────────────────────────
 interface ButtonProps {
@@ -54,8 +62,24 @@ export function Button({
   const paddingH = { sm: 14, md: 20, lg: 28 }[size];
   const fontSize = { sm: 13, md: 15, lg: 17 }[size];
 
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, { stiffness: 400, damping: 20 });
+    if (Platform.OS === 'ios' && !disabled && !loading) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { stiffness: 400, damping: 20 });
+  };
+
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[
         styles.button,
         {
@@ -67,10 +91,12 @@ export function Button({
         fullWidth && { width: '100%' },
         variant === 'outline' && { borderWidth: 1.5 },
         style,
+        animatedStyle,
       ]}
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={disabled || loading}
-      activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator size="small" color={textColor} />
@@ -80,7 +106,7 @@ export function Button({
           <Text style={[styles.buttonText, { color: textColor, fontSize }]}>{title}</Text>
         </View>
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -93,16 +119,28 @@ interface InputProps extends TextInputProps {
 }
 
 export function Input({ label, error, icon, containerStyle, style, ...props }: InputProps) {
+  const [focused, setFocused] = React.useState(false);
   return (
     <View style={[styles.inputContainer, containerStyle]}>
       {label && <Text style={styles.inputLabel}>{label}</Text>}
-      <View style={[styles.inputWrap, error && styles.inputError]}>
+      <View style={[
+        styles.inputWrap,
+        focused && styles.inputFocused,
+        error && styles.inputError,
+      ]}>
         {icon && (
-          <Ionicons name={icon} size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+          <Ionicons
+            name={icon}
+            size={20}
+            color={focused ? Colors.primary : Colors.textSecondary}
+            style={styles.inputIcon}
+          />
         )}
         <TextInput
           style={[styles.input, { textAlign: 'right' }, style as TextStyle]}
           placeholderTextColor={Colors.textLight}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           {...props}
         />
       </View>
@@ -153,9 +191,9 @@ export function SectionHeader({ title, action }: SectionHeaderProps) {
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {action && (
-        <TouchableOpacity onPress={action.onPress}>
+        <Pressable onPress={action.onPress} style={({ pressed }) => pressed && { opacity: 0.6 }}>
           <Text style={styles.sectionAction}>{action.title}</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );
@@ -187,9 +225,9 @@ export function AlertBanner({ type, message, onDismiss }: AlertBannerProps) {
       <Ionicons name={icons[type]} size={20} color={colors[type]} />
       <Text style={[styles.alertText, { color: colors[type] }]}>{message}</Text>
       {onDismiss && (
-        <TouchableOpacity onPress={onDismiss}>
+        <Pressable onPress={onDismiss} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.5 }}>
           <Ionicons name="close" size={18} color={colors[type]} />
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );
@@ -229,9 +267,9 @@ export function ConfirmDialog({
 
 // ─── Styles ──────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // Button
+  // Button — iOS pill style
   button: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -257,15 +295,20 @@ const styles = StyleSheet.create({
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surfaceVariant,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: 'transparent',
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     minHeight: 48,
   },
+  inputFocused: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.surface,
+  },
   inputError: {
     borderColor: Colors.error,
+    borderWidth: 1.5,
   },
   inputIcon: {
     marginStart: Spacing.sm,
@@ -359,10 +402,10 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
+    borderRadius: 20,
     padding: Spacing.xxl,
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 320,
     ...Shadows.lg,
   },
   modalTitle: {

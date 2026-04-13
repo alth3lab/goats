@@ -192,21 +192,19 @@ export default function FeedRecipesScreen() {
       <Stack.Screen options={{
         title: 'خلطات الأعلاف وإعادة الطلب',
         headerShown: true,
-        headerStyle: { backgroundColor: Colors.primary },
-        headerTintColor: '#fff',
-        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        headerTintColor: Colors.primary,
+        headerTitleStyle: { ...Typography.h4, color: Colors.text },
         headerTitleAlign: 'center',
-        headerBackTitle: '',
       }} />
 
       {/* Tabs */}
-      <View style={styles.tabs}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
         <TouchableOpacity style={[styles.tab, tab === 'recipes' && styles.tabActive]} onPress={() => onTabChange('recipes')}>
-          <Ionicons name="beaker" size={18} color={tab === 'recipes' ? Colors.primary : Colors.textSecondary} />
+          <Ionicons name="beaker" size={16} color={tab === 'recipes' ? '#fff' : Colors.textSecondary} />
           <Text style={[styles.tabText, tab === 'recipes' && styles.tabTextActive]}>الخلطات</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tab, tab === 'reorder' && styles.tabActive]} onPress={() => onTabChange('reorder')}>
-          <Ionicons name="cart" size={18} color={tab === 'reorder' ? Colors.primary : Colors.textSecondary} />
+          <Ionicons name="cart" size={16} color={tab === 'reorder' ? '#fff' : Colors.textSecondary} />
           <Text style={[styles.tabText, tab === 'reorder' && styles.tabTextActive]}>إعادة الطلب</Text>
           {highUrgent > 0 && (
             <View style={styles.urgentBadge}>
@@ -214,7 +212,7 @@ export default function FeedRecipesScreen() {
             </View>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       {tab === 'reorder' && highUrgent > 0 && (
         <AlertBanner type="warning" message={`${western(String(highUrgent))} أعلاف تحتاج إعادة طلب عاجل`} />
@@ -225,7 +223,7 @@ export default function FeedRecipesScreen() {
           data={recipes}
           keyExtractor={it => it.id}
           renderItem={renderRecipe}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.listPad}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
           ListEmptyComponent={<EmptyState icon="beaker-outline" title="لا توجد خلطات" message="أضف خلطة علف جديدة" />}
         />
@@ -234,7 +232,7 @@ export default function FeedRecipesScreen() {
           data={reorders}
           keyExtractor={(it, i) => it.feedType?.id || String(i)}
           renderItem={renderReorder}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.listPad}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
           ListEmptyComponent={<EmptyState icon="checkmark-circle-outline" title="لا توجد توصيات" message="مستويات المخزون جيدة" />}
         />
@@ -242,7 +240,7 @@ export default function FeedRecipesScreen() {
 
       {/* FAB */}
       {tab === 'recipes' && can('manage_feeds') && (
-        <TouchableOpacity style={styles.fab} onPress={() => setAddVisible(true)}>
+        <TouchableOpacity style={styles.fab} onPress={() => setAddVisible(true)} activeOpacity={0.8}>
           <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
       )}
@@ -250,14 +248,14 @@ export default function FeedRecipesScreen() {
       {/* Add Recipe Modal */}
       <Modal visible={addVisible} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalHeader}>
+          <View style={styles.mHead}>
             <TouchableOpacity onPress={() => { setAddVisible(false); resetForm(); }}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+              <Text style={styles.mCancel}>إلغاء</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>خلطة جديدة</Text>
-            <View style={{ width: 24 }} />
+            <Text style={styles.mTitle}>خلطة جديدة</Text>
+            <View style={{ width: 50 }} />
           </View>
-          <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
+          <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 100 }}>
             <Input label="اسم الخلطة *" value={formName} onChangeText={setFormName} placeholder="مثال: خلطة انتاج" />
             <Input label="الوصف" value={formDesc} onChangeText={setFormDesc} placeholder="وصف اختياري" multiline />
 
@@ -314,26 +312,26 @@ export default function FeedRecipesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  tabs: { flexDirection: 'row', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, gap: Spacing.sm },
+  tabBar: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, gap: 8 },
   tab: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: Colors.surface,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
-  tabActive: { backgroundColor: Colors.primary + '15', borderWidth: 1, borderColor: Colors.primary + '40' },
-  tabText: { ...Typography.body, color: Colors.textSecondary },
-  tabTextActive: { color: Colors.primary, fontWeight: '600' },
+  tabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tabText: { ...Typography.small, color: Colors.textSecondary },
+  tabTextActive: { color: '#fff', fontWeight: '600' },
   urgentBadge: {
     backgroundColor: Colors.error, borderRadius: 10, minWidth: 20, height: 20,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
   urgentBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  list: { padding: Spacing.md, gap: Spacing.md },
+  listPad: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
   card: {
-    backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.md,
+    backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md,
     ...Shadows.sm,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  cardTitle: { ...Typography.body, fontWeight: '600', flex: 1, textAlign: 'right' },
+  cardTitle: { ...Typography.bodyBold, color: Colors.text, flex: 1, textAlign: 'right' },
   cardDesc: { ...Typography.caption, color: Colors.textSecondary, marginTop: 4, textAlign: 'right' },
   badge: { borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 2 },
   badgeText: { fontSize: 11, fontWeight: '600' },
@@ -349,16 +347,17 @@ const styles = StyleSheet.create({
   reorderLabel: { ...Typography.caption, color: Colors.textSecondary, fontSize: 11 },
   reorderValue: { ...Typography.body, fontWeight: '700', marginTop: 2 },
   fab: {
-    position: 'absolute', bottom: 24, left: 24,
+    position: 'absolute', bottom: 24, start: 24,
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    ...Shadows.md,
+    backgroundColor: Colors.warning, alignItems: 'center', justifyContent: 'center',
+    ...Shadows.lg,
   },
-  modalHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+  mHead: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.borderLight, backgroundColor: Colors.surface,
   },
-  modalTitle: { ...Typography.h3, textAlign: 'center' },
+  mTitle: { ...Typography.h4, color: Colors.text },
+  mCancel: { ...Typography.captionBold, color: Colors.error },
   modalBody: { flex: 1, padding: Spacing.md },
   sectionLabel: { ...Typography.body, fontWeight: '700', marginTop: Spacing.md, marginBottom: Spacing.sm, textAlign: 'right' },
   ingredientForm: {

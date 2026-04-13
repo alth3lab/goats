@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
 import { Stack, useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,12 @@ import { useAuth } from '@/lib/auth';
 import { LoadingScreen, Button, Input, SectionHeader } from '@/components/ui';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
 import { useToast } from '@/lib/toast';
+import {
+  getAvailableBiometric,
+  getBiometricEnabled,
+  setBiometricEnabled,
+  type BiometricType,
+} from '@/lib/useBiometrics';
 import type { FarmSettings } from '@/types';
 
 export default function SettingsScreen() {
@@ -25,6 +32,10 @@ export default function SettingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
+
+  // Biometric states
+  const [biometricType, setBiometricType] = useState<BiometricType>('none');
+  const [biometricEnabled, setBiometricEnabledState] = useState(false);
 
   // Editable fields
   const [farmName, setFarmName] = useState('');
@@ -66,6 +77,18 @@ export default function SettingsScreen() {
     }, [fetchSettings])
   );
 
+  // Check biometric availability
+  useEffect(() => {
+    (async () => {
+      const type = await getAvailableBiometric();
+      setBiometricType(type);
+      if (type !== 'none') {
+        const enabled = await getBiometricEnabled();
+        setBiometricEnabledState(enabled);
+      }
+    })();
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -95,7 +118,7 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'الإعدادات', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'الإعدادات', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -125,6 +148,49 @@ export default function SettingsScreen() {
             <Input label="أيام تأخر التلقيح للتنبيه" placeholder="180" icon="time-outline" value={breedingOverdue} onChangeText={setBreedingOverdue} keyboardType="number-pad" />
           </View>
         </View>
+
+        {/* Biometric/Security Settings */}
+        {biometricType !== 'none' && (
+          <View style={styles.section}>
+            <SectionHeader title="الأمان والخصوصية" />
+            <View style={styles.card}>
+              <View style={styles.biometricRow}>
+                <View style={styles.biometricInfo}>
+                  <View style={styles.biometricIconWrap}>
+                    <Ionicons
+                      name={biometricType === 'face' ? 'scan-outline' : 'finger-print-outline'}
+                      size={20}
+                      color={Colors.primary}
+                    />
+                  </View>
+                  <View style={styles.biometricText}>
+                    <Text style={styles.biometricTitle}>
+                      {biometricType === 'face' ? 'Face ID' : 'البصمة'}
+                    </Text>
+                    <Text style={styles.biometricSubtitle}>
+                      تسجيل الدخول السريع بـ{biometricType === 'face' ? 'Face ID' : 'البصمة'}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={biometricEnabled}
+                  onValueChange={async (enabled) => {
+                    await setBiometricEnabled(enabled);
+                    setBiometricEnabledState(enabled);
+                    showToast(
+                      'success',
+                      enabled
+                        ? `تم تفعيل ${biometricType === 'face' ? 'Face ID' : 'البصمة'}`
+                        : `تم إيقاف ${biometricType === 'face' ? 'Face ID' : 'البصمة'}`
+                    );
+                  }}
+                  trackColor={{ false: Colors.borderLight, true: Colors.primary + '60' }}
+                  thumbColor={biometricEnabled ? Colors.primary : Colors.textLight}
+                />
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* App Info */}
         <View style={styles.section}>
@@ -172,7 +238,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </>
   );
@@ -190,4 +256,37 @@ const styles = StyleSheet.create({
   dangerText: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
   dangerButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: Colors.error, borderRadius: Radius.md, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
   dangerButtonText: { ...Typography.bodyBold, color: '#fff' },
+  
+  // Biometric styles
+  biometricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  biometricInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  biometricIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  biometricText: {
+    flex: 1,
+  },
+  biometricTitle: {
+    ...Typography.bodyBold,
+    color: Colors.text,
+  },
+  biometricSubtitle: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
 });

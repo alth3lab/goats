@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { aiApi } from '@/lib/api';
@@ -120,23 +120,21 @@ export default function AIChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-forward" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Ionicons name="sparkles" size={20} color="#fff" />
-          <Text style={styles.headerTitle}>المساعد الذكي</Text>
-        </View>
-        <TouchableOpacity onPress={handleImageAnalysis} style={styles.cameraBtn} disabled={analyzing}>
-          {analyzing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="camera" size={22} color="#fff" />
-          )}
-        </TouchableOpacity>
-      </View>
+      <Stack.Screen options={{
+        title: 'المساعد الذكي',
+        headerShown: true,
+        headerTintColor: Colors.primary,
+        headerTitleStyle: { ...Typography.h4, color: Colors.text },
+        headerRight: () => (
+          <TouchableOpacity onPress={handleImageAnalysis} disabled={analyzing} style={{ padding: 4 }}>
+            {analyzing ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="camera" size={22} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
+        ),
+      }} />
 
       {/* Chat Messages */}
       <ScrollView
@@ -227,19 +225,6 @@ export default function AIChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingBottom: 12,
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
-  },
-  backBtn: { padding: 4 },
-  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  headerTitle: { ...Typography.h4, color: '#fff' },
-  cameraBtn: { padding: 4 },
   chatArea: { flex: 1 },
   chatContent: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
   emptyChat: { alignItems: 'center', paddingTop: 40 },

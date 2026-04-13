@@ -375,7 +375,7 @@ export default function FeedsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'إدارة الأعلاف', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'إدارة الأعلاف', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
         {/* ─── Tabs ─── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
@@ -513,7 +513,7 @@ export default function FeedsScreen() {
               <Input label="المورد" placeholder="اسم المورد" icon="business-outline" value={formSupplier} onChangeText={setFormSupplier} />
               <Input label="الوصف" placeholder="وصف العلف" icon="document-text-outline" value={formDesc} onChangeText={setFormDesc} multiline />
               <Button title="إضافة العلف" onPress={handleAddType} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-              <View style={{ height: 40 }} />
+              <View style={{ height: 100 }} />
             </ScrollView>
           </KeyboardAvoidingView>
         </Modal>
@@ -531,7 +531,7 @@ export default function FeedsScreen() {
               <Input label="تاريخ الانتهاء (YYYY-MM-DD)" placeholder="2026-12-31" icon="calendar-outline" value={stockExpiry} onChangeText={setStockExpiry} />
               <Input label="ملاحظات" placeholder="" icon="document-text-outline" value={stockNotes} onChangeText={setStockNotes} multiline />
               <Button title="إضافة للمخزون" onPress={handleAddStock} loading={stockSubmitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-              <View style={{ height: 40 }} />
+              <View style={{ height: 100 }} />
             </ScrollView>
           </KeyboardAvoidingView>
         </Modal>
@@ -547,7 +547,7 @@ export default function FeedsScreen() {
               <Input label="عدد الوجبات" placeholder="2" icon="restaurant-outline" value={schMeals} onChangeText={setSchMeals} keyboardType="number-pad" />
               <Input label="ملاحظات" placeholder="" icon="document-text-outline" value={schNotes} onChangeText={setSchNotes} multiline />
               <Button title="إنشاء الجدول" onPress={handleAddSchedule} loading={schSubmitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-              <View style={{ height: 40 }} />
+              <View style={{ height: 100 }} />
             </ScrollView>
           </KeyboardAvoidingView>
         </Modal>

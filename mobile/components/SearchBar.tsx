@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TextInput, Pressable, StyleSheet, I18nManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
+import { Colors, Spacing, Radius, Typography } from '@/lib/theme';
 
 interface SearchBarProps {
   value: string;
@@ -15,10 +15,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'بحث...', debo
   const [localValue, setLocalValue] = useState(value);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync external value changes (e.g. clear from parent)
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
+  useEffect(() => { setLocalValue(value); }, [value]);
 
   const handleChange = (text: string) => {
     setLocalValue(text);
@@ -36,24 +33,34 @@ export function SearchBar({ value, onChangeText, placeholder = 'بحث...', debo
     onChangeText('');
   };
 
-  // Cleanup on unmount
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   return (
     <View style={styles.searchWrap}>
-      <Ionicons name="search" size={20} color={Colors.textLight} />
+      <Ionicons name="search" size={17} color={Colors.textLight} />
       <TextInput
         style={styles.searchInput}
         placeholder={placeholder}
         placeholderTextColor={Colors.textLight}
         value={localValue}
         onChangeText={handleChange}
-        textAlign="right"
+        textAlign={I18nManager.isRTL ? 'right' : 'left'}
+        autoCorrect={false}
+        autoCapitalize="none"
+        returnKeyType="search"
+        clearButtonMode="never"
+        accessibilityRole="search"
       />
       {localValue ? (
-        <TouchableOpacity onPress={handleClear}>
-          <Ionicons name="close-circle" size={20} color={Colors.textLight} />
-        </TouchableOpacity>
+        <Pressable
+          onPress={handleClear}
+          hitSlop={8}
+          style={({ pressed }) => pressed && { opacity: 0.5 }}
+          accessibilityRole="button"
+          accessibilityLabel="مسح البحث"
+        >
+          <Ionicons name="close-circle" size={17} color={Colors.textLight} />
+        </Pressable>
       ) : null}
     </View>
   );
@@ -63,15 +70,15 @@ const styles = StyleSheet.create({
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
+    // iOS native search bar: gray filled, no border, no shadow, pill shape
+    backgroundColor: 'rgba(118,118,128,0.12)',
+    borderRadius: Radius.full,
     paddingHorizontal: Spacing.md,
-    height: 44,
+    height: 36,
     gap: Spacing.sm,
     marginHorizontal: Spacing.lg,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
     marginBottom: Spacing.sm,
-    ...Shadows.sm,
   },
   searchInput: {
     flex: 1,

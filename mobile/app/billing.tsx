@@ -74,9 +74,9 @@ export default function BillingScreen() {
       <Stack.Screen options={{
         title: 'الاشتراك والفواتير',
         headerShown: true,
-        headerStyle: { backgroundColor: Colors.primary },
-        headerTintColor: '#fff',
-        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        
+        headerTintColor: Colors.primary,
+        headerTitleStyle: { ...Typography.h4, color: Colors.text },
         headerTitleAlign: 'center',
         headerBackTitle: '',
       }} />
@@ -186,7 +186,7 @@ export default function BillingScreen() {
           );
         })}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );

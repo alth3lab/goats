@@ -1,9 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ViewStyle, Image, Platform } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, Typography, Shadows, StatusColors, StatusLabels, GenderLabels } from '@/lib/theme';
 import { western } from '@/lib/formatters';
 import type { Goat } from '@/types';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface GoatCardProps {
   goat: Goat;
@@ -16,11 +20,27 @@ export default function GoatCard({ goat, onPress, style }: GoatCardProps) {
   const genderIcon = goat.gender === 'MALE' ? 'male' : 'female';
   const genderColor = goat.gender === 'MALE' ? Colors.male : Colors.female;
 
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { stiffness: 400, damping: 20 });
+    if (Platform.OS === 'ios') Haptics.selectionAsync();
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { stiffness: 400, damping: 20 });
+  };
+
+  const a11yLabel = `${goat.name || goat.tagId}، ${GenderLabels[goat.gender]}، ${StatusLabels[goat.status] || goat.status}`;
+
   return (
-    <TouchableOpacity
-      style={[styles.card, style]}
+    <AnimatedPressable
+      style={[styles.card, animatedStyle, style]}
       onPress={onPress}
-      activeOpacity={0.7}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
     >
       <View style={styles.cardRow}>
         {/* Thumbnail */}
@@ -38,7 +58,7 @@ export default function GoatCard({ goat, onPress, style }: GoatCardProps) {
           <View style={[styles.tagDot, { backgroundColor: goat.tagColor || Colors.primary }]} />
           <Text style={styles.tagId}>{goat.tagId}</Text>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
+        <View style={[styles.statusBadge, { backgroundColor: statusColor + '22' }]}>
           <Text style={[styles.statusText, { color: statusColor }]}>
             {StatusLabels[goat.status] || goat.status}
           </Text>
@@ -92,7 +112,7 @@ export default function GoatCard({ goat, onPress, style }: GoatCardProps) {
       </View>
       </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -111,12 +131,12 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: 56,
     height: 56,
-    borderRadius: Radius.md,
+    borderRadius: 28,
   },
   thumbnailPlaceholder: {
     width: 56,
     height: 56,
-    borderRadius: Radius.md,
+    borderRadius: 28,
     backgroundColor: Colors.surfaceVariant,
     justifyContent: 'center',
     alignItems: 'center',

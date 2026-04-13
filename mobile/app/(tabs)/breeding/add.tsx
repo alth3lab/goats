@@ -124,7 +124,7 @@ export default function AddBreedingScreen() {
           icon="checkmark-circle-outline"
         />
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

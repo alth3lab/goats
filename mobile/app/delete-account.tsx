@@ -66,9 +66,9 @@ export default function DeleteAccountScreen() {
         options={{
           title: 'حذف الحساب',
           headerShown: true,
-          headerStyle: { backgroundColor: Colors.error },
-          headerTintColor: '#fff',
-          headerTitleStyle: { ...Typography.h4, color: '#fff' },
+          
+          headerTintColor: Colors.primary,
+          headerTitleStyle: { ...Typography.h4, color: Colors.text },
           headerTitleAlign: 'center',
         }}
       />
@@ -141,7 +141,7 @@ export default function DeleteAccountScreen() {
           <Text style={styles.cancelText}>إلغاء والعودة</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </>
   );

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   Modal,
   Pressable,
   ScrollView,
@@ -14,12 +13,21 @@ import {
   Platform,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 import { healthApi, goatsApi, resolveGoatByTag } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LoadingScreen, EmptyState, Button, Input, SectionHeader } from '@/components/ui';
 import DatePickerField from '@/components/DatePickerField';
-import { Colors, Spacing, Radius, Typography, Shadows, HealthTypeLabels } from '@/lib/theme';
+import { Colors, Spacing, Radius, Typography, Shadows, Gradients, HealthTypeLabels } from '@/lib/theme';
 import { formatDate, formatNumber, western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
 import { SearchBar } from '@/components/SearchBar';
@@ -154,12 +162,32 @@ export default function HealthScreen() {
   const renderRecord = useCallback(({ item }: { item: HealthRecord }) => {
     const typeColor = TYPE_COLORS[item.type] || Colors.textSecondary;
     const typeIcon = TYPE_ICONS[item.type] || 'medkit';
+    const scale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
+
+    const handlePressIn = () => {
+      scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    };
+
+    const handleLongPress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      handleDelete(item.id);
+    };
 
     return (
-      <TouchableOpacity
-        style={styles.recordCard}
-        onLongPress={() => handleDelete(item.id)}
-        activeOpacity={0.9}
+      <AnimatedPressable
+        style={[styles.recordCard, animatedStyle]}
+        onLongPress={handleLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         delayLongPress={500}
       >
         <View style={[styles.recordIcon, { backgroundColor: typeColor + '15' }]}>
@@ -183,7 +211,7 @@ export default function HealthScreen() {
             <Text style={styles.costText}>{formatNumber(item.cost)}</Text>
           </View>
         ) : null}
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }, [handleDelete]);
 
@@ -241,13 +269,24 @@ export default function HealthScreen() {
 
       {/* FAB */}
       {can('__owner_admin__') && (
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.fab}
-          onPress={() => setAddVisible(true)}
-          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            setAddVisible(true);
+          }}
+          onPressIn={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }}
         >
+          <LinearGradient
+            colors={Gradients.heroBlue as unknown as readonly [string, string, ...string[]]}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
           <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
 
       {/* Add Modal */}
@@ -323,7 +362,7 @@ export default function HealthScreen() {
             size="lg"
             icon="checkmark-circle-outline"
           />
-          <View style={{ height: 40 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -426,10 +465,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.lg,
+    overflow: 'hidden',
+    ...Shadows.fab,
+    shadowColor: Colors.info,
+    shadowOpacity: 0.3,
   },
 
   // Modal

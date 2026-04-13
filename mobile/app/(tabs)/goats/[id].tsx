@@ -220,7 +220,7 @@ export default function GoatDetailScreen() {
         onCancel={() => setDeleteVisible(false)}
       />
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 100 }} />
     </ScrollView>
   );
 }

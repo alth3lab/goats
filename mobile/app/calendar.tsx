@@ -202,7 +202,7 @@ export default function CalendarScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'التقويم والمواعيد', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'التقويم والمواعيد', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
         {/* Stats & Toggle */}
         <View style={styles.header}>
@@ -276,7 +276,7 @@ export default function CalendarScreen() {
             <Input label="الوصف" placeholder="تفاصيل الحدث" icon="document-text-outline" value={formDesc} onChangeText={setFormDesc} multiline />
 
             <Button title="إضافة الحدث" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-            <View style={{ height: 40 }} />
+            <View style={{ height: 100 }} />
           </ScrollView>
           </KeyboardAvoidingView>
         </Modal>

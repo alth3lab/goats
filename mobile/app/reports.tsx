@@ -123,7 +123,7 @@ export default function ReportsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'التقارير والإحصائيات', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'التقارير والإحصائيات', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -230,7 +230,7 @@ export default function ReportsScreen() {
           </View>
         )}
 
-        <View style={{ height: 30 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </>
   );

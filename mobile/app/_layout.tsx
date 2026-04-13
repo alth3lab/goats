@@ -1,13 +1,13 @@
 import '@/lib/polyfills';
 import React from 'react';
-import { View, Text, StyleSheet, I18nManager } from 'react-native';
+import { View, Text, StyleSheet, I18nManager, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/lib/auth';
 import { ToastProvider } from '@/lib/toast';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { usePushNotifications } from '@/lib/usePushNotifications';
-import { Colors } from '@/lib/theme';
+import { Colors, Typography } from '@/lib/theme';
 
 // Force RTL for Arabic — takes effect after app restart
 if (!I18nManager.isRTL) {
@@ -20,7 +20,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <StatusBar style="light" backgroundColor={Colors.primaryDark} />
+          <StatusBar style="dark" />
           <OfflineBanner />
           <AppContent />
         </ToastProvider>
@@ -37,9 +37,24 @@ function AppContent() {
     <Stack
       screenOptions={{
         headerShown: false,
-        headerBackTitle: '',
+        headerBackTitle: 'رجوع',
         contentStyle: { backgroundColor: Colors.background },
-        animation: 'default',
+        animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
+        // iOS native header styling for pushed screens
+        headerStyle: {
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : Colors.surface,
+        },
+        headerTransparent: Platform.OS === 'ios',
+        headerBlurEffect: 'systemChromeMaterial',
+        headerTintColor: Colors.primary,
+        headerTitleStyle: {
+          ...Typography.h4,
+          color: Colors.text,
+        },
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
       }}
     />
   );

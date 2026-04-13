@@ -214,7 +214,7 @@ export default function ExpensesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'المصروفات', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'المصروفات', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
         {/* Summary */}
         <View style={styles.summaryCard}>
@@ -293,7 +293,7 @@ export default function ExpensesScreen() {
             <Input label="ملاحظات" placeholder="ملاحظات إضافية" icon="create-outline" value={formNotes} onChangeText={setFormNotes} multiline />
 
             <Button title="إضافة المصروف" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-            <View style={{ height: 40 }} />
+            <View style={{ height: 100 }} />
           </ScrollView>
           </KeyboardAvoidingView>
         </Modal>

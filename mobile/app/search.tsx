@@ -4,7 +4,7 @@ import {
   TextInput, ActivityIndicator, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { searchApi } from '@/lib/api';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
 import { EmptyState } from '@/components/ui';
@@ -92,14 +92,12 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-forward" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>البحث الشامل</Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <Stack.Screen options={{
+        title: 'البحث الشامل',
+        headerShown: true,
+        headerTintColor: Colors.primary,
+        headerTitleStyle: { ...Typography.h4, color: Colors.text },
+      }} />
 
       {/* Search Input */}
       <View style={styles.searchBar}>
@@ -161,7 +159,7 @@ export default function SearchScreen() {
             );
           })
         )}
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -169,14 +167,6 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.primary,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16, paddingBottom: 12,
-    paddingHorizontal: Spacing.lg,
-  },
-  backBtn: { padding: 4 },
-  headerTitle: { ...Typography.h4, color: '#fff' },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     backgroundColor: Colors.surface, margin: Spacing.lg,

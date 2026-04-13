@@ -169,8 +169,6 @@ export default function PensScreen() {
     );
   }, [handleDelete]);
 
-  if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
-
   const { totalAnimals, totalCapacity } = useMemo(() => ({
     totalAnimals: pens.reduce((sum, p) => sum + (p.currentCount || 0), 0),
     totalCapacity: pens.reduce((sum, p) => sum + (p.capacity || 0), 0),
@@ -180,9 +178,11 @@ export default function PensScreen() {
     search.trim() ? pens.filter(p => p.nameAr?.toLowerCase().includes(search.toLowerCase()) || p.type?.toLowerCase().includes(search.toLowerCase())) : pens
   , [search, pens]);
 
+  if (loading) return <LoadingScreen message="جارٍ التحميل..." />;
+
   return (
     <>
-      <Stack.Screen options={{ title: 'إدارة الحظائر', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'إدارة الحظائر', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
         {/* Summary */}
         <View style={styles.summaryRow}>
@@ -242,7 +242,7 @@ export default function PensScreen() {
             <Input label="ملاحظات" placeholder="ملاحظات إضافية" icon="document-text-outline" value={formNotes} onChangeText={setFormNotes} multiline />
 
             <Button title="إضافة الحظيرة" onPress={handleAdd} loading={submitting} fullWidth size="lg" icon="checkmark-circle-outline" />
-            <View style={{ height: 40 }} />
+            <View style={{ height: 100 }} />
           </ScrollView>
           </KeyboardAvoidingView>
         </Modal>

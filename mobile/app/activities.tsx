@@ -153,7 +153,7 @@ export default function ActivitiesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'سجل النشاط', headerShown: true, headerStyle: { backgroundColor: Colors.primary }, headerTintColor: '#fff', headerTitleStyle: { ...Typography.h4, color: '#fff' }, headerTitleAlign: 'center' }} />
+      <Stack.Screen options={{ title: 'سجل النشاط', headerShown: true,  headerTintColor: Colors.primary, headerTitleStyle: { ...Typography.h4, color: Colors.text }, headerTitleAlign: 'center' }} />
       <View style={styles.container}>
         <SearchBar value={search} onChangeText={setSearch} placeholder="بحث في النشاطات..." />
         <FlatList

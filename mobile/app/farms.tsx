@@ -165,9 +165,9 @@ export default function FarmsScreen() {
       <Stack.Screen options={{
         title: 'إدارة المزارع',
         headerShown: true,
-        headerStyle: { backgroundColor: Colors.primary },
-        headerTintColor: '#fff',
-        headerTitleStyle: { ...Typography.h4, color: '#fff' },
+        
+        headerTintColor: Colors.primary,
+        headerTitleStyle: { ...Typography.h4, color: Colors.text },
         headerTitleAlign: 'center',
         headerBackTitle: '',
       }} />

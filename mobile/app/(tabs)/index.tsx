@@ -1,19 +1,22 @@
 import React, { useState, useCallback } from 'react';
+import { Platform } from 'react-native';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/lib/auth';
 import { statsApi, alertsApi } from '@/lib/api';
 import KPICard from '@/components/KPICard';
 import { AlertBanner, LoadingScreen, SectionHeader } from '@/components/ui';
-import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
+import { Colors, Gradients, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
 import { formatCurrency, western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
 import type { DashboardStats } from '@/types';
@@ -61,19 +64,26 @@ export default function DashboardScreen() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
       showsVerticalScrollIndicator={false}
     >
       {/* Welcome Banner */}
-      <View style={styles.welcomeBanner}>
+      <LinearGradient
+        colors={[...Gradients.teal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.welcomeBanner}
+      >
+        {/* Shine overlay */}
+        <View style={styles.shineOverlay} />
         <View style={styles.welcomeContent}>
-          <Text style={styles.welcomeText}>مرحباً {user?.fullName}</Text>
+          <Text style={styles.welcomeText}>{getGreeting()} {user?.fullName}</Text>
           <Text style={styles.farmName}>{farm?.nameAr || farm?.name}</Text>
         </View>
         <View style={styles.welcomeIcon}>
-          <Ionicons name="sunny" size={32} color="#FFD700" />
+          <Ionicons name="leaf" size={32} color="rgba(255,255,255,0.9)" />
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Alerts */}
       {alerts.length > 0 && (
@@ -89,36 +99,77 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* Herd KPIs */}
-      <View style={styles.section}>
-        <SectionHeader title="إحصائيات القطيع" />
-        <View style={styles.kpiRow}>
-          <KPICard
-            title="إجمالي القطيع"
-            value={western(stats?.activeGoats ?? 0)}
-            icon="paw"
-            iconColor={Colors.primary}
-          />
-          <KPICard
-            title="ذكور"
-            value={western(stats?.maleGoats ?? 0)}
-            icon="male"
-            iconColor={Colors.male}
-          />
+      {/* Herd Overview - Big Gradient Card — dark variant for contrast */}
+      <LinearGradient
+        colors={[...Gradients.dark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.herdCard}
+      >
+        <View style={styles.herdCardHeader}>
+          <Text style={styles.herdCardTitle}>إجمالي القطيع</Text>
+          <View style={styles.herdCardIcon}>
+            <Ionicons name="paw" size={28} color="rgba(255,255,255,0.6)" />
+          </View>
         </View>
-        <View style={styles.kpiRow}>
-          <KPICard
-            title="إناث"
-            value={western(stats?.femaleGoats ?? 0)}
-            icon="female"
-            iconColor={Colors.female}
-          />
-          <KPICard
-            title="حوامل"
-            value={western(stats?.pregnantGoats ?? 0)}
-            icon="heart"
-            iconColor={Colors.female}
-          />
+        <Text style={styles.herdCardValue}>{western(stats?.activeGoats ?? 0)}</Text>
+        <View style={styles.herdCardRow}>
+          <View style={styles.herdPill}>
+            <Ionicons name="male" size={14} color="#fff" />
+            <Text style={styles.herdPillText}>{western(stats?.maleGoats ?? 0)} ذكور</Text>
+          </View>
+          <View style={styles.herdPill}>
+            <Ionicons name="female" size={14} color="#fff" />
+            <Text style={styles.herdPillText}>{western(stats?.femaleGoats ?? 0)} إناث</Text>
+          </View>
+          <View style={styles.herdPill}>
+            <Ionicons name="heart" size={14} color="#fff" />
+            <Text style={styles.herdPillText}>{western(stats?.pregnantGoats ?? 0)} حوامل</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Reminders Row */}
+      <View style={styles.section}>
+        <SectionHeader title="تنبيهات" />
+        <View style={styles.reminderRow}>
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => { if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/health'); }}
+          >
+            <LinearGradient
+              colors={[...Gradients.blue]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.reminderCard}
+            >
+              <View style={styles.reminderTop}>
+                <Ionicons name="medkit" size={22} color="rgba(255,255,255,0.85)" />
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+              </View>
+              <Text style={styles.reminderValue}>{western(alerts.filter(a => a.type === 'vaccination' || a.type === 'health').length)}</Text>
+              <Text style={styles.reminderLabel}>تطعيمات مستحقة</Text>
+            </LinearGradient>
+          </Pressable>
+
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => { if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/health'); }}
+          >
+            <LinearGradient
+              colors={[...Gradients.orange]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.reminderCard}
+            >
+              <View style={styles.reminderTop}>
+                <Ionicons name="warning" size={22} color="rgba(255,255,255,0.85)" />
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+              </View>
+              <Text style={styles.reminderValue}>{western(alerts.filter(a => a.type === 'withdrawal').length)}</Text>
+              <Text style={styles.reminderLabel}>فترات حظر</Text>
+            </LinearGradient>
+          </Pressable>
         </View>
       </View>
 
@@ -130,14 +181,14 @@ export default function DashboardScreen() {
             title="المبيعات"
             value={formatCurrency(stats?.totalSales ?? 0)}
             icon="trending-up"
-            iconColor={Colors.success}
+            gradient={Gradients.green}
             trend={stats?.comparison?.totalSales}
           />
           <KPICard
             title="المصروفات"
             value={formatCurrency(stats?.totalExpenses ?? 0)}
             icon="trending-down"
-            iconColor={Colors.error}
+            gradient={Gradients.red}
             trend={stats?.comparison?.totalExpenses}
           />
         </View>
@@ -146,13 +197,13 @@ export default function DashboardScreen() {
             title="صافي الربح"
             value={formatCurrency(stats?.netProfit ?? 0)}
             icon="wallet"
-            iconColor={(stats?.netProfit ?? 0) >= 0 ? Colors.success : Colors.error}
+            gradient={(stats?.netProfit ?? 0) >= 0 ? Gradients.teal : Gradients.red}
           />
           <KPICard
             title="تربية نشطة"
             value={western(stats?.activeBreedings ?? 0)}
             icon="git-merge"
-            iconColor={Colors.info}
+            gradient={Gradients.purple}
           />
         </View>
       </View>
@@ -183,19 +234,26 @@ export default function DashboardScreen() {
       <View style={styles.section}>
         <SectionHeader title="إجراءات سريعة" />
         <View style={styles.actionsGrid}>
-          <QuickAction icon="add-circle" label="إضافة حيوان" color={Colors.primary} onPress={() => router.push('/goats/add')} />
-          <QuickAction icon="heart" label="التربية" color={Colors.female} onPress={() => router.push('/(tabs)/breeding' as any)} />
-          <QuickAction icon="medkit" label="سجل صحي" color={Colors.success} onPress={() => router.push('/(tabs)/health')} />
-          <QuickAction icon="cash" label="تسجيل بيع" color={Colors.info} onPress={() => router.push('/(tabs)/sales')} />
+          <QuickAction icon="add-circle" label="إضافة حيوان" gradient={Gradients.teal} onPress={() => router.push('/goats/add')} />
+          <QuickAction icon="heart" label="التربية" gradient={Gradients.purple} onPress={() => router.push('/(tabs)/breeding' as any)} />
+          <QuickAction icon="medkit" label="سجل صحي" gradient={Gradients.blue} onPress={() => router.push('/(tabs)/health')} />
+          <QuickAction icon="cash" label="تسجيل بيع" gradient={Gradients.orange} onPress={() => router.push('/(tabs)/sales')} />
         </View>
       </View>
 
-      <View style={{ height: 20 }} />
+      <View style={{ height: 100 }} />
     </ScrollView>
   );
 }
 
 // ─── Helper Components ───────────────────────────────────
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'صباح الخير';
+  if (h < 18) return 'مساء الخير';
+  return 'مساء الخير';
+}
+
 function MonthlyItem({ label, value, icon, color }: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap; color: string }) {
   return (
     <View style={styles.monthlyItem}>
@@ -208,14 +266,25 @@ function MonthlyItem({ label, value, icon, color }: { label: string; value: stri
   );
 }
 
-function QuickAction({ icon, label, color, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string; onPress?: () => void }) {
+function QuickAction({ icon, label, gradient, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; gradient: readonly string[]; onPress?: () => void }) {
   return (
-    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7} onPress={onPress}>
-      <View style={[styles.quickActionIcon, { backgroundColor: color + '12' }]}>
-        <Ionicons name={icon} size={26} color={color} />
-      </View>
+    <Pressable
+      style={styles.quickAction}
+      onPress={() => {
+        if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress?.();
+      }}
+    >
+      <LinearGradient
+        colors={gradient as unknown as readonly [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.quickActionIcon}
+      >
+        <Ionicons name={icon} size={24} color="#fff" />
+      </LinearGradient>
       <Text style={styles.quickActionLabel}>{label}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -230,15 +299,17 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
   },
+
+  // Welcome Banner
   welcomeBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.primary,
     borderRadius: Radius.xl,
     padding: Spacing.xl,
-    marginBottom: Spacing.xl,
-    ...Shadows.md,
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+    ...Shadows.lg,
   },
   welcomeContent: {
     flex: 1,
@@ -260,6 +331,107 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  // Shine overlay (the "glow" effect)
+  shineOverlay: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  shineOverlaySmall: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+
+  // Herd Overview Card
+  herdCard: {
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+    ...Shadows.lg,
+  },
+  herdCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  herdCardTitle: {
+    ...Typography.body,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  herdCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  herdCardValue: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#fff',
+    marginVertical: Spacing.sm,
+  },
+  herdCardRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  herdPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+  },
+  herdPillText: {
+    ...Typography.small,
+    color: '#fff',
+    fontWeight: '600',
+  },
+
+  // Reminder Cards
+  reminderRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  reminderCard: {
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    overflow: 'hidden',
+    minHeight: 130,
+    ...Shadows.md,
+  },
+  reminderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  reminderValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  reminderLabel: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+
   section: {
     marginBottom: Spacing.xl,
   },

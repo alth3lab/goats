@@ -194,7 +194,7 @@ export default function EditBreedingScreen() {
           icon="save-outline"
         />
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

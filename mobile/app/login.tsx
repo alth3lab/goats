@@ -40,7 +40,7 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const router = useRouter();
 
-  // Check biometric hardware + saved preference on mount
+  // Check biometric hardware on mount
   useEffect(() => {
     (async () => {
       const type = await getAvailableBiometric();
@@ -48,39 +48,33 @@ export default function LoginScreen() {
       if (type !== 'none') {
         const enabled = await getBiometricEnabled();
         setBiometricEnabledState(enabled);
-        // Auto-prompt if already enrolled and token exists
-        if (enabled) {
-          const token = await getToken();
-          if (token) {
-            handleBiometricLogin(true);
-          }
-        }
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleBiometricLogin = useCallback(async (silent = false) => {
+  const handleBiometricLogin = useCallback(async () => {
+    if (!biometricEnabled) {
+      setError('يرجى تسجيل الدخول بكلمة المرور أولاً لتفعيل البصمة');
+      return;
+    }
+
     setBiometricLoading(true);
+    setError('');
     const label = biometricType === 'face' ? 'Face ID' : 'البصمة';
     const success = await authenticateWithBiometrics(`تسجيل الدخول بـ${label}`);
     setBiometricLoading(false);
 
     if (success) {
-      // Token still valid — navigate directly
       const token = await getToken();
       if (token) {
         router.replace('/(tabs)');
         return;
       }
-      // Token is gone; ask user to log in with password to re-enroll
-      if (!silent) {
-        Alert.alert('انتهت الجلسة', 'يرجى إدخال كلمة المرور لتجديد الجلسة.');
-      }
-    } else if (!silent) {
-      Alert.alert('فشل التحقق', `تعذّر التحقق بـ${label}. يرجى استخدام كلمة المرور.`);
+      setError('انتهت صلاحية الجلسة. يرجى تسجيل الدخول بكلمة المرور.');
+    } else {
+      setError(`فشل التحقق من ${label}`);
     }
-  }, [biometricType, router]);
+  }, [biometricType, biometricEnabled, router]);
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password.trim()) {
@@ -94,27 +88,11 @@ export default function LoginScreen() {
     try {
       await login(identifier.trim(), password);
 
-      // After successful password login, offer to enable biometrics if available and not yet on
-      if (biometricType !== 'none' && !biometricEnabled) {
-        const label = biometricType === 'face' ? 'Face ID' : 'البصمة';
-        Alert.alert(
-          `تفعيل ${label}`,
-          `هل تريد تسجيل الدخول بـ${label} في المرات القادمة؟`,
-          [
-            { text: 'لا شكرًا', style: 'cancel' },
-            {
-              text: 'تفعيل',
-              onPress: async () => {
-                await setBiometricEnabled(true);
-                await setBiometricIdentifier(identifier.trim());
-                setBiometricEnabledState(true);
-              },
-            },
-          ],
-        );
-      } else if (biometricEnabled) {
-        // Update stored identifier in case user changed account
+      // Auto-enable biometrics after first successful login (silent, no alerts)
+      if (biometricType !== 'none') {
+        await setBiometricEnabled(true);
         await setBiometricIdentifier(identifier.trim());
+        setBiometricEnabledState(true);
       }
 
       router.replace('/(tabs)');
@@ -163,11 +141,11 @@ export default function LoginScreen() {
             </View>
           ) : null}
 
-          {/* Biometric quick-login button */}
-          {biometricType !== 'none' && biometricEnabled && (
+          {/* Biometric quick-login button - always show if device supports it */}
+          {biometricType !== 'none' && (
             <TouchableOpacity
               style={styles.biometricButton}
-              onPress={() => handleBiometricLogin(false)}
+              onPress={handleBiometricLogin}
               disabled={biometricLoading}
             >
               <Ionicons name={biometricIcon} size={28} color={Colors.primary} />
@@ -227,28 +205,14 @@ export default function LoginScreen() {
             icon="log-in-outline"
           />
 
-          {/* Enable/disable biometrics link */}
-          {biometricType !== 'none' && (
-            <TouchableOpacity
-              style={styles.biometricToggle}
-              onPress={async () => {
-                const next = !biometricEnabled;
-                await setBiometricEnabled(next);
-                setBiometricEnabledState(next);
-                if (next && identifier.trim()) {
-                  await setBiometricIdentifier(identifier.trim());
-                }
-              }}
-            >
-              <Ionicons
-                name={biometricEnabled ? 'shield-checkmark-outline' : 'shield-outline'}
-                size={16}
-                color={Colors.primary}
-              />
-              <Text style={styles.biometricToggleText}>
-                {biometricEnabled ? `إيقاف ${biometricLabel}` : `تفعيل ${biometricLabel}`}
+          {/* Info text for first-time users */}
+          {biometricType !== 'none' && !biometricEnabled && (
+            <View style={styles.biometricInfo}>
+              <Ionicons name="information-circle-outline" size={14} color={Colors.textLight} />
+              <Text style={styles.biometricInfoText}>
+                سيتم تفعيل {biometricLabel} تلقائياً بعد أول تسجيل دخول
               </Text>
-            </TouchableOpacity>
+            </View>
           )}
 
           <TouchableOpacity
@@ -368,16 +332,19 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '600',
   },
-  biometricToggle: {
+  biometricInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
-  biometricToggleText: {
-    ...Typography.caption,
-    color: Colors.primary,
+  biometricInfoText: {
+    ...Typography.small,
+    color: Colors.textLight,
+    textAlign: 'center',
+    flex: 1,
   },
   footer: {
     ...Typography.small,

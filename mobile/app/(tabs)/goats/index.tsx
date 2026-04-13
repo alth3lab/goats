@@ -6,16 +6,19 @@ import {
   FlatList,
   RefreshControl,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { goatsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import GoatCard from '@/components/GoatCard';
 import { EmptyState, Button } from '@/components/ui';
-import { Colors, Spacing, Radius, Typography, Shadows, StatusLabels } from '@/lib/theme';
+import { Colors, Spacing, Radius, Typography, Shadows, Gradients, StatusLabels } from '@/lib/theme';
 import { western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
 import type { Goat } from '@/types';
@@ -112,7 +115,7 @@ export default function GoatsListScreen() {
       {/* Search Bar */}
       <View style={styles.searchRow}>
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={20} color={Colors.textLight} />
+          <Ionicons name="search" size={17} color={Colors.textLight} />
           <TextInput
             style={styles.searchInput}
             placeholder="بحث بالرقم أو الاسم..."
@@ -120,37 +123,64 @@ export default function GoatsListScreen() {
             value={search}
             onChangeText={setSearch}
             textAlign="right"
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
           />
           {search ? (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={20} color={Colors.textLight} />
-            </TouchableOpacity>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSearch('');
+              }}
+              hitSlop={8}
+            >
+              <Ionicons name="close-circle" size={17} color={Colors.textLight} />
+            </Pressable>
           ) : null}
         </View>
         {can('__owner_admin__') && (
-          <TouchableOpacity
+          <Pressable
             style={styles.addButton}
-            onPress={() => router.push('/(tabs)/goats/add')}
-            activeOpacity={0.7}
+            onPress={() => {
+              if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/(tabs)/goats/add');
+            }}
           >
+            <LinearGradient
+              colors={Gradients.teal as unknown as readonly [string, string, ...string[]]}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
             <Ionicons name="add" size={24} color="#fff" />
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 
       {/* Status Filter Tabs */}
       <View style={styles.filterRow}>
-        {STATUS_FILTERS.map(f => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filterTab, statusFilter === f.key && styles.filterTabActive]}
-            onPress={() => setStatusFilter(f.key)}
-          >
-            <Text style={[styles.filterTabText, statusFilter === f.key && styles.filterTabTextActive]}>
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {STATUS_FILTERS.map(f => {
+          const isActive = statusFilter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              style={({ pressed }) => [
+                styles.filterTab,
+                isActive && styles.filterTabActive,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => {
+                if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setStatusFilter(f.key);
+              }}
+            >
+              <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+                {f.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* Count */}
@@ -217,12 +247,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
+    backgroundColor: 'rgba(118,118,128,0.12)',
+    borderRadius: Radius.full,
     paddingHorizontal: Spacing.md,
-    height: 44,
+    height: 36,
     gap: Spacing.sm,
-    ...Shadows.sm,
   },
   searchInput: {
     flex: 1,
@@ -233,11 +262,11 @@ const styles = StyleSheet.create({
   addButton: {
     width: 44,
     height: 44,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primary,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.md,
+    overflow: 'hidden',
+    ...Shadows.button,
   },
   filterRow: {
     flexDirection: 'row',

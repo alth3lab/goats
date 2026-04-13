@@ -4,11 +4,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+  I18nManager,
+  Platform,
+} from 'react-native';import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
 import { useAuth } from '@/lib/auth';
 import { Colors, Spacing, Radius, Typography, Shadows } from '@/lib/theme';
@@ -24,6 +27,7 @@ interface MenuItem {
 export default function MoreScreen() {
   const { user, farm, farms, logout, switchFarm } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
     Alert.alert('تسجيل الخروج', 'هل أنت متأكد أنك تريد تسجيل الخروج؟', [
@@ -75,7 +79,6 @@ export default function MoreScreen() {
     {
       title: 'الحساب',
       items: [
-        { icon: 'card', label: 'الاشتراك والفواتير', subtitle: 'خطة الاشتراك والاستخدام', color: '#8b5cf6', onPress: () => router.push('/billing') },
         { icon: 'swap-horizontal', label: 'تبديل المزرعة', subtitle: farm?.nameAr || farm?.name || '—', color: Colors.primary, onPress: handleSwitchFarm },
         { icon: 'settings', label: 'الإعدادات', subtitle: 'إعدادات التطبيق', color: Colors.textSecondary, onPress: () => router.push('/settings') },
         { icon: 'log-out', label: 'تسجيل الخروج', subtitle: '', color: Colors.error, onPress: handleLogout },
@@ -84,40 +87,62 @@ export default function MoreScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Profile Card */}
-      <View style={styles.profileCard}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Profile Row — iOS Settings style */}
+      <View style={styles.profileSection}>
         <View style={styles.avatar}>
-          <Ionicons name="person" size={32} color={Colors.textOnPrimary} />
+          <Ionicons name="person" size={28} color={Colors.textOnPrimary} />
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.profileName}>{user?.fullName}</Text>
-          <Text style={styles.profileRole}>{user?.role === 'SUPER_ADMIN' ? 'مدير النظام' : user?.role === 'OWNER' ? 'مالك' : user?.role === 'ADMIN' ? 'مسؤول' : 'مستخدم'}</Text>
-          <Text style={styles.profileFarm}>{farm?.nameAr || farm?.name}</Text>
+          <Text style={styles.profileMeta}>
+            {user?.role === 'SUPER_ADMIN' ? 'مدير النظام' : user?.role === 'OWNER' ? 'مالك' : user?.role === 'ADMIN' ? 'مسؤول' : 'مستخدم'} · {farm?.nameAr || farm?.name}
+          </Text>
         </View>
+        <Ionicons
+          name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+          size={18}
+          color={Colors.textLight}
+        />
       </View>
 
       {/* Menu Sections */}
       {menuSections.map((section, si) => (
-        <View key={si} style={styles.section}>
+        <View key={section.title} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
           <View style={styles.menuCard}>
             {section.items.map((item, ii) => (
-              <TouchableOpacity
+              <Pressable
                 key={ii}
-                style={[styles.menuItem, ii < section.items.length - 1 && styles.menuItemBorder]}
-                onPress={item.onPress}
-                activeOpacity={0.6}
+                style={({ pressed }) => [
+                  styles.menuItem,
+                  ii < section.items.length - 1 && styles.menuItemBorder,
+                  pressed && styles.menuItemPressed,
+                ]}
+                onPress={() => {
+                  if (Platform.OS === 'ios') Haptics.selectionAsync();
+                  item.onPress();
+                }}
+                accessibilityRole="menuitem"
+                accessibilityLabel={item.label}
               >
-                <View style={[styles.menuIcon, { backgroundColor: item.color + '12' }]}>
-                  <Ionicons name={item.icon} size={22} color={item.color} />
+                <View style={[styles.menuIcon, { backgroundColor: item.color + '18' }]}>
+                  <Ionicons name={item.icon} size={20} color={item.color} />
                 </View>
                 <View style={styles.menuContent}>
                   <Text style={styles.menuLabel}>{item.label}</Text>
                   {item.subtitle ? <Text style={styles.menuSubtitle}>{item.subtitle}</Text> : null}
                 </View>
-                <Ionicons name="chevron-back" size={18} color={Colors.textLight} />
-              </TouchableOpacity>
+                <Ionicons
+                  name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+                  size={16}
+                  color={Colors.textLight}
+                />
+              </Pressable>
             ))}
           </View>
         </View>
@@ -127,8 +152,6 @@ export default function MoreScreen() {
       <View style={styles.appInfo}>
         <Text style={styles.appInfoText}>وبر وصوف — نسخة {Constants.expoConfig?.version ?? '1.0.0'}</Text>
       </View>
-
-      <View style={{ height: 30 }} />
     </ScrollView>
   );
 }
@@ -139,25 +162,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   content: {
-    padding: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
 
-  // Profile
-  profileCard: {
+  // Profile — iOS Settings style (grouped cell, not banner)
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
     marginBottom: Spacing.xxl,
     gap: Spacing.lg,
-    ...Shadows.md,
+    ...Shadows.xs,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -165,17 +189,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileName: {
-    ...Typography.h3,
-    color: '#fff',
+    ...Typography.bodyBold,
+    color: Colors.text,
   },
-  profileRole: {
+  profileMeta: {
     ...Typography.caption,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  profileFarm: {
-    ...Typography.small,
-    color: 'rgba(255,255,255,0.6)',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
 
@@ -184,32 +203,39 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   sectionTitle: {
-    ...Typography.captionBold,
+    ...Typography.small,
+    fontWeight: '600',
     color: Colors.textSecondary,
-    marginBottom: Spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
     paddingHorizontal: 4,
     textAlign: 'right',
   },
   menuCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
-    ...Shadows.sm,
     overflow: 'hidden',
+    ...Shadows.xs,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 13,
     gap: Spacing.md,
   },
   menuItemBorder: {
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.borderLight,
   },
+  menuItemPressed: {
+    backgroundColor: Colors.surfaceVariant,
+  },
   menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
+    width: 34,
+    height: 34,
+    borderRadius: Radius.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -229,7 +255,7 @@ const styles = StyleSheet.create({
   // App Info
   appInfo: {
     alignItems: 'center',
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.xl,
   },
   appInfoText: {
     ...Typography.small,
