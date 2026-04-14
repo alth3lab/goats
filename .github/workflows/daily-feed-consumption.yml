@@ -1,0 +1,44 @@
+name: Daily Feed Consumption
+
+on:
+  schedule:
+    # يعمل كل يوم في الساعة 00:05 UTC (03:05 بتوقيت الإمارات)
+    - cron: '5 0 * * *'
+  
+  # يمكن تشغيله يدوياً من GitHub Actions
+  workflow_dispatch:
+
+jobs:
+  trigger-feed-consumption:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Daily Feed Consumption
+        run: |
+          echo "🔄 استدعاء Cron Job للاستهلاك اليومي..."
+          
+          response=$(curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.FEEDS_CRON_SECRET }}" \
+            -w "\n%{http_code}" \
+            -s \
+            https://goat.suhail.cc/api/cron/feeds-consume)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ نجح تشغيل الاستهلاك اليومي"
+            exit 0
+          else
+            echo "❌ فشل تشغيل الاستهلاك اليومي"
+            exit 1
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "⚠️ فشل الاستهلاك اليومي - يرجى التحقق من logs"

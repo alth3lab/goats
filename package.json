@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "feeds:cron": "tsx scripts/feeds-cron-worker.ts",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
