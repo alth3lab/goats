@@ -22,11 +22,9 @@ export default function DashboardError({
           <Typography variant="body2" color="text.secondary">
             نعتذر عن هذا الخطأ. يمكنك المحاولة مرة أخرى أو العودة للوحة التحكم.
           </Typography>
-          {process.env.NODE_ENV === 'development' && (
-            <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-              {error.message}
-            </Typography>
-          )}
+          <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+            {error.message}
+          </Typography>
           <Stack direction="row" spacing={2}>
             <Button variant="contained" onClick={reset} sx={{ borderRadius: 2 }}>
               إعادة المحاولة
