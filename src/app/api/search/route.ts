@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requirePermission(request, 'view_search')
     if (auth.response) return auth.response
-    return runWithTenant(auth.tenantId, auth.farmId, async () => {
+    return await runWithTenant(auth.tenantId, auth.farmId, async () => {
 
     const searchParams = request.nextUrl.searchParams
     const q = String(searchParams.get('q') || '').trim()

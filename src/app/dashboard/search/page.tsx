@@ -59,6 +59,7 @@ function SearchPageContent() {
     fetch(`/api/search?q=${encodeURIComponent(q)}`)
       .then((res) => res.json())
       .then((data) => setResults(Array.isArray(data.results) ? data.results : []))
+      .catch(() => setResults([]))
       .finally(() => setLoading(false))
   }, [query])
 
