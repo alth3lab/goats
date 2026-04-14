@@ -258,12 +258,24 @@ export async function POST(request: NextRequest) {
 
     let tenantId: string
     let farmId: string
-    let actorId: string | undefined
+    let actorId: string
 
     if (isSystemCron) {
       tenantId = cronTenantId as string
       farmId = cronFarmId
-      actorId = undefined
+
+      // ActivityLog.userId is required, so cron runs need a valid user actor.
+      const systemUser = await prisma.user.findFirst({
+        where: { tenantId, isActive: true },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' }
+      })
+
+      if (!systemUser) {
+        return NextResponse.json({ error: 'لا يوجد مستخدم نشط لربط تنفيذ الكرون به' }, { status: 500 })
+      }
+
+      actorId = systemUser.id
     } else {
       const auth = await requirePermission(request, 'manage_feeds')
       if (auth.response) return auth.response
@@ -271,7 +283,7 @@ export async function POST(request: NextRequest) {
       farmId = auth.farmId!
 
       // SEC-01: No fallback — only authenticated user
-      actorId = (await getUserIdFromRequest(request)) ?? undefined
+      actorId = (await getUserIdFromRequest(request)) ?? ''
       if (!actorId) {
         return NextResponse.json({ error: 'تعذر تحديد المستخدم المنفذ للعملية' }, { status: 401 })
       }
