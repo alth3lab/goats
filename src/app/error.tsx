@@ -19,11 +19,12 @@ export default function GlobalError({
           <Typography variant="body2" color="text.secondary">
             نعتذر عن هذا الخطأ. يرجى المحاولة مرة أخرى.
           </Typography>
-          {process.env.NODE_ENV === 'development' && (
-            <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-              {error.message}
-            </Typography>
-          )}
+          <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+            {error.message}
+          </Typography>
+          <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+            {error.stack?.slice(0, 400)}
+          </Typography>
           <Button variant="contained" onClick={reset} sx={{ borderRadius: 2 }}>
             إعادة المحاولة
           </Button>
