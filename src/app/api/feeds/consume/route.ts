@@ -491,7 +491,7 @@ export async function POST(request: NextRequest) {
               // CR-03: Manual findFirst + update/create instead of upsert (MySQL NULL != NULL in unique)
               const existingRecord = await tx.dailyFeedConsumption.findFirst({
                 where: {
-                  tenantId: auth.tenantId,
+                  tenantId,
                   date: pendingDate,
                   feedTypeId: plan.feedTypeId,
                   penId: actualPenId
@@ -509,6 +509,8 @@ export async function POST(request: NextRequest) {
               } else {
                 await tx.dailyFeedConsumption.create({
                   data: {
+                    tenantId,
+                    farmId,
                     date: pendingDate,
                     feedTypeId: plan.feedTypeId,
                     penId: actualPenId,
