@@ -19,7 +19,7 @@ envs = [
 ]
 
 [start]
-cmd = "node .next/standalone/server.js"
+cmd = "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && npx pm2-runtime start ecosystem.reminders.config.cjs"
 
 [variables]
 NIXPACKS_PATH = "/opt/nixpacks"
