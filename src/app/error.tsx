@@ -1,8 +1,5 @@
 'use client'
 
-import { Box, Typography, Button, Paper, Stack } from '@mui/material'
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
-
 export default function GlobalError({
   error,
   reset,
@@ -11,25 +8,17 @@ export default function GlobalError({
   reset: () => void
 }) {
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', p: 3 }}>
-      <Paper sx={{ p: 4, maxWidth: 500, textAlign: 'center', borderRadius: 3, border: '2px solid', borderColor: 'error.main' }}>
-        <Stack spacing={2} alignItems="center">
-          <ErrorOutlineIcon color="error" sx={{ fontSize: 64 }} />
-          <Typography variant="h5" fontWeight="bold">حدث خطأ غير متوقع</Typography>
-          <Typography variant="body2" color="text.secondary">
-            نعتذر عن هذا الخطأ. يرجى المحاولة مرة أخرى.
-          </Typography>
-          <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-            {error.message}
-          </Typography>
-          <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-            {error.stack?.slice(0, 400)}
-          </Typography>
-          <Button variant="contained" onClick={reset} sx={{ borderRadius: 2 }}>
-            إعادة المحاولة
-          </Button>
-        </Stack>
-      </Paper>
-    </Box>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', padding: 24, fontFamily: 'Cairo, sans-serif', direction: 'rtl' }}>
+      <div style={{ padding: 32, maxWidth: 600, textAlign: 'center', borderRadius: 12, border: '2px solid #d32f2f', background: '#fff' }}>
+        <h2 style={{ color: '#d32f2f' }}>حدث خطأ غير متوقع</h2>
+        <p style={{ color: '#666' }}>نعتذر عن هذا الخطأ. يرجى المحاولة مرة أخرى.</p>
+        <pre style={{ color: '#d32f2f', fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all', whiteSpace: 'pre-wrap', textAlign: 'left', direction: 'ltr', background: '#fff5f5', padding: 12, borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
+          {error.message}\n{error.stack?.slice(0, 500)}
+        </pre>
+        <button onClick={reset} style={{ marginTop: 16, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#2e7d32', color: '#fff', cursor: 'pointer', fontSize: 16 }}>
+          إعادة المحاولة
+        </button>
+      </div>
+    </div>
   )
 }

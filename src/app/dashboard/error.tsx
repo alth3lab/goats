@@ -1,9 +1,5 @@
 'use client'
 
-import { Box, Typography, Button, Paper, Stack } from '@mui/material'
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
-import { useRouter } from 'next/navigation'
-
 export default function DashboardError({
   error,
   reset,
@@ -11,30 +7,23 @@ export default function DashboardError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  const router = useRouter()
-
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh', p: 3 }}>
-      <Paper sx={{ p: 4, maxWidth: 500, textAlign: 'center', borderRadius: 3, border: '2px solid', borderColor: 'error.main' }}>
-        <Stack spacing={2} alignItems="center">
-          <ErrorOutlineIcon color="error" sx={{ fontSize: 64 }} />
-          <Typography variant="h5" fontWeight="bold">حدث خطأ في هذه الصفحة</Typography>
-          <Typography variant="body2" color="text.secondary">
-            نعتذر عن هذا الخطأ. يمكنك المحاولة مرة أخرى أو العودة للوحة التحكم.
-          </Typography>
-          <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-            {error.message}
-          </Typography>
-          <Stack direction="row" spacing={2}>
-            <Button variant="contained" onClick={reset} sx={{ borderRadius: 2 }}>
-              إعادة المحاولة
-            </Button>
-            <Button variant="outlined" onClick={() => router.push('/dashboard')} sx={{ borderRadius: 2 }}>
-              العودة للوحة التحكم
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-    </Box>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh', padding: 24, fontFamily: 'Cairo, sans-serif', direction: 'rtl' }}>
+      <div style={{ padding: 32, maxWidth: 600, textAlign: 'center', borderRadius: 12, border: '2px solid #d32f2f', background: '#fff' }}>
+        <h2 style={{ color: '#d32f2f' }}>حدث خطأ في هذه الصفحة</h2>
+        <p style={{ color: '#666' }}>نعتذر عن هذا الخطأ. يمكنك المحاولة مرة أخرى أو العودة للوحة التحكم.</p>
+        <pre style={{ color: '#d32f2f', fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all', whiteSpace: 'pre-wrap', textAlign: 'left', direction: 'ltr', background: '#fff5f5', padding: 12, borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
+          {error.message}\n{error.stack?.slice(0, 500)}
+        </pre>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+          <button onClick={reset} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#2e7d32', color: '#fff', cursor: 'pointer', fontSize: 16 }}>
+            إعادة المحاولة
+          </button>
+          <a href="/dashboard" style={{ padding: '8px 24px', borderRadius: 8, border: '2px solid #2e7d32', color: '#2e7d32', textDecoration: 'none', fontSize: 16 }}>
+            العودة للوحة التحكم
+          </a>
+        </div>
+      </div>
+    </div>
   )
 }
