@@ -240,7 +240,7 @@ function requiredForDateFromCache(
 
 export async function POST(request: NextRequest) {
   try {
-    const cronSecret = process.env.FEEDS_CRON_SECRET
+    const cronSecret = process.env.FEEDS_CRON_SECRET || process.env.CRON_SECRET
     const authHeader = request.headers.get('authorization') || ''
     const bearer = authHeader.toLowerCase().startsWith('bearer ')
       ? authHeader.slice(7).trim()
