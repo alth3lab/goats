@@ -9,7 +9,9 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "npm run build"
+  "npm run build",
+  "cp -r .next/static .next/standalone/.next/static",
+  "cp -r public .next/standalone/public"
 ]
 envs = [
   "DATABASE_URL=mysql://build:build@localhost:3306/build_db",

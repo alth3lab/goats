@@ -3,7 +3,8 @@ module.exports = {
     {
       name: "next-app",
       script: "node",
-      args: ".next/standalone/server.js",
+      args: "server.js",
+      cwd: ".next/standalone",
       autorestart: true,
       max_restarts: 5,
       restart_delay: 2000,
