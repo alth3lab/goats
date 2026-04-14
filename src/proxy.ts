@@ -83,6 +83,15 @@ export default async function proxy(request: NextRequest) {
     return res
   }
 
+  // Allow cron system calls — validate x-cron-secret header
+  const cronSecretHeader = request.headers.get('x-cron-secret')
+  const expectedCronSecret = process.env.FEEDS_CRON_SECRET || process.env.CRON_SECRET
+  if (cronSecretHeader && expectedCronSecret && cronSecretHeader === expectedCronSecret) {
+    const res = NextResponse.next()
+    if (origin && pathname.startsWith('/api/')) addCorsHeaders(res, origin)
+    return res
+  }
+
   // Check for Bearer token (mobile app) — skip CSRF and cookie checks
   const authHeader = request.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {
