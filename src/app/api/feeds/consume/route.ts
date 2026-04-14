@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
       farmId = auth.farmId!
 
       // SEC-01: No fallback — only authenticated user
-      actorId = await getUserIdFromRequest(request)
+      actorId = (await getUserIdFromRequest(request)) ?? undefined
       if (!actorId) {
         return NextResponse.json({ error: 'تعذر تحديد المستخدم المنفذ للعملية' }, { status: 401 })
       }
