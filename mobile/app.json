@@ -2,7 +2,7 @@
   "expo": {
     "name": "وبر وصوف",
     "slug": "wabr-wsuf",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.wabrwsuf.app",
-      "buildNumber": "12",
+      "buildNumber": "1",
       "jsEngine": "hermes",
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
