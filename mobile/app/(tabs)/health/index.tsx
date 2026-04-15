@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,6 +50,62 @@ const TYPE_COLORS: Record<string, string> = {
   CHECKUP: Colors.success,
   SURGERY: Colors.secondary,
 };
+
+function RecordCard({ item, onDelete }: { item: HealthRecord; onDelete: (id: string) => void }) {
+  const typeColor = TYPE_COLORS[item.type] || Colors.textSecondary;
+  const typeIcon = TYPE_ICONS[item.type] || 'medkit';
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    onDelete(item.id);
+  };
+
+  return (
+    <AnimatedPressable
+      style={[styles.recordCard, animatedStyle]}
+      onLongPress={handleLongPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      delayLongPress={500}
+    >
+      <View style={[styles.recordIcon, { backgroundColor: typeColor + '15' }]}>
+        <Ionicons name={typeIcon} size={20} color={typeColor} />
+      </View>
+      <View style={styles.recordContent}>
+        <View style={styles.recordTop}>
+          <Text style={styles.recordType}>{HealthTypeLabels[item.type]}</Text>
+          <Text style={styles.recordTag}>{item.goat?.tagId || '—'}</Text>
+        </View>
+        <Text style={styles.recordDate}>
+          {formatDate(item.date)}
+          {item.veterinarian ? ` — د. ${item.veterinarian}` : ''}
+        </Text>
+        {item.description && (
+          <Text style={styles.recordDesc} numberOfLines={2}>{item.description}</Text>
+        )}
+      </View>
+      {item.cost ? (
+        <View style={styles.costBadge}>
+          <Text style={styles.costText}>{formatNumber(item.cost)}</Text>
+        </View>
+      ) : null}
+    </AnimatedPressable>
+  );
+}
 
 export default function HealthScreen() {
   const [records, setRecords] = useState<HealthRecord[]>([]);
@@ -159,61 +216,9 @@ export default function HealthScreen() {
     );
   };
 
-  const renderRecord = useCallback(({ item }: { item: HealthRecord }) => {
-    const typeColor = TYPE_COLORS[item.type] || Colors.textSecondary;
-    const typeIcon = TYPE_ICONS[item.type] || 'medkit';
-    const scale = useSharedValue(1);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ scale: scale.value }],
-    }));
-
-    const handlePressIn = () => {
-      scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    };
-
-    const handlePressOut = () => {
-      scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-    };
-
-    const handleLongPress = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      handleDelete(item.id);
-    };
-
-    return (
-      <AnimatedPressable
-        style={[styles.recordCard, animatedStyle]}
-        onLongPress={handleLongPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        delayLongPress={500}
-      >
-        <View style={[styles.recordIcon, { backgroundColor: typeColor + '15' }]}>
-          <Ionicons name={typeIcon} size={20} color={typeColor} />
-        </View>
-        <View style={styles.recordContent}>
-          <View style={styles.recordTop}>
-            <Text style={styles.recordType}>{HealthTypeLabels[item.type]}</Text>
-            <Text style={styles.recordTag}>{item.goat?.tagId || '—'}</Text>
-          </View>
-          <Text style={styles.recordDate}>
-            {formatDate(item.date)}
-            {item.veterinarian ? ` — د. ${item.veterinarian}` : ''}
-          </Text>
-          {item.description && (
-            <Text style={styles.recordDesc} numberOfLines={2}>{item.description}</Text>
-          )}
-        </View>
-        {item.cost ? (
-          <View style={styles.costBadge}>
-            <Text style={styles.costText}>{formatNumber(item.cost)}</Text>
-          </View>
-        ) : null}
-      </AnimatedPressable>
-    );
-  }, [handleDelete]);
+  const renderRecord = useCallback(({ item }: { item: HealthRecord }) => (
+    <RecordCard item={item} onDelete={handleDelete} />
+  ), [handleDelete]);
 
   const filteredRecords = useMemo(() =>
     search.trim() ? records.filter(r => r.goat?.tagId?.toLowerCase().includes(search.toLowerCase()) || r.description?.toLowerCase().includes(search.toLowerCase()) || r.veterinarian?.toLowerCase().includes(search.toLowerCase())) : records
