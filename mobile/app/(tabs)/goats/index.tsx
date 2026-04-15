@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,8 +17,8 @@ import * as Haptics from 'expo-haptics';
 import { goatsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import GoatCard from '@/components/GoatCard';
-import { EmptyState, Button } from '@/components/ui';
-import { Colors, Spacing, Radius, Typography, Shadows, Gradients, StatusLabels } from '@/lib/theme';
+import { EmptyState } from '@/components/ui';
+import { Colors, Spacing, Radius, Typography, Shadows, Gradients } from '@/lib/theme';
 import { western } from '@/lib/formatters';
 import { useToast } from '@/lib/toast';
 import type { Goat } from '@/types';
@@ -37,21 +37,31 @@ export default function GoatsListScreen() {
   const { can } = useAuth();
   const [goats, setGoats] = useState<Goat[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [page, setPage] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const latestRequestId = useRef(0);
+  const hasLoadedOnce = useRef(false);
 
   // Debounce search input — wait 400ms before sending to API
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    const timer = setTimeout(() => {
+      if (hasLoadedOnce.current) {
+        setFilterLoading(true);
+      }
+      setDebouncedSearch(search);
+    }, 400);
     return () => clearTimeout(timer);
   }, [search]);
 
   const fetchGoats = useCallback(async (pageNum = 0, append = false) => {
+    const requestId = ++latestRequestId.current;
+
     try {
       const params: Record<string, string> = {
         page: String(pageNum),
@@ -61,6 +71,9 @@ export default function GoatsListScreen() {
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
       const result = await goatsApi.list(params);
+
+      if (requestId !== latestRequestId.current) return;
+
       const data = (result.data || []) as unknown as Goat[];
 
       if (append) {
@@ -69,20 +82,29 @@ export default function GoatsListScreen() {
         setGoats(data);
       }
       setTotal(result.total || 0);
+      hasLoadedOnce.current = true;
     } catch (err) {
+      if (requestId !== latestRequestId.current) return;
       const msg = err instanceof Error ? err.message : 'فشل تحميل القطيع';
       showToast('error', msg);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (requestId === latestRequestId.current) {
+        setInitialLoading(false);
+        setFilterLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
-  }, [statusFilter, debouncedSearch]);
+  }, [statusFilter, debouncedSearch, showToast]);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
       setPage(0);
+      if (hasLoadedOnce.current) {
+        setFilterLoading(true);
+      } else {
+        setInitialLoading(true);
+      }
       fetchGoats(0);
     }, [fetchGoats])
   );
@@ -172,8 +194,13 @@ export default function GoatsListScreen() {
               ]}
               onPress={() => {
                 if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPage(0);
+                setFilterLoading(true);
                 setStatusFilter(f.key);
               }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`فلتر الحالة: ${f.label}`}
             >
               <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
                 {f.label}
@@ -191,7 +218,7 @@ export default function GoatsListScreen() {
       </View>
 
       {/* List */}
-      {loading ? (
+      {initialLoading && goats.length === 0 ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -210,12 +237,19 @@ export default function GoatsListScreen() {
           }
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
+          ListHeaderComponent={
+            filterLoading && !refreshing && !loadingMore ? (
+              <View style={styles.inlineLoader}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <EmptyState
               icon="paw"
               title="لا يوجد حيوانات"
               message={statusFilter !== 'ALL' ? 'جرّب تغيير الفلتر' : 'أضف أول حيوان لبدء إدارة القطيع'}
-              action={{ title: 'إضافة حيوان', onPress: () => router.push('/(tabs)/goats/add') }}
+              action={can('__owner_admin__') ? { title: 'إضافة حيوان', onPress: () => router.push('/(tabs)/goats/add') } : undefined}
             />
           }
           ListFooterComponent={
@@ -313,6 +347,10 @@ const styles = StyleSheet.create({
   },
   footerLoader: {
     paddingVertical: Spacing.xl,
+    alignItems: 'center',
+  },
+  inlineLoader: {
+    paddingBottom: Spacing.sm,
     alignItems: 'center',
   },
 });
