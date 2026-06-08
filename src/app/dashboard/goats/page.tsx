@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Box,
@@ -37,7 +37,8 @@ import {
   CardActions,
   Grid,
   Avatar,
-  useMediaQuery
+  useMediaQuery,
+  Snackbar
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { calculateGoatAge } from '@/lib/ageCalculator'
@@ -159,9 +160,12 @@ export default function GoatsPage() {
   const [goats, setGoats] = useState<Goat[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' })
+  const latestRequestId = useRef(0)
   const [open, setOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -203,6 +207,14 @@ export default function GoatsPage() {
     ownerId: ''
   })
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     loadGoats()
     loadTypes()
@@ -212,27 +224,29 @@ export default function GoatsPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [searchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant, filterOwner])
+  }, [debouncedSearchTerm, filterStatus, goats.length, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterPregnant, filterOwner])
 
-  // Calculate statistics
-  const activeGoats = goats.filter(g => ['ACTIVE', 'QUARANTINE'].includes(g.status))
-  const stats = {
-    total: activeGoats.length,
-    males: activeGoats.filter(g => g.gender === 'MALE').length,
-    females: activeGoats.filter(g => g.gender === 'FEMALE').length,
-    weaningReady: activeGoats.filter(g => {
-      const age = calculateGoatAge(g.birthDate)
-      return age.totalMonths >= 3 && age.totalMonths < 5
-    }).length,
-    quarantine: activeGoats.filter(g => g.status === 'QUARANTINE').length,
-    avgAge: activeGoats.length > 0 
-      ? Math.round(activeGoats.reduce((sum, g) => {
-          const age = calculateGoatAge(g.birthDate)
-          return sum + age.totalMonths
-        }, 0) / activeGoats.length) 
-      : 0,
-    totalWeight: Number(activeGoats.reduce((sum, g) => sum + (g.weight || 0), 0).toFixed(2))
-  }
+  // Calculate statistics with useMemo
+  const stats = useMemo(() => {
+    const activeGoats = goats.filter(g => ['ACTIVE', 'QUARANTINE'].includes(g.status))
+    return {
+      total: activeGoats.length,
+      males: activeGoats.filter(g => g.gender === 'MALE').length,
+      females: activeGoats.filter(g => g.gender === 'FEMALE').length,
+      weaningReady: activeGoats.filter(g => {
+        const age = calculateGoatAge(g.birthDate)
+        return age.totalMonths >= 3 && age.totalMonths < 5
+      }).length,
+      quarantine: activeGoats.filter(g => g.status === 'QUARANTINE').length,
+      avgAge: activeGoats.length > 0 
+        ? Math.round(activeGoats.reduce((sum, g) => {
+            const age = calculateGoatAge(g.birthDate)
+            return sum + age.totalMonths
+          }, 0) / activeGoats.length) 
+        : 0,
+      totalWeight: Number(activeGoats.reduce((sum, g) => sum + (g.weight || 0), 0).toFixed(2))
+    }
+  }, [goats])
 
   // Export functions
   const exportToPDF = async () => {
@@ -319,18 +333,27 @@ export default function GoatsPage() {
     XLSX.writeFile(wb, `goats-report-${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
-  const loadGoats = async () => {
+  const loadGoats = useCallback(async () => {
+    const requestId = ++latestRequestId.current
     try {
       const res = await fetch('/api/goats')
+      if (requestId !== latestRequestId.current) return
+      
       const data = await res.json()
-      setGoats(Array.isArray(data) ? data : [])
+      if (requestId === latestRequestId.current) {
+        setGoats(Array.isArray(data) ? data : [])
+      }
     } catch (error) {
+      if (requestId !== latestRequestId.current) return
       console.error('خطأ في جلب البيانات:', error)
+      setSnackbar({ open: true, message: 'فشل تحميل البيانات', severity: 'error' })
       setGoats([])
     } finally {
-      setLoading(false)
+      if (requestId === latestRequestId.current) {
+        setLoading(false)
+      }
     }
-  }
+  }, [])
 
   const loadTypes = async () => {
     try {
@@ -503,21 +526,35 @@ export default function GoatsPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error || 'فشل حذف الحيوان')
+        setSnackbar({ open: true, message: data.error || 'فشل حذف الحيوان', severity: 'error' })
         return
       }
+      setSnackbar({ open: true, message: 'تم الحذف بنجاح', severity: 'success' })
       setDeleteDialogOpen(false)
       setSelectedGoat(null)
       loadGoats()
     } catch (error) {
       console.error('خطأ في الحذف:', error)
-      alert('خطأ في الاتصال بالخادم')
+      setSnackbar({ open: true, message: 'خطأ في الاتصال بالخادم', severity: 'error' })
     } finally {
       setDeleteLoading(false)
     }
   }
 
   const handleSubmit = async () => {
+    if (!form.tagId.trim()) {
+      setSnackbar({ open: true, message: 'رقم التاج مطلوب', severity: 'error' })
+      return
+    }
+    if (!form.birthDate) {
+      setSnackbar({ open: true, message: 'تاريخ الميلاد مطلوب', severity: 'error' })
+      return
+    }
+    if (!form.breedId) {
+      setSnackbar({ open: true, message: 'يرجى اختيار السلالة', severity: 'error' })
+      return
+    }
+
     const payload = {
       tagId: form.tagId,
       name: form.name || null,
@@ -534,106 +571,129 @@ export default function GoatsPage() {
     const url = editMode && selectedGoat ? `/api/goats/${selectedGoat.id}` : '/api/goats'
     const method = editMode ? 'PUT' : 'POST'
 
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    const savedGoat = await res.json()
-
-    // تحديث النسب إذا تم تغييره أو في وضع التعديل (للسماح بالحذف)
-    if (form.motherTagId !== '' || form.fatherTagId !== '' || editMode) {
-      const parentageRes = await fetch(`/api/goats/${savedGoat.id ?? selectedGoat?.id}/parentage`, {
-        method: 'PATCH',
+    try {
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          motherTagId: form.motherTagId || null,
-          fatherTagId: form.fatherTagId || null
-        })
+        body: JSON.stringify(payload)
       })
 
-      if (!parentageRes.ok) {
-        const errorData = await parentageRes.json()
-        alert(`تم الحفظ ولكن فشل تحديث النسب: ${errorData.error}`)
-      }
-    }
+      const savedGoat = await res.json()
 
-    setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', tagColor: '#f9a825', motherTagId: '', fatherTagId: '', penId: '', ownerId: '' })
-    setOpen(false)
-    setEditMode(false)
-    setSelectedGoat(null)
-    loadGoats()
+      if (!res.ok) {
+        setSnackbar({ open: true, message: savedGoat.error || 'فشل في حفظ البيانات', severity: 'error' })
+        return
+      }
+
+      // تحديث النسب إذا تم تغييره أو في وضع التعديل (للسماح بالحذف)
+      if (form.motherTagId !== '' || form.fatherTagId !== '' || editMode) {
+        const parentageRes = await fetch(`/api/goats/${savedGoat.id ?? selectedGoat?.id}/parentage`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            motherTagId: form.motherTagId || null,
+            fatherTagId: form.fatherTagId || null
+          })
+        })
+
+        if (!parentageRes.ok) {
+          const errorData = await parentageRes.json()
+          setSnackbar({ open: true, message: `تم الحفظ ولكن فشل تحديث النسب: ${errorData.error}`, severity: 'warning' })
+        } else {
+          setSnackbar({ open: true, message: editMode ? 'تم التعديل بنجاح' : 'تم الإضافة بنجاح', severity: 'success' })
+        }
+      } else {
+        setSnackbar({ open: true, message: editMode ? 'تم التعديل بنجاح' : 'تم الإضافة بنجاح', severity: 'success' })
+      }
+
+      setForm({ tagId: '', name: '', gender: 'MALE', birthDate: '', typeId: '', breedId: '', weight: '', status: 'ACTIVE', tagColor: '#f9a825', motherTagId: '', fatherTagId: '', penId: '', ownerId: '' })
+      setOpen(false)
+      setEditMode(false)
+      setSelectedGoat(null)
+      loadGoats()
+    } catch {
+      setSnackbar({ open: true, message: 'خطأ في الاتصال بالخادم', severity: 'error' })
+    }
   }
 
-  const filteredGoats = goats.filter(goat => {
-    const matchesSearch = 
-      goat.tagId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      goat.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      goat.breed.nameAr.includes(searchTerm)
-    
-    // Weaning Filter Logic
-    if (filterStatus === 'WEANING_READY') {
+  const filteredGoats = useMemo(() => {
+    return goats.filter(goat => {
+      const matchesSearch = 
+        goat.tagId.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        goat.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        goat.breed.nameAr.includes(debouncedSearchTerm)
+      
+      // Weaning Filter Logic
+      if (filterStatus === 'WEANING_READY') {
+        const age = calculateGoatAge(goat.birthDate)
+        return matchesSearch && goat.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
+      }
+      
+      const matchesStatus = 
+        filterStatus === 'ALL' ? ['ACTIVE', 'QUARANTINE'].includes(goat.status) :
+        filterStatus === 'ARCHIVE' ? ['SOLD', 'DECEASED'].includes(goat.status) :
+        goat.status === filterStatus
+
+      // Advanced filters
+      const matchesGender = filterGender === 'ALL' || goat.gender === filterGender
+      
       const age = calculateGoatAge(goat.birthDate)
-      return matchesSearch && goat.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
-    }
-    
-    const matchesStatus = 
-      filterStatus === 'ALL' ? ['ACTIVE', 'QUARANTINE'].includes(goat.status) :
-      filterStatus === 'ARCHIVE' ? ['SOLD', 'DECEASED'].includes(goat.status) :
-      goat.status === filterStatus
+      const matchesAgeCategory = filterAgeCategory === 'ALL' || 
+        (filterAgeCategory === 'kid' && age.category === 'kid') ||
+        (filterAgeCategory === 'young' && age.category === 'young') ||
+        (filterAgeCategory === 'juvenile' && age.category === 'juvenile') ||
+        (filterAgeCategory === 'adult' && age.category === 'adult')
+      
+      const matchesType = filterType === 'ALL' || goat.breed.type.id === filterType
+      const matchesBreed = filterBreed === 'ALL' || goat.breed.id === filterBreed
+      const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
+      const matchesOwner = filterOwner === 'ALL' || (filterOwner === 'NONE' ? !(goat as any).ownerId : (goat as any).ownerId === filterOwner)
+      
+      // Pregnancy filter
+      const matchesPregnancy = !filterPregnant || (goat.gender === 'FEMALE' && goat.pregnancyStatus)
 
-    // Advanced filters
-    const matchesGender = filterGender === 'ALL' || goat.gender === filterGender
-    
-    const age = calculateGoatAge(goat.birthDate)
-    const matchesAgeCategory = filterAgeCategory === 'ALL' || 
-      (filterAgeCategory === 'kid' && age.category === 'kid') ||
-      (filterAgeCategory === 'young' && age.category === 'young') ||
-      (filterAgeCategory === 'juvenile' && age.category === 'juvenile') ||
-      (filterAgeCategory === 'adult' && age.category === 'adult')
-    
-    const matchesType = filterType === 'ALL' || goat.breed.type.id === filterType
-    const matchesBreed = filterBreed === 'ALL' || goat.breed.id === filterBreed
-    const matchesPen = filterPen === 'ALL' || (goat as any).penId === filterPen
-    const matchesOwner = filterOwner === 'ALL' || (filterOwner === 'NONE' ? !(goat as any).ownerId : (goat as any).ownerId === filterOwner)
-    
-    // Pregnancy filter
-    const matchesPregnancy = !filterPregnant || (goat.gender === 'FEMALE' && goat.pregnancyStatus)
+      return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesOwner && matchesPregnancy
+    }).sort((a, b) => {
+      // ترتيب تنازلي حسب تاريخ الولادة المتوقع (الماعز الحوامل أولاً)
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      }
+      if (a.dueDate && !b.dueDate) return -1
+      if (!a.dueDate && b.dueDate) return 1
+      return 0
+    })
+  }, [goats, debouncedSearchTerm, filterStatus, filterGender, filterAgeCategory, filterType, filterBreed, filterPen, filterOwner, filterPregnant])
 
-    return matchesSearch && matchesStatus && matchesGender && matchesAgeCategory && matchesType && matchesBreed && matchesPen && matchesOwner && matchesPregnancy
-  }).sort((a, b) => {
-    // ترتيب تنازلي حسب تاريخ الولادة المتوقع (الماعز الحوامل أولاً)
-    if (a.dueDate && b.dueDate) {
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-    }
-    if (a.dueDate && !b.dueDate) return -1
-    if (!a.dueDate && b.dueDate) return 1
-    return 0
-  })
+  const paginatedGoats = useMemo(() => {
+    return filteredGoats.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    )
+  }, [filteredGoats, page, rowsPerPage])
 
-  const paginatedGoats = filteredGoats.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  )
-
-  // Calculate stats for alerts
-  const weaningCandidates = goats.filter(g => {
-    const age = calculateGoatAge(g.birthDate)
-    return g.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
-  }).length
+  // Calculate stats for alerts with useMemo
+  const alertStats = useMemo(() => {
+    const weaningCandidates = goats.filter(g => {
+      const age = calculateGoatAge(g.birthDate)
+      return g.status === 'ACTIVE' && age.totalMonths >= 3 && age.totalMonths < 5
+    }).length
+    
+    const pregnantGoats = goats.filter(g => g.gender === 'FEMALE' && g.pregnancyStatus).length
+    const upcomingBirths = goats.filter(g => {
+      if (!g.dueDate || g.gender !== 'FEMALE') return false
+      const days = getDaysRemaining(g.dueDate)
+      return days !== null && days >= 0 && days <= 7
+    }).length
+    const overdueBirths = goats.filter(g => {
+      if (!g.dueDate || g.gender !== 'FEMALE') return false
+      const days = getDaysRemaining(g.dueDate)
+      return days !== null && days < 0
+    }).length
+    
+    return { weaningCandidates, pregnantGoats, upcomingBirths, overdueBirths }
+  }, [goats])
   
-  const pregnantGoats = goats.filter(g => g.gender === 'FEMALE' && g.pregnancyStatus).length
-  const upcomingBirths = goats.filter(g => {
-    if (!g.dueDate || g.gender !== 'FEMALE') return false
-    const days = getDaysRemaining(g.dueDate)
-    return days !== null && days >= 0 && days <= 7
-  }).length
-  const overdueBirths = goats.filter(g => {
-    if (!g.dueDate || g.gender !== 'FEMALE') return false
-    const days = getDaysRemaining(g.dueDate)
-    return days !== null && days < 0
-  }).length
+  const { weaningCandidates, pregnantGoats, upcomingBirths, overdueBirths } = alertStats
 
   const handleOpenDeathDialog = (goat: Goat) => {
     setSelectedGoat(goat)
@@ -711,12 +771,12 @@ export default function GoatsPage() {
         setBatchPenId('')
         setSelectedGoatIds([])
         loadGoats()
-        alert('تم النقل الجماعي بنجاح')
+        setSnackbar({ open: true, message: 'تم النقل الجماعي بنجاح', severity: 'success' })
       } else {
-        alert(data.error || 'فشل في عملية النقل')
+        setSnackbar({ open: true, message: data.error || 'فشل في عملية النقل', severity: 'error' })
       }
     } catch (error) {
-       alert('حدث خطأ أثناء النقل')
+       setSnackbar({ open: true, message: 'حدث خطأ أثناء النقل', severity: 'error' })
     }
   }
 
@@ -2061,6 +2121,22 @@ export default function GoatsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

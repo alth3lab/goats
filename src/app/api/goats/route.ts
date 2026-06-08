@@ -18,9 +18,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const format = searchParams.get('format')
     const ownerId = searchParams.get('ownerId')
+    const gender = searchParams.get('gender')
 
     const where: Record<string, unknown> = status ? { status: status as 'ACTIVE' | 'SOLD' | 'DECEASED' | 'QUARANTINE' | 'EXTERNAL' } : { status: { not: 'EXTERNAL' as const } }
     if (ownerId) where.ownerId = ownerId === 'none' ? null : ownerId
+    if (gender) where.gender = gender as 'MALE' | 'FEMALE'
 
     // CSV export returns all data without pagination
     if (format === 'csv') {
@@ -124,18 +126,6 @@ export async function POST(request: NextRequest) {
     const validation = validateBody(createGoatSchema, body)
     if (!validation.success) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
-    }
-
-    // Check goat limit across entire tenant (not just current farm)
-    const tenant = await prisma.tenant.findUnique({ where: { id: auth.tenantId } })
-    if (tenant) {
-      const goatCount = await prisma.goat.count({ where: { farm: { tenantId: auth.tenantId } } })
-      if (goatCount >= tenant.maxGoats) {
-        return NextResponse.json(
-          { error: `تم الوصول للحد الأقصى من الحيوانات (${tenant.maxGoats}). قم بترقية الخطة.` },
-          { status: 403 }
-        )
-      }
     }
 
     const userId = await getUserIdFromRequest(request)
